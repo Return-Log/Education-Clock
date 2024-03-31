@@ -22,6 +22,6 @@ GPLv3
 
 ## 更改倒计时信息
 
-倒计时格式“据<xx>还剩<yy>天”
+倒计时格式“据<事件>还剩<数字>天”
 
 <img src="https://s2.loli.net/2024/03/31/XTNvaBtwpeuPfV6.gif" alt="ji-shi-min.gif" style="zoom: 50%;" />
