@@ -1,8 +1,10 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QDateEdit, QPushButton, QDialog, \
     QMessageBox, QSlider
-from PyQt5.QtCore import Qt, QTimer, QDate, QTime, QPoint, QSettings, QSize
+from PyQt5.QtCore import Qt, QTimer, QDate, QTime, QPoint, QSettings
 from PyQt5.QtGui import QFont
+# 导入timetable.py中的ClassSchedule类
+from timetable import ClassSchedule
 
 
 class SettingsDialog(QDialog):
@@ -120,10 +122,15 @@ class DigitalClock(QWidget):
         self.drag_start_position = None
 
         # 加载窗口位置和大小信息
+        self.load_window_position()
         self.load_window_size()
 
         # 将窗口放到最底层
         self.raise_()
+
+        # 创建并显示课程表窗口
+        self.schedule_window = ClassSchedule()
+        self.schedule_window.show()
 
     def update_time(self):
         # 获取当前日期和时间
@@ -180,26 +187,31 @@ class DigitalClock(QWidget):
         # 清空记录的鼠标按下位置
         self.drag_start_position = None
 
+    def closeEvent(self, event):
+        self.save_window_position()
+        self.save_window_size()
+        event.accept()
+
     def load_window_position(self):
         # 从配置文件加载窗口位置信息
-        settings = QSettings("MyCompany", "MyApp")
+        settings = QSettings("CloudReturn", "clock")
         if settings.contains("window/position"):
             self.move(settings.value("window/position"))
 
     def save_window_position(self):
         # 保存窗口位置信息到配置文件
-        settings = QSettings("MyCompany", "MyApp")
+        settings = QSettings("CloudReturn", "clock")
         settings.setValue("window/position", self.pos())
 
     def load_window_size(self):
         # 从配置文件加载窗口大小信息
-        settings = QSettings("MyCompany", "MyApp")
+        settings = QSettings("CloudReturn", "clock")
         if settings.contains("window/size"):
             self.resize(settings.value("window/size"))
 
     def save_window_size(self):
         # 保存窗口大小信息到配置文件
-        settings = QSettings("MyCompany", "MyApp")
+        settings = QSettings("CloudReturn", "clock")
         settings.setValue("window/size", self.size())
 
     def resizeEvent(self, event):
