@@ -97,7 +97,8 @@ class ClassSchedule(QWidget):
     def get_course_schedule(self, current_date):
         # 获取当前日期的课程安排
         current_day = current_date.dayOfWeek() - 1
-        schedule_file = os.path.join(os.path.dirname(__file__), "schedule.json5")
+        exe_dir = os.path.dirname(sys.argv[0])
+        schedule_file = os.path.join(exe_dir, "schedule.json5")
         with open(schedule_file, "r", encoding="utf-8") as f:
             data = json5.load(f)
 
