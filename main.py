@@ -21,6 +21,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdi
     QMessageBox, QSlider
 from PyQt5.QtCore import Qt, QTimer, QDate, QPoint, QSettings, QTime
 from PyQt5.QtGui import QFont
+import json5
 
 # 导入timetable.py中的ClassSchedule类
 from timetable import ClassSchedule
