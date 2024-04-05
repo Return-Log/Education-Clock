@@ -1,8 +1,27 @@
+"""
+    Education-Clock
+    Copyright (C) 2024  Log
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+"""
+
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QDateEdit, QPushButton, QDialog, \
     QMessageBox, QSlider
-from PyQt5.QtCore import Qt, QTimer, QDate, QTime, QPoint, QSettings
+from PyQt5.QtCore import Qt, QTimer, QDate, QPoint, QSettings, QTime
 from PyQt5.QtGui import QFont
+
 # 导入timetable.py中的ClassSchedule类
 from timetable import ClassSchedule
 
@@ -11,10 +30,15 @@ class SettingsDialog(QDialog):
     def __init__(self, parent=None):
         super(SettingsDialog, self).__init__(parent)
         self.setWindowTitle('设置倒计时')
-        self.setGeometry(200, 200, 300, 150)
+        self.setGeometry(200, 200, 300, 200)
 
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
+
+        # 添加关于按钮
+        self.about_button = QPushButton("关于")
+        self.about_button.clicked.connect(self.show_about_dialog)
+        self.layout.addWidget(self.about_button)
 
         # 添加窗口大小标签
         self.label_window_size = QLabel("窗口大小:")
@@ -46,6 +70,25 @@ class SettingsDialog(QDialog):
         self.save_button = QPushButton("保存")
         self.save_button.clicked.connect(self.save_and_close)
         self.layout.addWidget(self.save_button)
+
+    def show_about_dialog(self):
+        about_text = """
+        Education-Clock
+        
+        版本：0.2
+        
+        作者：Log
+        
+        许可证：GPLv3
+        
+        仓库地址：https://github.com/Return-Log/Education-Clock
+        
+        联系我：returnlog@outlook.com
+        
+        Copyright (C) 2024  Log
+        """
+
+        QMessageBox.about(self, "关于", about_text)
 
     def save_and_close(self):
         event = self.input_event.text()
