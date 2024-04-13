@@ -41,19 +41,6 @@ class SettingsDialog(QDialog):
         self.about_button.clicked.connect(self.show_about_dialog)
         self.layout.addWidget(self.about_button)
 
-        # 添加窗口大小标签
-        self.label_window_size = QLabel("窗口大小:")
-        self.layout.addWidget(self.label_window_size)
-
-        # 添加拖动条
-        self.resize_slider = QSlider(Qt.Horizontal)
-        self.resize_slider.setRange(100, 2400)  # 设置最小值和最大值
-        self.resize_slider.setValue(300)  # 设置默认值
-        self.resize_slider.setTickPosition(QSlider.TicksBelow)
-        self.resize_slider.setTickInterval(50)
-        self.resize_slider.valueChanged.connect(self.resize_main_window)
-        self.layout.addWidget(self.resize_slider)
-
         self.label_event = QLabel("事件:")
         self.layout.addWidget(self.label_event)
 
@@ -75,17 +62,17 @@ class SettingsDialog(QDialog):
     def show_about_dialog(self):
         about_text = """
         Education-Clock
-        
+
         版本：0.2
-        
+
         作者：Log
-        
+
         许可证：GPLv3
-        
+
         仓库地址：https://github.com/Return-Log/Education-Clock
-        
+
         联系我：returnlog@outlook.com
-        
+
         Copyright (C) 2024  Log
         """
 
@@ -105,10 +92,6 @@ class SettingsDialog(QDialog):
                 QMessageBox.warning(self, "保存失败", f"发生错误: {str(e)}")
         else:
             QMessageBox.warning(self, "保存失败", "请填写完整的设置！")
-
-    def resize_main_window(self, value):
-        # 调整主窗口大小
-        self.parent().resize(value, value // 2)  # 假设主窗口宽高比为2:1，你可以根据实际情况调整
 
 
 class DigitalClock(QWidget):
@@ -130,25 +113,25 @@ class DigitalClock(QWidget):
         # 星期标签
         self.weekday_label = QLabel()
         self.weekday_label.setAlignment(Qt.AlignCenter)  # 居中对齐
-        self.weekday_label.setStyleSheet("color: red;")
+        self.weekday_label.setStyleSheet("color: red; font: bold 35pt;")  # 设置黑体，字号35
         self.layout.addWidget(self.weekday_label)
 
         # 时间标签
         self.time_label = QLabel()
         self.time_label.setAlignment(Qt.AlignCenter)  # 居中对齐
-        self.time_label.setStyleSheet("color: red;")
+        self.time_label.setStyleSheet("color: red; font: bold 60pt;")  # 设置黑体，字号50
         self.layout.addWidget(self.time_label)
 
         # 日期标签
         self.date_label = QLabel()
         self.date_label.setAlignment(Qt.AlignCenter)  # 居中对齐
-        self.date_label.setStyleSheet("color: red;")
+        self.date_label.setStyleSheet("color: red; font: bold 35pt;")  # 设置黑体，字号35
         self.layout.addWidget(self.date_label)
 
         # 倒计时标签
         self.countdown_label = QLabel()
         self.countdown_label.setAlignment(Qt.AlignCenter)  # 居中对齐
-        self.countdown_label.setStyleSheet("color: red;")
+        self.countdown_label.setStyleSheet("color: red; font: bold 35pt;")  # 设置黑体，字号35
         self.layout.addWidget(self.countdown_label)
 
         # 定时器，每秒更新一次时间
@@ -165,9 +148,8 @@ class DigitalClock(QWidget):
         # 用于记录鼠标按下时的位置
         self.drag_start_position = None
 
-        # 加载窗口位置和大小信息
+        # 加载窗口位置信息
         self.load_window_position()
-        self.load_window_size()
 
         # 将窗口放到最底层
         self.raise_()
@@ -233,7 +215,6 @@ class DigitalClock(QWidget):
 
     def closeEvent(self, event):
         self.save_window_position()
-        self.save_window_size()
         event.accept()
 
     def load_window_position(self):
@@ -246,30 +227,6 @@ class DigitalClock(QWidget):
         # 保存窗口位置信息到配置文件
         settings = QSettings("CloudReturn", "clock")
         settings.setValue("window/position", self.pos())
-
-    def load_window_size(self):
-        # 从配置文件加载窗口大小信息
-        settings = QSettings("CloudReturn", "clock")
-        if settings.contains("window/size"):
-            self.resize(settings.value("window/size"))
-
-    def save_window_size(self):
-        # 保存窗口大小信息到配置文件
-        settings = QSettings("CloudReturn", "clock")
-        settings.setValue("window/size", self.size())
-
-    def resizeEvent(self, event):
-        # 根据窗口大小调整标签字体大小，并保持比例
-        font_size = max(12, self.width() // 18)  # 根据窗口宽度动态调整字体大小
-        font = QFont("Arial", font_size)
-
-        # 设置各个标签的字体大小
-        self.weekday_label.setFont(font)
-        self.time_label.setFont(QFont("Arial", font_size + 16))  # 时间标签字体大小增加12
-        self.date_label.setFont(font)
-        self.countdown_label.setFont(font)
-
-        super().resizeEvent(event)
 
 
 if __name__ == '__main__':

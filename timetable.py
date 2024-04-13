@@ -50,7 +50,7 @@ class ClassSchedule(QWidget):
         self.layout.setAlignment(Qt.AlignTop)  # 标签从顶部开始对齐
         self.layout.setSpacing(5)  # 设置标签间距
         self.update_course_schedule()  # 更新课程信息
-        self.timer.start(1000)  # 定时器开始，间隔1秒
+        self.timer.start(10000)  # 定时器开始，间隔10秒
 
     def update_course_schedule(self):
         # 更新课程信息
@@ -68,7 +68,7 @@ class ClassSchedule(QWidget):
             label.deleteLater()  # 删除旧标签
         self.course_labels.clear()
 
-        font = QFont("微软雅黑", 18, QFont.Bold)
+        font = QFont("微软雅黑", 24, QFont.Bold)
         for course_name, start_time, end_time in course_schedule:
             label = QLabel(course_name[:2])  # 显示课程名的前两个字
             label.setAlignment(Qt.AlignCenter)  # 设置居中对齐
@@ -87,7 +87,7 @@ class ClassSchedule(QWidget):
                 label.setStyleSheet("color: white; background-color: green;")
 
         # 窗口宽度比最大标签宽度多二个字符
-        extra_width = QFontMetrics(font).width("XX")
+        extra_width = QFontMetrics(font).width("X")
         self.setFixedSize(max_width + extra_width, total_height)
 
     def is_between_times(self, current_time, start_time, end_time):
@@ -139,6 +139,7 @@ class ClassSchedule(QWidget):
         settings = QSettings("CloudReturn", "timetable")
         if settings.contains("window/geometry"):
             self.restoreGeometry(settings.value("window/geometry"))
+
 
 
 if __name__ == '__main__':
