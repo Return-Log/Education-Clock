@@ -119,7 +119,7 @@ class DigitalClock(QWidget):
         # 时间标签
         self.time_label = QLabel()
         self.time_label.setAlignment(Qt.AlignCenter)  # 居中对齐
-        self.time_label.setStyleSheet("color: red; font: bold 60pt;")  # 设置黑体，字号50
+        self.time_label.setStyleSheet("color: red; font: bold 60pt;")  # 设置黑体，字号60
         self.layout.addWidget(self.time_label)
 
         # 日期标签
