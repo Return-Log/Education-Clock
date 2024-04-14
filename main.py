@@ -63,7 +63,7 @@ class SettingsDialog(QDialog):
         about_text = """
         Education-Clock
 
-        版本：0.2
+        版本：0.3
 
         作者：Log
 
