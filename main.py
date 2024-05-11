@@ -1,21 +1,8 @@
 """
-    Education-Clock
-    Copyright (C) 2024  Log
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import os
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QDateEdit, QPushButton, QDialog, \
     QMessageBox, QSlider
@@ -25,6 +12,17 @@ import json5
 
 # 导入timetable.py中的ClassSchedule类
 from timetable import ClassSchedule
+
+# 确保data文件夹存在
+data_folder = "data"
+if not os.path.exists(data_folder):
+    os.makedirs(data_folder)
+
+# 保存倒计时信息的文件路径
+time_file_path = os.path.join(data_folder, "time.txt")
+
+# 保存窗口位置信息的文件路径
+settings_file_path = os.path.join(data_folder, "settings.ini")
 
 
 class SettingsDialog(QDialog):
@@ -63,15 +61,11 @@ class SettingsDialog(QDialog):
         about_text = """
         Education-Clock
 
-        版本：0.3
-
-        作者：Log
+        版本：0.2
 
         许可证：GPLv3
 
-        仓库地址：https://github.com/Return-Log/Education-Clock
-
-        联系我：returnlog@outlook.com
+        GitHub仓库：https://github.com/Return-Log/Education-Clock
 
         Copyright (C) 2024  Log
         """
@@ -84,8 +78,8 @@ class SettingsDialog(QDialog):
 
         if event and end_date:
             try:
-                with open("settings.txt", "w") as file:
-                    file.write(f"{event}\n{end_date}")
+                with open(time_file_path, "w", encoding="utf-8") as file:
+                    file.write(f"Event={event}\nEndDate={end_date}")
                 QMessageBox.information(self, "保存成功", "设置已保存！")
                 self.accept()  # 关闭对话框
             except Exception as e:
@@ -182,15 +176,17 @@ class DigitalClock(QWidget):
         event, end_date = self.load_settings()
         days_left = current_date.daysTo(QDate.fromString(end_date, "yyyy-MM-dd"))
         days_left = max(0, days_left)  # 如果小于0，则显示为0
-        self.countdown_label.setText(f"据{event}还剩{min(9999, days_left)}天")  # 最多显示9999天
+        self.countdown_label.setText(f"距{event}还剩{min(9999, days_left)}天")  # 最多显示9999天
 
     def load_settings(self):
         try:
-            with open("settings.txt", "r") as file:
-                event = file.readline().strip()
-                end_date = file.readline().strip()
+            with open(time_file_path, "r", encoding="utf-8") as file:
+                lines = file.readlines()
+                event = lines[0].split("=")[1].strip()
+                end_date = lines[1].split("=")[1].strip()
                 return event, end_date
-        except FileNotFoundError:
+        except Exception as e:
+            print(f"Error loading settings: {e}")
             return "事件", QDate.currentDate().addDays(7).toString("yyyy-MM-dd")
 
     def edit_countdown(self, event):
@@ -219,14 +215,20 @@ class DigitalClock(QWidget):
 
     def load_window_position(self):
         # 从配置文件加载窗口位置信息
-        settings = QSettings("CloudReturn", "clock")
-        if settings.contains("window/position"):
-            self.move(settings.value("window/position"))
+        try:
+            settings = QSettings(settings_file_path, QSettings.IniFormat)
+            pos = settings.value("window/position", self.pos())
+            self.move(pos)
+        except Exception as e:
+            print(f"Error loading window position: {e}")
 
     def save_window_position(self):
         # 保存窗口位置信息到配置文件
-        settings = QSettings("CloudReturn", "clock")
-        settings.setValue("window/position", self.pos())
+        try:
+            settings = QSettings(settings_file_path, QSettings.IniFormat)
+            settings.setValue("window/position", self.pos())
+        except Exception as e:
+            print(f"Error saving window position: {e}")
 
 
 if __name__ == '__main__':

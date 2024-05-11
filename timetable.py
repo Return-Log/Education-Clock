@@ -1,21 +1,3 @@
-"""
-    Education-Clock
-    Copyright (C) 2024  Log
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-"""
-
 import os
 import sys
 import json5
@@ -29,7 +11,7 @@ class ClassSchedule(QWidget):
         super().__init__()
 
         # 初始化窗口设置
-        self.setWindowTitle("电子课表")  # 设置窗口标题
+        self.setWindowTitle("课程表")  # 设置窗口标题
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnBottomHint)  # 设置窗口无边框并保持在底层
         self.setStyleSheet("background-color: black;")  # 设置背景颜色
 
@@ -98,7 +80,8 @@ class ClassSchedule(QWidget):
         # 获取当前日期的课程安排
         current_day = current_date.dayOfWeek() - 1
         exe_dir = os.path.dirname(sys.argv[0])
-        schedule_file = os.path.join(exe_dir, "schedule.json5")
+        data_dir = os.path.join(exe_dir, "data")
+        schedule_file = os.path.join(data_dir, "schedule.json5")
         with open(schedule_file, "r", encoding="utf-8") as f:
             data = json5.load(f)
 
