@@ -1,9 +1,11 @@
 """
-
+https://github.com/Return-Log/Education-Clock
+GPL-3.0 license
 """
 
 import os
 import sys
+import requests
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QDateEdit, QPushButton, QDialog, \
     QMessageBox, QSlider
 from PyQt5.QtCore import Qt, QTimer, QDate, QPoint, QSettings, QTime
@@ -12,6 +14,7 @@ import json5
 
 # 导入timetable.py中的ClassSchedule类
 from timetable import ClassSchedule
+from weather import WeatherApp
 
 # 确保data文件夹存在
 data_folder = "data"
@@ -59,15 +62,15 @@ class SettingsDialog(QDialog):
 
     def show_about_dialog(self):
         about_text = """
-        Education-Clock
+Education-Clock
 
-        版本：0.2
-
-        许可证：GPLv3
-
-        GitHub仓库：https://github.com/Return-Log/Education-Clock
-
-        Copyright (C) 2024  Log
+版本：0.4
+        
+许可证：GPLv3
+        
+GitHub仓库：https://github.com/Return-Log/Education-Clock
+        
+Copyright © 2024 Log All rights reserved.
         """
 
         QMessageBox.about(self, "关于", about_text)
@@ -234,5 +237,7 @@ class DigitalClock(QWidget):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     clock = DigitalClock()
+    weather = WeatherApp()
+    weather.show()
     clock.show()
     sys.exit(app.exec_())

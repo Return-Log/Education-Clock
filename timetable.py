@@ -1,3 +1,8 @@
+"""
+https://github.com/Return-Log/Education-Clock
+GPL-3.0 license
+"""
+
 import os
 import sys
 import json5
