@@ -1,3 +1,8 @@
+"""
+https://github.com/Return-Log/Education-Clock
+GPL-3.0 license
+"""
+
 import sys
 import requests
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QPushButton, QDialog, QLineEdit, QMessageBox
@@ -133,7 +138,7 @@ class WeatherApp(QWidget):
         # 启动时自动刷新天气
         self.display_weather()
 
-        # 定时器，每隔 10分钟刷新一次
+        # 定时器，每隔 5分钟刷新一次
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.display_weather)
         self.timer.start(300000)  # 5分钟 * 60秒 * 1000毫秒
