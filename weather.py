@@ -4,10 +4,28 @@ GPL-3.0 license
 """
 
 import sys
+from datetime import datetime
 import requests
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QPushButton, QDialog, QLineEdit, QMessageBox
+from PyQt5.QtCore import Qt, QTimer, QPoint, QSettings, QThread, pyqtSignal
 from PyQt5.QtGui import QFont
-from PyQt5.QtCore import Qt, QTimer, QPoint, QSettings
+from PyQt5.QtWidgets import QApplication, QLabel, QPushButton, QDialog, QLineEdit, QMessageBox
+from PyQt5.QtWidgets import QWidget, QVBoxLayout
+
+
+class WeatherThread(QThread):
+    weather_data_fetched = pyqtSignal(dict)
+
+    def __init__(self, api_key, latitude, longitude):
+        super().__init__()
+        self.api_key = api_key
+        self.latitude = latitude
+        self.longitude = longitude
+
+    def run(self):
+        url = f"http://api.openweathermap.org/data/2.5/forecast?lat={self.latitude}&lon={self.longitude}&appid={self.api_key}"
+        response = requests.get(url)
+        data = response.json()
+        self.weather_data_fetched.emit(data)
 
 class WeatherApp(QWidget):
     def __init__(self):
@@ -30,19 +48,80 @@ class WeatherApp(QWidget):
             latitude, longitude = location.split(',')
             return float(latitude), float(longitude)
 
-    # 获取天气数据
-    def get_weather(self):
-        if self.latitude is None or self.longitude is None:
-            return None
+    # 初始化用户界面
+    def init_ui(self):
+        self.setWindowTitle("天气预报")
+        self.setWindowFlags(Qt.FramelessWindowHint)  # 设置窗口无边框
+        layout = QVBoxLayout()
 
-        url = f"http://api.openweathermap.org/data/2.5/forecast?lat={self.latitude}&lon={self.longitude}&appid={self.api_key}"
-        response = requests.get(url)
-        data = response.json()
-        return data
+        # 第一行显示当前天气温度和污染指数，红色
+        self.current_weather_label = QLabel("当前天气", self)
+        self.current_weather_label.setFont(QFont("Arial", 24))
+        self.current_weather_label.setStyleSheet("color: red")
+        layout.addWidget(self.current_weather_label)
+
+        # 第三行显示未来5天每天天气，黄色
+        self.future_5_days_label = QLabel("未来5天天气", self)
+        self.future_5_days_label.setFont(QFont("Arial", 12))
+        self.future_5_days_label.setStyleSheet("color: yellow")
+        layout.addWidget(self.future_5_days_label)
+
+        # 最后一行显示更新时间，绿色
+        self.update_time_label = QLabel("更新时间：", self)
+        self.update_time_label.setFont(QFont("Arial", 12))
+        self.update_time_label.setStyleSheet("color: green")
+        layout.addWidget(self.update_time_label)
+
+        self.setLayout(layout)
+        self.show()
+
+        # 双击窗口弹出设置窗口
+        self.mouseDoubleClickEvent = self.open_location_dialog
+
+        # 启动时自动刷新天气
+        self.start_weather_thread()
+
+        # 定时器，每隔 5分钟刷新一次
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.start_weather_thread)
+        self.timer.start(300000)  # 5分钟 * 60秒 * 1000毫秒
+
+    # 双击窗口弹出设置窗口
+    def open_location_dialog(self, event):
+        location_dialog = LocationDialog(self)
+        location_dialog.exec_()
+
+    def closeEvent(self, event):
+        self.save_settings()
+        event.accept()
+
+    def save_settings(self):
+        settings = QSettings("MyCompany", "WeatherApp")
+        settings.setValue("geometry", self.saveGeometry())
+
+    def restore_settings(self):
+        settings = QSettings("MyCompany", "WeatherApp")
+        if settings.contains("geometry"):
+            self.restoreGeometry(settings.value("geometry"))
+
+    # 处理鼠标按下事件，用于拖动窗口
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.oldPos = event.globalPos()
+
+    # 处理鼠标移动事件，用于拖动窗口
+    def mouseMoveEvent(self, event):
+        delta = QPoint(event.globalPos() - self.oldPos)
+        self.move(self.x() + delta.x(), self.y() + delta.y())
+        self.oldPos = event.globalPos()
+
+    def start_weather_thread(self):
+        self.weather_thread = WeatherThread(self.api_key, self.latitude, self.longitude)
+        self.weather_thread.weather_data_fetched.connect(self.display_weather)
+        self.weather_thread.start()
 
     # 显示天气信息
-    def display_weather(self):
-        weather_data = self.get_weather()
+    def display_weather(self, weather_data):
         if weather_data is None:
             return
 
@@ -108,69 +187,14 @@ class WeatherApp(QWidget):
                 future_5_days_str += f"{date}：{', '.join(weather_info['weather'])}，最高温度：{max_temp_celsius} ℃，最低温度：{min_temp_celsius} ℃\n"
             self.future_5_days_label.setText("未来5天天气：\n" + future_5_days_str)
 
+            # 更新数据更新时间
+            self.update_time_label.setText("更新时间：" + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+            # 调整窗口大小以适应内容
+            self.adjustSize()
+
         except Exception as e:
             print("Error:", e)
-
-    # 初始化用户界面
-    def init_ui(self):
-        self.setWindowTitle("天气预报")
-        self.setWindowFlags(Qt.FramelessWindowHint)  # 设置窗口无边框
-        layout = QVBoxLayout()
-
-        # 第一行显示当前天气温度和污染指数，红色
-        self.current_weather_label = QLabel("当前天气", self)
-        self.current_weather_label.setFont(QFont("Arial", 24))
-        self.current_weather_label.setStyleSheet("color: red")
-        layout.addWidget(self.current_weather_label)
-
-        # 第三行显示未来5天每天天气，黄色
-        self.future_5_days_label = QLabel("未来5天天气", self)
-        self.future_5_days_label.setFont(QFont("Arial", 12))
-        self.future_5_days_label.setStyleSheet("color: yellow")
-        layout.addWidget(self.future_5_days_label)
-
-        self.setLayout(layout)
-        self.show()
-
-        # 双击窗口弹出设置窗口
-        self.mouseDoubleClickEvent = self.open_location_dialog
-
-        # 启动时自动刷新天气
-        self.display_weather()
-
-        # 定时器，每隔 5分钟刷新一次
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.display_weather)
-        self.timer.start(300000)  # 5分钟 * 60秒 * 1000毫秒
-
-    # 双击窗口弹出设置窗口
-    def open_location_dialog(self, event):
-        location_dialog = LocationDialog(self)
-        location_dialog.exec_()
-
-    def closeEvent(self, event):
-        self.save_settings()
-        event.accept()
-
-    def save_settings(self):
-        settings = QSettings("MyCompany", "WeatherApp")
-        settings.setValue("geometry", self.saveGeometry())
-
-    def restore_settings(self):
-        settings = QSettings("MyCompany", "WeatherApp")
-        if settings.contains("geometry"):
-            self.restoreGeometry(settings.value("geometry"))
-
-    # 处理鼠标按下事件，用于拖动窗口
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            self.oldPos = event.globalPos()
-
-    # 处理鼠标移动事件，用于拖动窗口
-    def mouseMoveEvent(self, event):
-        delta = QPoint(event.globalPos() - self.oldPos)
-        self.move(self.x() + delta.x(), self.y() + delta.y())
-        self.oldPos = event.globalPos()
 
 # 设置位置对话框
 class LocationDialog(QDialog):
@@ -225,6 +249,7 @@ class LocationDialog(QDialog):
                 file.write(f"{latitude},{longitude}")
             self.parent().latitude = latitude
             self.parent().longitude = longitude
+            self.parent().start_weather_thread()  # 更新位置后重新获取天气数据
             self.close()
         else:
             QMessageBox.warning(self, "错误", "请输入合法的纬度和经度范围。")

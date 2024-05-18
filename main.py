@@ -5,239 +5,178 @@ GPL-3.0 license
 
 import os
 import sys
-import requests
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QDateEdit, QPushButton, QDialog, \
-    QMessageBox, QSlider
-from PyQt5.QtCore import Qt, QTimer, QDate, QPoint, QSettings, QTime
-from PyQt5.QtGui import QFont
-import json5
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QCheckBox, QSystemTrayIcon, QMenu, QAction, \
+    QMessageBox, QPushButton
+from PyQt5.QtCore import Qt, QSettings
+from PyQt5.QtGui import QIcon
 
-# 导入timetable.py中的ClassSchedule类
+# 导入模块
 from timetable import ClassSchedule
 from weather import WeatherApp
-
-# 确保data文件夹存在
-data_folder = "data"
-if not os.path.exists(data_folder):
-    os.makedirs(data_folder)
-
-# 保存倒计时信息的文件路径
-time_file_path = os.path.join(data_folder, "time.txt")
-
-# 保存窗口位置信息的文件路径
-settings_file_path = os.path.join(data_folder, "settings.ini")
+from clock import DigitalClock
 
 
-class SettingsDialog(QDialog):
-    def __init__(self, parent=None):
-        super(SettingsDialog, self).__init__(parent)
-        self.setWindowTitle('设置倒计时')
-        self.setGeometry(200, 200, 300, 200)
-
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
-
-        # 添加关于按钮
-        self.about_button = QPushButton("关于")
-        self.about_button.clicked.connect(self.show_about_dialog)
-        self.layout.addWidget(self.about_button)
-
-        self.label_event = QLabel("事件:")
-        self.layout.addWidget(self.label_event)
-
-        self.input_event = QLineEdit()
-        self.input_event.setMaxLength(2)  # 设置最大长度为2
-        self.layout.addWidget(self.input_event)
-
-        self.label_end_date = QLabel("截止日期:")
-        self.layout.addWidget(self.label_end_date)
-
-        self.input_end_date = QDateEdit()
-        self.input_end_date.setCalendarPopup(True)
-        self.layout.addWidget(self.input_end_date)
-
-        self.save_button = QPushButton("保存")
-        self.save_button.clicked.connect(self.save_and_close)
-        self.layout.addWidget(self.save_button)
-
-    def show_about_dialog(self):
-        about_text = """
-Education-Clock
-
-版本：0.4
-        
-许可证：GPLv3
-        
-GitHub仓库：https://github.com/Return-Log/Education-Clock
-        
-Copyright © 2024 Log All rights reserved.
-        """
-
-        QMessageBox.about(self, "关于", about_text)
-
-    def save_and_close(self):
-        event = self.input_event.text()
-        end_date = self.input_end_date.date().toString("yyyy-MM-dd")
-
-        if event and end_date:
-            try:
-                with open(time_file_path, "w", encoding="utf-8") as file:
-                    file.write(f"Event={event}\nEndDate={end_date}")
-                QMessageBox.information(self, "保存成功", "设置已保存！")
-                self.accept()  # 关闭对话框
-            except Exception as e:
-                QMessageBox.warning(self, "保存失败", f"发生错误: {str(e)}")
-        else:
-            QMessageBox.warning(self, "保存失败", "请填写完整的设置！")
-
-
-class DigitalClock(QWidget):
+class MainApp(QWidget):
     def __init__(self):
         super().__init__()
+        # 设置配置文件路径
+        self.settings_file = os.path.join('data', 'launch.ini')
+        self.init_ui()
 
-        # 设置窗口为无边框窗口
-        self.setWindowFlags(Qt.FramelessWindowHint)
+        # 根据设置状态决定是否启动各个模块
+        self.clock = None
+        self.weather = None
+        self.timetable = None
 
-        # 初始化窗口
-        self.setWindowTitle('数字时钟')
-        self.setGeometry(100, 100, 300, 200)  # 设置窗口位置和大小
-        self.setStyleSheet("background-color: black; color: red;")  # 设置背景色和字体颜色
+        if self.clock_checkbox.isChecked():
+            self.clock = DigitalClock()
+            self.clock.show()
 
-        # 创建垂直布局
-        self.layout = QVBoxLayout()
-        self.setLayout(self.layout)
+        if self.weather_checkbox.isChecked():
+            self.weather = WeatherApp()
+            self.weather.show()
 
-        # 星期标签
-        self.weekday_label = QLabel()
-        self.weekday_label.setAlignment(Qt.AlignCenter)  # 居中对齐
-        self.weekday_label.setStyleSheet("color: red; font: bold 35pt;")  # 设置黑体，字号35
-        self.layout.addWidget(self.weekday_label)
+        if self.timetable_checkbox.isChecked():
+            self.timetable = ClassSchedule()
+            self.timetable.show()
 
-        # 时间标签
-        self.time_label = QLabel()
-        self.time_label.setAlignment(Qt.AlignCenter)  # 居中对齐
-        self.time_label.setStyleSheet("color: red; font: bold 60pt;")  # 设置黑体，字号60
-        self.layout.addWidget(self.time_label)
+        # 创建系统托盘图标和菜单
+        self.create_tray_icon()
+        self.tray_icon.show()
 
-        # 日期标签
-        self.date_label = QLabel()
-        self.date_label.setAlignment(Qt.AlignCenter)  # 居中对齐
-        self.date_label.setStyleSheet("color: red; font: bold 35pt;")  # 设置黑体，字号35
-        self.layout.addWidget(self.date_label)
+    def init_ui(self):
+        self.setWindowTitle("Education Clock模块管理")
+        self.setGeometry(100, 100, 300, 200)
 
-        # 倒计时标签
-        self.countdown_label = QLabel()
-        self.countdown_label.setAlignment(Qt.AlignCenter)  # 居中对齐
-        self.countdown_label.setStyleSheet("color: red; font: bold 35pt;")  # 设置黑体，字号35
-        self.layout.addWidget(self.countdown_label)
+        layout = QVBoxLayout()
 
-        # 定时器，每秒更新一次时间
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_time)
-        self.timer.start(1000)
+        # 添加时钟模块的复选框和标签
+        self.clock_label = QLabel("时钟")
+        self.clock_checkbox = QCheckBox()
+        # 根据之前保存的设置，设置复选框的初始状态
+        self.clock_checkbox.setChecked(self.load_setting("clock_enabled", True))
+        self.clock_checkbox.stateChanged.connect(self.toggle_clock)
 
-        # 更新时间显示
-        self.update_time()
+        # 添加天气模块的复选框和标签
+        self.weather_label = QLabel("天气")
+        self.weather_checkbox = QCheckBox()
+        self.weather_checkbox.setChecked(self.load_setting("weather_enabled", True))
+        self.weather_checkbox.stateChanged.connect(self.toggle_weather)
 
-        # 连接双击事件到处理函数
-        self.countdown_label.mouseDoubleClickEvent = self.edit_countdown
+        # 添加课程表模块的复选框和标签
+        self.timetable_label = QLabel("课程表")
+        self.timetable_checkbox = QCheckBox()
+        self.timetable_checkbox.setChecked(self.load_setting("timetable_enabled", True))
+        self.timetable_checkbox.stateChanged.connect(self.toggle_timetable)
 
-        # 用于记录鼠标按下时的位置
-        self.drag_start_position = None
+        # 添加关于和帮助按钮
+        self.about_button = QPushButton("关于")
+        self.about_button.clicked.connect(self.show_about)
+        self.help_button = QPushButton("帮助")
+        self.help_button.clicked.connect(self.show_help)
 
-        # 加载窗口位置信息
-        self.load_window_position()
+        # 将标签、复选框和按钮添加到布局中
+        layout.addWidget(self.clock_label)
+        layout.addWidget(self.clock_checkbox)
+        layout.addWidget(self.weather_label)
+        layout.addWidget(self.weather_checkbox)
+        layout.addWidget(self.timetable_label)
+        layout.addWidget(self.timetable_checkbox)
+        layout.addWidget(self.about_button)
+        layout.addWidget(self.help_button)
 
-        # 将窗口放到最底层
-        self.raise_()
+        self.setLayout(layout)
 
-        # 创建并显示课程表窗口
-        self.schedule_window = ClassSchedule()
-        self.schedule_window.show()
+    def load_setting(self, key, default_value):
+        """加载设置，如果文件不存在则返回默认值"""
+        if os.path.exists(self.settings_file):
+            settings = QSettings(self.settings_file, QSettings.IniFormat)
+            return settings.value(key, default_value, type=bool)
+        else:
+            return default_value
 
-    def update_time(self):
-        # 获取当前日期和时间
-        current_date = QDate.currentDate()
-        current_time = QTime.currentTime()
+    def save_setting(self, key, value):
+        """保存设置到文件"""
+        settings = QSettings(self.settings_file, QSettings.IniFormat)
+        settings.setValue(key, value)
 
-        # 星期中文转换
-        weekday_dict = {Qt.Monday: "星期一", Qt.Tuesday: "星期二", Qt.Wednesday: "星期三",
-                        Qt.Thursday: "星期四", Qt.Friday: "星期五", Qt.Saturday: "星期六",
-                        Qt.Sunday: "星期日"}
-        weekday_chinese = weekday_dict[current_date.dayOfWeek()]
+    # 切换时钟模块的显示状态
+    def toggle_clock(self, state):
+        self.save_setting("clock_enabled", state == Qt.Checked)
+        if state == Qt.Checked:
+            if self.clock is None:
+                self.clock = DigitalClock()
+            self.clock.show()
+        else:
+            if self.clock is not None:
+                self.clock.hide()
 
-        # 日期中文格式
-        date_chinese = "{0}年{1}月{2}日".format(current_date.year(),
-                                                current_date.month(), current_date.day())
+    # 切换天气模块的显示状态
+    def toggle_weather(self, state):
+        self.save_setting("weather_enabled", state == Qt.Checked)
+        if state == Qt.Checked:
+            if self.weather is None:
+                self.weather = WeatherApp()
+            self.weather.show()
+        else:
+            if self.weather is not None:
+                self.weather.hide()
 
-        # 更新显示
-        self.weekday_label.setText(weekday_chinese)
-        self.time_label.setText(current_time.toString("hh:mm:ss"))
-        self.date_label.setText(date_chinese)
+    # 切换课程表模块的显示状态
+    def toggle_timetable(self, state):
+        self.save_setting("timetable_enabled", state == Qt.Checked)
+        if state == Qt.Checked:
+            if self.timetable is None:
+                self.timetable = ClassSchedule()
+            self.timetable.show()
+        else:
+            if self.timetable is not None:
+                self.timetable.hide()
 
-        # 计算并更新倒计时
-        event, end_date = self.load_settings()
-        days_left = current_date.daysTo(QDate.fromString(end_date, "yyyy-MM-dd"))
-        days_left = max(0, days_left)  # 如果小于0，则显示为0
-        self.countdown_label.setText(f"距{event}还剩{min(9999, days_left)}天")  # 最多显示9999天
+    # 显示关于信息
+    def show_about(self):
+        QMessageBox.information(self, "关于", "Education-Clock\n版本：0.5\n许可证：GPLv3\nGitHub仓库：https://github.com/Return"
+                                              "-Log/Education-Clock\nCopyright © 2024 Log All rights reserved.")
 
-    def load_settings(self):
-        try:
-            with open(time_file_path, "r", encoding="utf-8") as file:
-                lines = file.readlines()
-                event = lines[0].split("=")[1].strip()
-                end_date = lines[1].split("=")[1].strip()
-                return event, end_date
-        except Exception as e:
-            print(f"Error loading settings: {e}")
-            return "事件", QDate.currentDate().addDays(7).toString("yyyy-MM-dd")
+    # 显示帮助信息
+    def show_help(self):
+        QMessageBox.about(self, "帮助", "使用说明：\n1. 选择模块是否启用。\n2. 模块将在单独的窗口中显示。\n3. 设置信息存储在软件目录data文件夹中。\n4. "
+                                        "设置如无法保存请用管理员权限运行。")
 
-    def edit_countdown(self, event):
-        # 双击事件，弹出设置窗口
-        dialog = SettingsDialog(self)
-        dialog.exec_()
+    # 创建系统托盘图标和菜单
+    def create_tray_icon(self):
+        self.tray_icon = QSystemTrayIcon(self)
+        self.tray_icon.setIcon(QIcon("icon.ico"))  # 设置托盘图标
 
-    def mousePressEvent(self, event):
-        # 记录鼠标按下时的位置
-        self.drag_start_position = event.globalPos()
+        tray_menu = QMenu(self)
+        show_action = QAction("显示", self)
+        quit_action = QAction("退出", self)
 
-    def mouseMoveEvent(self, event):
-        # 计算鼠标移动的距离
-        if self.drag_start_position:
-            delta = event.globalPos() - self.drag_start_position
-            self.move(self.pos() + delta)
-            self.drag_start_position = event.globalPos()
+        show_action.triggered.connect(self.show)
+        quit_action.triggered.connect(QApplication.instance().quit)
 
-    def mouseReleaseEvent(self, event):
-        # 清空记录的鼠标按下位置
-        self.drag_start_position = None
+        tray_menu.addAction(show_action)
+        tray_menu.addAction(quit_action)
 
+        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.activated.connect(self.on_tray_icon_activated)
+
+    # 托盘图标被点击时显示窗口
+    def on_tray_icon_activated(self, reason):
+        if reason == QSystemTrayIcon.Trigger:
+            self.show()
+
+    # 重写关闭事件，点击关闭按钮时隐藏窗口
     def closeEvent(self, event):
-        self.save_window_position()
-        event.accept()
-
-    def load_window_position(self):
-        # 从配置文件加载窗口位置信息
-        try:
-            settings = QSettings(settings_file_path, QSettings.IniFormat)
-            pos = settings.value("window/position", self.pos())
-            self.move(pos)
-        except Exception as e:
-            print(f"Error loading window position: {e}")
-
-    def save_window_position(self):
-        # 保存窗口位置信息到配置文件
-        try:
-            settings = QSettings(settings_file_path, QSettings.IniFormat)
-            settings.setValue("window/position", self.pos())
-        except Exception as e:
-            print(f"Error saving window position: {e}")
+        self.hide()
+        event.ignore()
 
 
 if __name__ == '__main__':
+    if not os.path.exists('data'):
+        os.makedirs('data')
+
     app = QApplication(sys.argv)
-    clock = DigitalClock()
-    weather = WeatherApp()
-    weather.show()
-    clock.show()
+    main_app = MainApp()
+    main_app.hide()  # 启动时隐藏窗口
     sys.exit(app.exec_())
