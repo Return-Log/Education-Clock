@@ -14,6 +14,8 @@ from PyQt5.QtGui import QIcon
 from timetable import ClassSchedule
 from weather import WeatherApp
 from clock import DigitalClock
+import autocctv
+import timer_shut_down
 
 
 class MainApp(QWidget):
@@ -27,6 +29,8 @@ class MainApp(QWidget):
         self.clock = None
         self.weather = None
         self.timetable = None
+        self.autocctv = None
+        self.timer_shutdown = None
 
         if self.clock_checkbox.isChecked():
             self.clock = DigitalClock()
@@ -39,6 +43,12 @@ class MainApp(QWidget):
         if self.timetable_checkbox.isChecked():
             self.timetable = ClassSchedule()
             self.timetable.show()
+
+        if self.autocctv_checkbox.isChecked():
+            self.autocctv = autocctv.AutoCCTVController()
+
+        if self.timer_shutdown_checkbox.isChecked():
+            self.timer_shutdown = timer_shut_down.ShutdownTimerApp()
 
         # 创建系统托盘图标和菜单
         self.create_tray_icon()
@@ -69,6 +79,18 @@ class MainApp(QWidget):
         self.timetable_checkbox.setChecked(self.load_setting("timetable_enabled", True))
         self.timetable_checkbox.stateChanged.connect(self.toggle_timetable)
 
+        # 添加自动监控模块的复选框和标签
+        self.autocctv_label = QLabel("自动新闻联播")
+        self.autocctv_checkbox = QCheckBox()
+        self.autocctv_checkbox.setChecked(self.load_setting("autocctv_enabled", True))
+        self.autocctv_checkbox.stateChanged.connect(self.toggle_autocctv)
+
+        # 添加定时关机模块的复选框和标签
+        self.timer_shutdown_label = QLabel("定时关机")
+        self.timer_shutdown_checkbox = QCheckBox()
+        self.timer_shutdown_checkbox.setChecked(self.load_setting("timer_shutdown_enabled", True))
+        self.timer_shutdown_checkbox.stateChanged.connect(self.toggle_timer_shutdown)
+
         # 添加关于和帮助按钮
         self.about_button = QPushButton("关于")
         self.about_button.clicked.connect(self.show_about)
@@ -82,6 +104,10 @@ class MainApp(QWidget):
         layout.addWidget(self.weather_checkbox)
         layout.addWidget(self.timetable_label)
         layout.addWidget(self.timetable_checkbox)
+        layout.addWidget(self.autocctv_label)
+        layout.addWidget(self.autocctv_checkbox)
+        layout.addWidget(self.timer_shutdown_label)
+        layout.addWidget(self.timer_shutdown_checkbox)
         layout.addWidget(self.about_button)
         layout.addWidget(self.help_button)
 
@@ -132,6 +158,26 @@ class MainApp(QWidget):
         else:
             if self.timetable is not None:
                 self.timetable.hide()
+
+    # 切换自动新闻联播模块的显示状态
+    def toggle_autocctv(self, state):
+        self.save_setting("autocctv_enabled", state == Qt.Checked)
+        if state == Qt.Checked:
+            if self.autocctv is None:
+                self.autocctv = autocctv.AutoCCTVController()
+        else:
+            if self.autocctv is not None:
+                self.autocctv.close_browser()
+
+    # 切换定时关机模块的显示状态
+    def toggle_timer_shutdown(self, state):
+        self.save_setting("timer_shutdown_enabled", state == Qt.Checked)
+        if state == Qt.Checked:
+            if self.timer_shutdown is None:
+                self.timer_shutdown = timer_shut_down.ShutdownTimerApp()  # 实例化 ShutdownTimerApp
+        else:
+            if self.timer_shutdown is not None:
+                self.save_setting("timer_shutdown_enabled", False)
 
     # 显示关于信息
     def show_about(self):
