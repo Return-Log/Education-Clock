@@ -1,3 +1,9 @@
+"""
+https://github.com/Return-Log/Education-Clock
+GPL-3.0 license
+coding: UTF-8
+"""
+
 import sys
 import json5
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, QMessageBox, QDialog, QDesktopWidget
@@ -52,6 +58,13 @@ class ShutdownTimerApp(QWidget):
         super().__init__()
         self.shutdown_times = self.read_shutdown_times()
         self.initUI()
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.check_shutdown_time)
+        self.timer.start(1000)
+        self.countdown_active = False
+        self.delay_timer = QTimer()
+        self.delay_timer.setSingleShot(True)
+        self.delay_timer.timeout.connect(self.reset_countdown_active)
 
     def read_shutdown_times(self):
         try:
@@ -65,10 +78,6 @@ class ShutdownTimerApp(QWidget):
         self.setWindowTitle('关机倒计时')
         self.resize(300, 150)
         self.center()
-
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.check_shutdown_time)
-        self.timer.start(1000)
 
         self.setStyleSheet("""
             QPushButton {
@@ -85,6 +94,9 @@ class ShutdownTimerApp(QWidget):
         self.move(x, y)
 
     def check_shutdown_time(self):
+        if self.countdown_active:
+            return
+
         try:
             current_time = QTime.currentTime()
             current_day = QDate.currentDate().dayOfWeek()
@@ -112,14 +124,26 @@ class ShutdownTimerApp(QWidget):
             pass  # 处理异常（如有必要，您可以在此处添加日志记录）
 
     def show_countdown_dialog(self):
-        self.timer.stop()
+        self.countdown_active = True
         self.countdown_dialog = CountdownDialog(self)
         if self.countdown_dialog.exec_() == QDialog.Accepted:
             self.shutdown()
+        else:
+            self.start_delay_timer()
 
     def shutdown(self):
         os.system('shutdown /s /t 1')
         sys.exit()
+
+    def start_delay_timer(self):
+        self.delay_timer.start(120000)  # 2分钟延迟
+
+    def reset_countdown_active(self):
+        self.countdown_active = False
+
+    def stop(self):
+        self.timer.stop()
+        self.delay_timer.stop()
 
 
 if __name__ == '__main__':

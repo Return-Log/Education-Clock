@@ -1,6 +1,7 @@
 """
 https://github.com/Return-Log/Education-Clock
 GPL-3.0 license
+coding: UTF-8
 """
 
 import sys
@@ -26,6 +27,7 @@ class WeatherThread(QThread):
         response = requests.get(url)
         data = response.json()
         self.weather_data_fetched.emit(data)
+
 
 class WeatherApp(QWidget):
     def __init__(self):
@@ -54,7 +56,7 @@ class WeatherApp(QWidget):
         self.setWindowFlags(Qt.FramelessWindowHint)  # 设置窗口无边框
         layout = QVBoxLayout()
 
-        # 第一行显示当前天气温度和污染指数，红色
+        # 第一行显示当前天气温度天气描述及风速，红色
         self.current_weather_label = QLabel("当前天气", self)
         self.current_weather_label.setFont(QFont("Arial", 24))
         self.current_weather_label.setStyleSheet("color: red")
@@ -96,11 +98,11 @@ class WeatherApp(QWidget):
         event.accept()
 
     def save_settings(self):
-        settings = QSettings("MyCompany", "WeatherApp")
+        settings = QSettings("CloudReturn", "WeatherApp")
         settings.setValue("geometry", self.saveGeometry())
 
     def restore_settings(self):
-        settings = QSettings("MyCompany", "WeatherApp")
+        settings = QSettings("CloudReturn", "WeatherApp")
         if settings.contains("geometry"):
             self.restoreGeometry(settings.value("geometry"))
 
@@ -178,23 +180,28 @@ class WeatherApp(QWidget):
                     daily_weather[date_str]['max_temp'] = max(max_temp, daily_weather[date_str]['max_temp'])
                     daily_weather[date_str]['min_temp'] = min(min_temp, daily_weather[date_str]['min_temp'])
                 else:
-                    daily_weather[date_str] = {'weather': [f"{time}: {weather_desc_chinese}"], 'max_temp': max_temp, 'min_temp': min_temp}
+                    daily_weather[date_str] = {'weather': [f"{time}: {weather_desc_chinese}"], 'max_temp': max_temp,
+                                               'min_temp': min_temp}
 
             future_5_days_str = ""
             for date, weather_info in daily_weather.items():
-                max_temp_celsius = round(weather_info['max_temp'] - 273.15, 2) if weather_info['max_temp'] != -999 else 'N/A'
-                min_temp_celsius = round(weather_info['min_temp'] - 273.15, 2) if weather_info['min_temp'] != -999 else 'N/A'
+                max_temp_celsius = round(weather_info['max_temp'] - 273.15, 2) if weather_info[
+                                                                                      'max_temp'] != -999 else 'N/A'
+                min_temp_celsius = round(weather_info['min_temp'] - 273.15, 2) if weather_info[
+                                                                                      'min_temp'] != -999 else 'N/A'
                 future_5_days_str += f"{date}：{', '.join(weather_info['weather'])}，最高温度：{max_temp_celsius} ℃，最低温度：{min_temp_celsius} ℃\n"
             self.future_5_days_label.setText("未来5天天气：\n" + future_5_days_str)
 
             # 更新数据更新时间
-            self.update_time_label.setText("更新时间：" + datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            self.update_time_label.setText(
+                "更新时间：" + datetime.now().strftime("%Y-%m-%d %H:%M:%S") + "   数据来源：OpenWeather")
 
             # 调整窗口大小以适应内容
             self.adjustSize()
 
         except Exception as e:
             print("Error:", e)
+
 
 # 设置位置对话框
 class LocationDialog(QDialog):
@@ -253,6 +260,7 @@ class LocationDialog(QDialog):
             self.close()
         else:
             QMessageBox.warning(self, "错误", "请输入合法的纬度和经度范围。")
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

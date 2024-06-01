@@ -1,6 +1,7 @@
 """
 https://github.com/Return-Log/Education-Clock
 GPL-3.0 license
+coding: UTF-8
 """
 
 import os

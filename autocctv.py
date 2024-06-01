@@ -1,3 +1,9 @@
+"""
+https://github.com/Return-Log/Education-Clock
+GPL-3.0 license
+coding: UTF-8
+"""
+
 import webbrowser  # 导入webbrowser模块，用于在浏览器中打开网页
 import schedule  # 导入schedule模块，用于定时执行任务
 import time  # 导入time模块，用于时间相关操作

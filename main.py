@@ -1,9 +1,16 @@
+"""
+https://github.com/Return-Log/Education-Clock
+GPL-3.0 license
+coding: UTF-8
+"""
+
 import os
 import sys
+import json5
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QCheckBox, QSystemTrayIcon, QMenu, QAction, \
     QMessageBox, QPushButton
-from PyQt5.QtCore import Qt, QSettings
-from PyQt5.QtGui import QIcon
+from PyQt5.QtCore import Qt, QSettings, QTimer, QTime, QDate
+from PyQt5.QtGui import QIcon, QFontMetrics
 
 # 导入模块
 from timetable import ClassSchedule
@@ -158,11 +165,11 @@ class MainApp(QWidget):
                 self.timer_shutdown = None
 
     def show_about(self):
-        QMessageBox.information(self, "关于", "Education-Clock\n版本：0.5\n许可证：GPLv3\nGitHub仓库：https://github.com/Return"
+        QMessageBox.information(self, "关于", "Education-Clock\n版本：v0.6\n更新日期：2024/6/2\n许可证：GPLv3\nGitHub仓库：https://github.com/Return"
                                               "-Log/Education-Clock\nCopyright © 2024 Log All rights reserved.")
 
     def show_help(self):
-        QMessageBox.about(self, "帮助", "使用说明：\n1. 选择模块是否启用。\n2. 模块将在单独的窗口中显示。\n3. 设置信息存储在软件目录data文件夹中。\n4. "
+        QMessageBox.about(self, "帮助", "使用说明：\n1. 选择模块是否启用。\n2. 设置信息存储在软件目录data文件夹中。\n3. "
                                         "设置如无法保存请用管理员权限运行。")
 
     def create_tray_icon(self):
