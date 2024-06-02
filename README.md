@@ -6,9 +6,9 @@
 
 # 信息
 
-版本：v0.5
+版本：v0.6
 
-时间：2024/5/19
+时间：2024/6/2
 
 协议：GPLv3
 
@@ -55,6 +55,20 @@
 更换天气位置坐标双击天气预报窗口更改（文件存储在data文件夹下 location.txt 文件中，**需注意经纬度顺序**）
 
 ![edulocation.png](https://s2.loli.net/2024/05/19/nYFcgqUQ4OPikK6.png)
+
+## 五. AutoCCTV
+
+集成https://github.com/Return-Log/AutoCCTV项目，默认关闭，可手动从托盘开启
+
+## 六. 定时关机
+
+时间设置位于data目录下closetime.json5文件中
+
+可设置一周七天每天的多个关机时间
+
+关机存在10秒倒计时确定是否关机
+
+默认关闭，可手动从托盘开启
 
 ------
 
