@@ -10,7 +10,7 @@ import json5
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QCheckBox, QSystemTrayIcon, QMenu, QAction, \
     QMessageBox, QPushButton
 from PyQt5.QtCore import Qt, QSettings, QTimer, QTime, QDate
-from PyQt5.QtGui import QIcon, QFontMetrics
+from PyQt5.QtGui import QIcon, QFontMetrics, QFont
 
 # 导入模块
 from timetable import ClassSchedule
@@ -32,24 +32,7 @@ class MainApp(QWidget):
         self.autocctv = None
         self.timer_shutdown = None
 
-        if self.clock_checkbox.isChecked():
-            self.clock = DigitalClock()
-            self.clock.show()
-
-        if self.weather_checkbox.isChecked():
-            self.weather = WeatherApp()
-            self.weather.show()
-
-        if self.timetable_checkbox.isChecked():
-            self.timetable = ClassSchedule()
-            self.timetable.show()
-
-        if self.autocctv_checkbox.isChecked():
-            self.autocctv = autocctv.AutoCCTVController()
-
-        if self.timer_shutdown_checkbox.isChecked():
-            self.timer_shutdown = timer_shut_down.ShutdownTimerApp()
-
+        self.load_initial_settings()
         self.create_tray_icon()
         self.tray_icon.show()
 
@@ -103,6 +86,22 @@ class MainApp(QWidget):
         layout.addWidget(self.help_button)
 
         self.setLayout(layout)
+
+    def load_initial_settings(self):
+        if self.clock_checkbox.isChecked():
+            self.toggle_clock(Qt.Checked)
+
+        if self.weather_checkbox.isChecked():
+            self.toggle_weather(Qt.Checked)
+
+        if self.timetable_checkbox.isChecked():
+            self.toggle_timetable(Qt.Checked)
+
+        if self.autocctv_checkbox.isChecked():
+            self.toggle_autocctv(Qt.Checked)
+
+        if self.timer_shutdown_checkbox.isChecked():
+            self.toggle_timer_shutdown(Qt.Checked)
 
     def load_setting(self, key, default_value):
         if os.path.exists(self.settings_file):

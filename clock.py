@@ -9,6 +9,7 @@ import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QDateEdit, QPushButton, QDialog, \
     QMessageBox
 from PyQt5.QtCore import Qt, QTimer, QDate, QSettings, QTime
+from PyQt5.QtGui import QFont
 
 
 # 确保data文件夹存在
@@ -82,28 +83,36 @@ class DigitalClock(QWidget):
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
 
+        # 创建字体对象
+        bold_font = QFont("黑体", 35, QFont.Bold)
+
         # 星期标签
-        self.weekday_label = QLabel()
+        self.weekday_label = QLabel("星期")
         self.weekday_label.setAlignment(Qt.AlignCenter)  # 居中对齐
-        self.weekday_label.setStyleSheet("color: red; font: bold 35pt;")  # 设置黑体，字号35
+        self.weekday_label.setFont(bold_font)
+        self.weekday_label.setStyleSheet("color: red;")  # 设置字体颜色
         self.layout.addWidget(self.weekday_label)
 
         # 时间标签
-        self.time_label = QLabel()
+        self.time_label = QLabel("时间")
         self.time_label.setAlignment(Qt.AlignCenter)  # 居中对齐
-        self.time_label.setStyleSheet("color: red; font: bold 60pt;")  # 设置黑体，字号60
+        time_font = QFont("黑体", 60, QFont.Bold)
+        self.time_label.setFont(time_font)
+        self.time_label.setStyleSheet("color: red;")  # 设置字体颜色
         self.layout.addWidget(self.time_label)
 
         # 日期标签
-        self.date_label = QLabel()
+        self.date_label = QLabel("日期")
         self.date_label.setAlignment(Qt.AlignCenter)  # 居中对齐
-        self.date_label.setStyleSheet("color: red; font: bold 35pt;")  # 设置黑体，字号35
+        self.date_label.setFont(bold_font)
+        self.date_label.setStyleSheet("color: red;")  # 设置字体颜色
         self.layout.addWidget(self.date_label)
 
         # 倒计时标签
-        self.countdown_label = QLabel()
+        self.countdown_label = QLabel("倒计时")
         self.countdown_label.setAlignment(Qt.AlignCenter)  # 居中对齐
-        self.countdown_label.setStyleSheet("color: red; font: bold 35pt;")  # 设置黑体，字号35
+        self.countdown_label.setFont(bold_font)
+        self.countdown_label.setStyleSheet("color: red;")  # 设置字体颜色
         self.layout.addWidget(self.countdown_label)
 
         # 定时器，每秒更新一次时间
