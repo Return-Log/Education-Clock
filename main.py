@@ -1,6 +1,19 @@
+"""
+https://github.com/Return-Log/Education-Clock
+GPL-3.0 license
+coding: UTF-8
+"""
+
 import os
 import sys
 import json5
+import requests
+import webbrowser
+import pyautogui
+import win32com.client
+import win32con
+import win32gui
+from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QCheckBox, QSystemTrayIcon, QMenu, QAction, \
     QMessageBox, QPushButton
 from PyQt5.QtCore import Qt, QSettings, QTimer, QTime, QDate
