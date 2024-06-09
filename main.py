@@ -1,9 +1,3 @@
-"""
-https://github.com/Return-Log/Education-Clock
-GPL-3.0 license
-coding: UTF-8
-"""
-
 import os
 import sys
 import json5
@@ -11,6 +5,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QCheckBo
     QMessageBox, QPushButton
 from PyQt5.QtCore import Qt, QSettings, QTimer, QTime, QDate
 from PyQt5.QtGui import QIcon, QFontMetrics, QFont
+import subprocess
 
 # 导入模块
 from timetable import ClassSchedule
@@ -23,7 +18,7 @@ import timer_shut_down
 class MainApp(QWidget):
     def __init__(self):
         super().__init__()
-        self.settings_file = os.path.join('data', 'launch.ini')
+        self.settings_file = os.path.join('data', '[模块状态]launch.ini')
         self.init_ui()
 
         self.clock = None
@@ -38,7 +33,8 @@ class MainApp(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("Education Clock模块管理")
-        self.setGeometry(100, 100, 300, 200)
+        self.setGeometry(100, 100, 300, 250)  # Increased height to accommodate new button
+        self.setStyleSheet("background-color: #bbcdc5;")  # 设置背景色
 
         layout = QVBoxLayout()
 
@@ -71,6 +67,8 @@ class MainApp(QWidget):
         self.about_button.clicked.connect(self.show_about)
         self.help_button = QPushButton("帮助")
         self.help_button.clicked.connect(self.show_help)
+        self.open_data_button = QPushButton("打开data文件夹")
+        self.open_data_button.clicked.connect(self.open_data_directory)
 
         layout.addWidget(self.clock_label)
         layout.addWidget(self.clock_checkbox)
@@ -84,6 +82,7 @@ class MainApp(QWidget):
         layout.addWidget(self.timer_shutdown_checkbox)
         layout.addWidget(self.about_button)
         layout.addWidget(self.help_button)
+        layout.addWidget(self.open_data_button)
 
         self.setLayout(layout)
 
@@ -164,7 +163,7 @@ class MainApp(QWidget):
                 self.timer_shutdown = None
 
     def show_about(self):
-        QMessageBox.information(self, "关于", "Education-Clock\n版本：v0.6\n更新日期：2024/6/2\n许可证：GPLv3\nGitHub仓库：https://github.com/Return"
+        QMessageBox.information(self, "关于", "Education-Clock\n版本：v0.7\n更新日期：2024/6/9\n许可证：GPLv3\nGitHub仓库：https://github.com/Return"
                                               "-Log/Education-Clock\nCopyright © 2024 Log All rights reserved.")
 
     def show_help(self):
@@ -191,6 +190,15 @@ class MainApp(QWidget):
     def on_tray_icon_activated(self, reason):
         if reason == QSystemTrayIcon.Trigger:
             self.show()
+
+    def open_data_directory(self):
+        data_dir = os.path.abspath('data')
+        if sys.platform == 'win32':
+            os.startfile(data_dir)
+        elif sys.platform == 'darwin':
+            subprocess.call(['open', data_dir])
+        else:
+            subprocess.call(['xdg-open', data_dir])
 
     def closeEvent(self, event):
         self.hide()

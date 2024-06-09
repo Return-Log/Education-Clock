@@ -18,10 +18,10 @@ if not os.path.exists(data_folder):
     os.makedirs(data_folder)
 
 # 保存倒计时信息的文件路径
-time_file_path = os.path.join(data_folder, "time.txt")
+time_file_path = os.path.join(data_folder, "[倒计时设置]time.txt")
 
 # 保存窗口位置信息的文件路径
-settings_file_path = os.path.join(data_folder, "settings.ini")
+settings_file_path = os.path.join(data_folder, "[时钟窗口位置]settings.ini")
 
 
 class SettingsDialog(QDialog):
@@ -77,6 +77,7 @@ class DigitalClock(QWidget):
         # 初始化窗口
         self.setWindowTitle('数字时钟')
         self.setGeometry(100, 100, 300, 200)  # 设置窗口位置和大小
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnBottomHint)  # 设置窗口无边框并保持在底层
         self.setStyleSheet("background-color: black; color: red;")  # 设置背景色和字体颜色
 
         # 创建垂直布局
@@ -84,7 +85,7 @@ class DigitalClock(QWidget):
         self.setLayout(self.layout)
 
         # 创建字体对象
-        bold_font = QFont("黑体", 35, QFont.Bold)
+        bold_font = QFont("黑体", 26, QFont.Bold)
 
         # 星期标签
         self.weekday_label = QLabel("星期")
@@ -96,7 +97,7 @@ class DigitalClock(QWidget):
         # 时间标签
         self.time_label = QLabel("时间")
         self.time_label.setAlignment(Qt.AlignCenter)  # 居中对齐
-        time_font = QFont("黑体", 60, QFont.Bold)
+        time_font = QFont("黑体", 45, QFont.Bold)
         self.time_label.setFont(time_font)
         self.time_label.setStyleSheet("color: red;")  # 设置字体颜色
         self.layout.addWidget(self.time_label)

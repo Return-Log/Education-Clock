@@ -94,7 +94,7 @@ class ShutdownTimerApp(QWidget):
         读取并返回关机时间配置
         """
         try:
-            with open('data/closetime.json5', 'r', encoding='utf-8') as file:
+            with open('data/[关机时间]closetime.json5', 'r', encoding='utf-8') as file:
                 data = json5.load(file)
                 return data.get('shutdown_times', {})
         except FileNotFoundError:
@@ -108,7 +108,7 @@ class ShutdownTimerApp(QWidget):
         self.resize(300, 150)
         self.center()
 
-        self.setStyleSheet("background-color: #7c8577;")  # 设置背景色和字体颜色
+        self.setStyleSheet("background-color: #bbcdc5;")  # 设置背景色
 
     def center(self):
         """
@@ -148,7 +148,7 @@ class ShutdownTimerApp(QWidget):
             for shutdown_time in shutdown_times_today:
                 shutdown_time = QTime.fromString(shutdown_time, 'hh:mm')
                 # 检查当前时间是否在关机时间的前后1秒内，以确定是否需要关机
-                if current_time.addSecs(-1200) <= shutdown_time <= current_time.addSecs(1200):
+                if current_time.addSecs(-1) <= shutdown_time <= current_time.addSecs(1):
                     self.show_countdown_dialog()
                     return
         except Exception as e:

@@ -72,9 +72,9 @@ class ClassSchedule(QWidget):
 
             # 设置当前课程高亮显示
             if self.is_between_times(current_time, start_time, end_time):
-                label.setStyleSheet("color: white; background-color: green;")
+                label.setStyleSheet("color: black; background-color: red;")
 
-        # 窗口宽度比最大标签宽度多二个字符
+        # 窗口宽度比最大标签宽度多一个字符
         extra_width = QFontMetrics(font).width("X")
         self.setFixedSize(max_width + extra_width, total_height)
 
@@ -87,7 +87,7 @@ class ClassSchedule(QWidget):
         current_day = current_date.dayOfWeek() - 1
         exe_dir = os.path.dirname(sys.argv[0])
         data_dir = os.path.join(exe_dir, "data")
-        schedule_file = os.path.join(data_dir, "schedule.json5")
+        schedule_file = os.path.join(data_dir, "[课程表]schedule.json5")
         with open(schedule_file, "r", encoding="utf-8") as f:
             data = json5.load(f)
 

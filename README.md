@@ -1,26 +1,32 @@
 # 简介
 
-具有桌面时钟、课程表、天气预报功能，适合学校多媒体屏幕使用
+**功能：**
 
-![educationclock-v0.5.png](https://s2.loli.net/2024/05/19/odck6U2qWzPKZJB.png)
+-桌面时钟 -课程表 -天气预报 -自动新闻联播 -定时关机
+
+![.png](https://s2.loli.net/2024/06/09/MPewgN6FvBSxKo2.png)
 
 # 信息
 
-版本：v0.6
+版本：v0.7
 
-时间：2024/6/2
+时间：2024/6/9
 
 协议：GPLv3
 
 # 功能设置
 
-## 一. 单独控制模块开关
+## 一. 单独控制模块开关，调整设置
 
 **可以单独控制模块是否启动**
 
 启动后自动隐藏入托盘，点击托盘图标即可进行更改
 
-![Snipaste_2024-05-19_01-40-24.png](https://s2.loli.net/2024/05/19/K9QfVBHXYMFGuPT.png)
+**点击自动打开data文件夹**
+
+可更改课程表，关机时间等信息
+
+![data.png](https://s2.loli.net/2024/06/09/Hs2y4kuegvYpJRV.png)
 
 ## 二. 时钟
 
@@ -58,7 +64,7 @@
 
 ## 五. AutoCCTV
 
-集成https://github.com/Return-Log/AutoCCTV项目，默认关闭，可手动从托盘开启
+集成https://github.com/Return-Log/AutoCCTV项目，从托盘开启
 
 ## 六. 定时关机
 
@@ -68,7 +74,9 @@
 
 关机存在10秒倒计时确定是否关机
 
-默认关闭，可手动从托盘开启
+从托盘开启
+
+***设置无法保存请用管理员模式运行后重试***
 
 ------
 

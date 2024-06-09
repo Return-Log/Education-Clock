@@ -9,7 +9,9 @@ from datetime import datetime
 import requests
 from PyQt5.QtCore import Qt, QTimer, QPoint, QSettings, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QPixmap
-from PyQt5.QtWidgets import QApplication, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QDialog, QLineEdit, QMessageBox, QPushButton
+from PyQt5.QtWidgets import QApplication, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QDialog, QLineEdit, QMessageBox, \
+    QPushButton
+
 
 class WeatherThread(QThread):
     weather_data_fetched = pyqtSignal(dict)
@@ -26,6 +28,7 @@ class WeatherThread(QThread):
         data = response.json()
         self.weather_data_fetched.emit(data)
 
+
 class WeatherApp(QWidget):
     def __init__(self):
         super().__init__()
@@ -35,18 +38,18 @@ class WeatherApp(QWidget):
         self.restore_settings()
 
     def load_api_key(self):
-        with open("data/OpenWeather-API.txt", "r") as file:
+        with open("data/[天气服务API]OpenWeather-API.txt", "r") as file:
             return file.read().strip()
 
     def load_location(self):
-        with open("data/location.txt", "r") as file:
+        with open("data/[天气坐标]location.txt", "r") as file:
             location = file.read().strip()
             latitude, longitude = location.split(',')
             return float(latitude), float(longitude)
 
     def init_ui(self):
         self.setWindowTitle("天气预报")
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnBottomHint)  # 设置窗口无边框并保持在底层
         layout = QVBoxLayout()
 
         self.current_weather_layout = QHBoxLayout()
@@ -55,7 +58,7 @@ class WeatherApp(QWidget):
         self.current_weather_layout.addWidget(self.current_weather_icon_label)
 
         self.current_temp_label = QLabel("", self)
-        self.current_temp_label.setFont(QFont("Arial", 19))
+        self.current_temp_label.setFont(QFont("Arial", 18))
         self.current_weather_layout.addWidget(self.current_temp_label)
 
         layout.addLayout(self.current_weather_layout)
@@ -71,7 +74,7 @@ class WeatherApp(QWidget):
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.start_weather_thread)
-        self.timer.start(300000)
+        self.timer.start(300000)  # 更新时间间隔为5*60*1000毫秒
 
     def open_location_dialog(self, event):
         location_dialog = LocationDialog(self)
@@ -145,7 +148,8 @@ class WeatherApp(QWidget):
                     daily_weather[date]['max_temp'] = max(max_temp, daily_weather[date]['max_temp'])
                     daily_weather[date]['min_temp'] = min(min_temp, daily_weather[date]['min_temp'])
                 else:
-                    daily_weather[date] = {'weather': weather_desc, 'icon': weather_icon, 'max_temp': max_temp, 'min_temp': min_temp}
+                    daily_weather[date] = {'weather': weather_desc, 'icon': weather_icon, 'max_temp': max_temp,
+                                           'min_temp': min_temp}
 
             for i in reversed(range(self.forecast_layout.count())):
                 self.forecast_layout.itemAt(i).widget().setParent(None)
@@ -187,6 +191,7 @@ class WeatherApp(QWidget):
             self.setStyleSheet("background-color: lightblue; color: black;")
         else:  # 晚上时间段
             self.setStyleSheet("background-color: darkblue; color: white;")
+
 
 class LocationDialog(QDialog):
     def __init__(self, parent=None):
@@ -233,7 +238,7 @@ class LocationDialog(QDialog):
         longitude = float(longitude)
 
         if -90 <= latitude <= 90 and -180 <= longitude <= 180:
-            with open("data/location.txt", "w") as file:
+            with open("data/[天气坐标]location.txt", "w") as file:
                 file.write(f"{latitude},{longitude}")
             self.parent().latitude = latitude
             self.parent().longitude = longitude
@@ -241,6 +246,7 @@ class LocationDialog(QDialog):
             self.close()
         else:
             QMessageBox.warning(self, "错误", "请输入有效范围内的纬度和经度。")
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
