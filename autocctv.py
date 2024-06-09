@@ -27,7 +27,7 @@ class AutoCCTVController:
 
     def open_and_play(self):
         webbrowser.open(self.url)
-        QTimer.singleShot(5000, self.maximize_and_play)
+        QTimer.singleShot(9000, self.maximize_and_play)
 
     def maximize_and_play(self):
         browser_hwnd = win32gui.GetForegroundWindow()
@@ -45,7 +45,7 @@ class AutoCCTVController:
 
     def close_browser(self):
         shell = win32com.client.Dispatch("WScript.Shell")
-        shell.SendKeys("^w")
+        shell.SendKeys("%{F4}")
 
     def check_start_time(self):
         current_time = QTime.currentTime()
