@@ -13,17 +13,27 @@ import pyautogui
 import win32com.client
 import win32con
 import win32gui
+import imaplib
+import smtplib
+import email
+import subprocess
+import datetime
+import pytz
+import pyttsx3
+from email.header import decode_header
+from email.message import EmailMessage
 from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QCheckBox, QSystemTrayIcon, QMenu, QAction, \
     QMessageBox, QPushButton
 from PyQt5.QtCore import Qt, QSettings, QTimer, QTime, QDate
-from PyQt5.QtGui import QIcon, QFontMetrics, QFont
-import subprocess
+from PyQt5.QtGui import QIcon, QFontMetrics, QFont, QColor
+from PyQt5.QtMultimedia import QSound
 
 # 导入模块
 from timetable import ClassSchedule
 from weather import WeatherApp
 from clock import DigitalClock
+import notice_board
 import autocctv
 import timer_shut_down
 
@@ -37,6 +47,7 @@ class MainApp(QWidget):
         self.clock = None
         self.weather = None
         self.timetable = None
+        self.notice_board = None
         self.autocctv = None
         self.timer_shutdown = None
 
@@ -66,6 +77,11 @@ class MainApp(QWidget):
         self.timetable_checkbox.setChecked(self.load_setting("timetable_enabled", True))
         self.timetable_checkbox.stateChanged.connect(self.toggle_timetable)
 
+        self.notice_board_label = QLabel("邮件公告栏")
+        self.notice_board_checkbox = QCheckBox()
+        self.notice_board_checkbox.setChecked(self.load_setting("notice_board_enabled", True))
+        self.notice_board_checkbox.stateChanged.connect(self.toggle_notice_board)
+
         self.autocctv_label = QLabel("自动新闻联播")
         self.autocctv_checkbox = QCheckBox()
         self.autocctv_checkbox.setChecked(self.load_setting("autocctv_enabled", True))
@@ -89,6 +105,8 @@ class MainApp(QWidget):
         layout.addWidget(self.weather_checkbox)
         layout.addWidget(self.timetable_label)
         layout.addWidget(self.timetable_checkbox)
+        layout.addWidget(self.notice_board_label)
+        layout.addWidget(self.notice_board_checkbox)
         layout.addWidget(self.autocctv_label)
         layout.addWidget(self.autocctv_checkbox)
         layout.addWidget(self.timer_shutdown_label)
@@ -108,6 +126,9 @@ class MainApp(QWidget):
 
         if self.timetable_checkbox.isChecked():
             self.toggle_timetable(Qt.Checked)
+
+        if self.notice_board_checkbox.isChecked():
+            self.toggle_notice_board(Qt.Checked)
 
         if self.autocctv_checkbox.isChecked():
             self.toggle_autocctv(Qt.Checked)
@@ -156,6 +177,16 @@ class MainApp(QWidget):
             if self.timetable is not None:
                 self.timetable.hide()
 
+    def toggle_notice_board(self, state):
+        self.save_setting("notice_board_enabled", state == Qt.Checked)
+        if state == Qt.Checked:
+            if self.notice_board is None:
+                self.notice_board = notice_board.EmailClient()
+            self.notice_board.show()
+        else:
+            if self.notice_board is not None:
+                self.notice_board.hide()
+
     def toggle_autocctv(self, state):
         self.save_setting("autocctv_enabled", state == Qt.Checked)
         if state == Qt.Checked:
@@ -176,7 +207,7 @@ class MainApp(QWidget):
                 self.timer_shutdown = None
 
     def show_about(self):
-        QMessageBox.information(self, "关于", "Education-Clock\n版本：v0.7\n更新日期：2024/6/9\n许可证：GPLv3\nGitHub仓库：https://github.com/Return"
+        QMessageBox.information(self, "关于", "Education-Clock\n版本：v1.0\n更新日期：2024/6/10\n许可证：GPLv3\nGitHub仓库：https://github.com/Return"
                                               "-Log/Education-Clock\nCopyright © 2024 Log All rights reserved.")
 
     def show_help(self):

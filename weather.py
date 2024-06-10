@@ -74,7 +74,7 @@ class WeatherApp(QWidget):
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.start_weather_thread)
-        self.timer.start(300000)  # 更新时间间隔为5*60*1000毫秒
+        self.timer.start(600000)  # 更新时间间隔为10*60*1000毫秒
 
     def open_location_dialog(self, event):
         location_dialog = LocationDialog(self)
