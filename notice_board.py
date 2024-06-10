@@ -76,13 +76,13 @@ class EmailClient(QWidget):
 
     def read_email_credentials(self):
         try:
-            with open('data/email.txt', 'r') as file:
+            with open('data/[公告板邮箱]email.txt', 'r') as file:
                 lines = file.readlines()
                 email_address = lines[0].strip()
                 email_password = lines[1].strip()
             return email_address, email_password
         except FileNotFoundError:
-            print("邮箱配置文件不存在，请确保 'data/email.txt' 存在并包含正确的邮箱地址和密码。")
+            print("邮箱配置文件不存在，请确保 'data/[公告板邮箱]email.txt' 存在并包含正确的邮箱地址和密码。")
             sys.exit(1)
         except Exception as e:
             print(f"读取邮箱配置文件时出现错误: {e}")
