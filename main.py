@@ -24,10 +24,10 @@ from email.header import decode_header
 from email.message import EmailMessage
 from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QCheckBox, QSystemTrayIcon, QMenu, QAction, \
-    QMessageBox, QPushButton
-from PyQt5.QtCore import Qt, QSettings, QTimer, QTime, QDate
+    QMessageBox, QPushButton, QSizePolicy
+from PyQt5.QtCore import Qt, QSettings, QTimer, QTime, QDate, QUrl, QPoint, QSize, QThread, pyqtSignal
 from PyQt5.QtGui import QIcon, QFontMetrics, QFont, QColor
-from PyQt5.QtMultimedia import QSound
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 
 # 导入模块
 from timetable import ClassSchedule
@@ -194,7 +194,9 @@ class MainApp(QWidget):
                 self.autocctv = autocctv.AutoCCTVController()
         else:
             if self.autocctv is not None:
-                self.autocctv.close_browser()
+                self.autocctv.start_timer.stop()  # 停止开始时间检查定时器
+                self.autocctv.end_timer.stop()  # 停止结束时间检查定时器
+                self.autocctv = None
 
     def toggle_timer_shutdown(self, state):
         self.save_setting("timer_shutdown_enabled", state == Qt.Checked)
@@ -207,12 +209,33 @@ class MainApp(QWidget):
                 self.timer_shutdown = None
 
     def show_about(self):
-        QMessageBox.information(self, "关于", "Education-Clock\n版本：v1.0\n更新日期：2024/6/10\n许可证：GPLv3\nGitHub仓库：https://github.com/Return"
-                                              "-Log/Education-Clock\nCopyright © 2024 Log All rights reserved.")
+        about_text = """
+            <p>Education-Clock<br>
+            版本：v1.1<br>
+            更新日期：2024/6/30<br>
+            许可证：GPLv3<br>
+            GitHub仓库：<a href='https://github.com/Return-Log/Education-Clock'>https://github.com/Return-Log/Education-Clock</a><br>
+            <a href='https://github.com/Return-Log'>Copyright © 2024 Log All rights reserved.</a></p>
+        """
+        msg = QMessageBox(self)
+        msg.setWindowTitle("关于")
+        msg.setTextFormat(Qt.RichText)
+        msg.setText(about_text)
+        msg.exec_()
 
     def show_help(self):
-        QMessageBox.about(self, "帮助", "使用说明：\n1. 选择模块是否启用。\n2. 设置信息存储在软件目录data文件夹中。\n3. "
-                                        "设置如无法保存请用管理员权限运行。")
+        help_text = """
+            <p>使用说明：<br>
+            1. 选择模块是否启用。<br>
+            2. 设置信息存储在软件目录data文件夹中，按照提示更改信息。<br>
+            3. 设置如无法保存请用管理员权限运行。<br>
+            4. 详细帮助请参见<a href='https://github.com/Return-Log/Education-Clock'>GitHub仓库</a>。</p>
+        """
+        msg = QMessageBox(self)
+        msg.setWindowTitle("帮助")
+        msg.setTextFormat(Qt.RichText)
+        msg.setText(help_text)
+        msg.exec_()
 
     def create_tray_icon(self):
         self.tray_icon = QSystemTrayIcon(self)

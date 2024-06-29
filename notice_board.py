@@ -1,9 +1,3 @@
-"""
-https://github.com/Return-Log/Education-Clock
-GPL-3.0 license
-coding: UTF-8
-"""
-
 import sys
 import os
 import imaplib
@@ -11,10 +5,11 @@ import smtplib
 import email
 from email.header import decode_header
 from email.message import EmailMessage
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTextEdit, QLabel
-from PyQt5.QtCore import QTimer, Qt, QPoint, QSize, QThread, pyqtSignal
-from PyQt5.QtGui import QFont, QColor, QPainter
-from PyQt5.QtMultimedia import QSound
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTextEdit, QLabel, QSizePolicy
+from PyQt5.QtCore import Qt, QPoint, QSize, QThread, pyqtSignal
+from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+from PyQt5.QtCore import QUrl
 import datetime
 import pytz
 import pyttsx3
@@ -24,13 +19,15 @@ import json
 class EmailChecker(QThread):
     # 定义新邮件信号
     new_email = pyqtSignal(email.message.Message)
+    initial_check_completed_signal = pyqtSignal()
 
-    def __init__(self, email_address, email_password, processed_uids, initial_check):
+    def __init__(self, email_address, email_password, processed_uids, initial_check, error_signal):
         super().__init__()
         self.email_address = email_address
         self.email_password = email_password
         self.processed_uids = processed_uids
         self.initial_check = initial_check
+        self.error_signal = error_signal
 
     def run(self):
         while True:
@@ -72,9 +69,10 @@ class EmailChecker(QThread):
 
             if self.initial_check:
                 self.initial_check = False
+                self.initial_check_completed_signal.emit()
 
         except Exception as e:
-            print(f'检查收件箱出错: {str(e)}')
+            self.error_signal.emit(f'检查收件箱出错，请输入正确邮箱: {str(e)}')
 
     def send_auto_reply(self, to_email, original_subject):
         try:
@@ -90,26 +88,43 @@ class EmailChecker(QThread):
                 server.send_message(msg)
 
         except Exception as e:
-            print(f'自动回复出错: {str(e)}')
+            self.error_signal.emit(f'自动回复出错: {str(e)}')
 
 
 # 邮件客户端主窗口类
 class EmailClient(QWidget):
+    error_signal = pyqtSignal(str)
+
     def __init__(self):
         super().__init__()
         self.email_address, self.email_password = self.read_email_credentials()
         self.processed_uids = set()  # 用于存储已处理的邮件UID
-        self.initial_check = True  # 标志以指示初始检查
+        self.initial_check_completed = False  # 标志以指示初始检查是否完成
         self.engine = pyttsx3.init()
-        self.engine.setProperty('rate', 150)  # 设置语速
-        self.engine.setProperty('voice', 'zh')  # 设置语音为中文
+        self.engine.setProperty('rate', 150)
+        voices = self.engine.getProperty('voices')
+        for voice in voices:
+            if 'zh' in voice.languages:
+                self.engine.setProperty('voice', voice.id)
+                break
+
+        self.player = QMediaPlayer()
+        self.player.setVolume(100)  # 设置音量为100（范围是0到100）
 
         self.initUI()  # 初始化用户界面
 
         # 创建并启动邮件检查线程
-        self.email_checker = EmailChecker(self.email_address, self.email_password, self.processed_uids, self.initial_check)
+        self.email_checker = EmailChecker(self.email_address, self.email_password, self.processed_uids, True, self.error_signal)
         self.email_checker.new_email.connect(self.handle_new_email)
+        self.email_checker.initial_check_completed_signal.connect(self.set_initial_check_completed)
         self.email_checker.start()
+        self.error_signal.connect(self.handle_error)
+
+    def handle_error(self, error_message):
+        self.notice_textEdit.append(f'<b>错误:</b> {error_message}')
+
+    def set_initial_check_completed(self):
+        self.initial_check_completed = True
 
     def initUI(self):
         # 设置窗口无边框
@@ -122,7 +137,7 @@ class EmailClient(QWidget):
 
         font_label = QFont("微软雅黑", 9)
         font = QFont("微软雅黑", 12)
-        self.bg_color = QColor(220, 220, 220)  # 设置背景颜色为黄色
+        self.bg_color = QColor(220, 220, 220)  # 设置背景颜色为灰色
         self.text_color = QColor(0, 0, 0)
 
         self.notice_label = QLabel("通知")
@@ -133,8 +148,9 @@ class EmailClient(QWidget):
         self.notice_textEdit.setReadOnly(True)  # 设置文本框为只读
         self.notice_textEdit.setFont(font)
         self.notice_textEdit.setStyleSheet(
-            f"background-color: {self.bg_color.name()}; color: {self.text_color.name()}; height: 230px;")
-        layout.addWidget(self.notice_textEdit)
+            f"background-color: {self.bg_color.name()}; color: {self.text_color.name()};")
+        self.notice_textEdit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        layout.addWidget(self.notice_textEdit, 3)  # 设置伸缩因子为3
 
         self.report_label = QLabel("通报")
         self.report_label.setFont(font_label)
@@ -144,8 +160,9 @@ class EmailClient(QWidget):
         self.report_textEdit.setReadOnly(True)  # 设置文本框为只读
         self.report_textEdit.setFont(font)
         self.report_textEdit.setStyleSheet(
-            f"background-color: {self.bg_color.name()}; color: {self.text_color.name()}; height: 130px;")
-        layout.addWidget(self.report_textEdit)
+            f"background-color: {self.bg_color.name()}; color: {self.text_color.name()};")
+        self.report_textEdit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        layout.addWidget(self.report_textEdit, 2)  # 设置伸缩因子为2
 
         self.call_label = QLabel("广播")
         self.call_label.setFont(font_label)
@@ -155,8 +172,9 @@ class EmailClient(QWidget):
         self.call_textEdit.setReadOnly(True)  # 设置文本框为只读
         self.call_textEdit.setFont(font)
         self.call_textEdit.setStyleSheet(
-            f"background-color: {self.bg_color.name()}; color: {self.text_color.name()}; height: 50px;")
-        layout.addWidget(self.call_textEdit)
+            f"background-color: {self.bg_color.name()}; color: {self.text_color.name()};")
+        self.call_textEdit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        layout.addWidget(self.call_textEdit, 1)  # 设置伸缩因子为1
 
         self.setLayout(layout)
 
@@ -217,40 +235,13 @@ class EmailClient(QWidget):
             event.accept()
 
     def mouseReleaseEvent(self, event):
-        # 处理鼠标释放事件，停止拖动和调整大小
+        # 处理鼠标释放事件，重置拖动和调整大小状态
         if event.button() == Qt.LeftButton:
             self.dragging = False
             self.resizing = False
             event.accept()
 
-    def paintEvent(self, event):
-        # 绘制右下角的拖拽标志
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setPen(QColor(0, 0, 0))
-        painter.setBrush(QColor(0, 0, 0))
-        size = 10
-        margin = 5
-        rect = self.rect()
-        painter.drawRect(rect.right() - size - margin, rect.bottom() - size - margin, size, size)
-
-    def read_email_credentials(self):
-        # 读取邮箱凭证
-        try:
-            with open('data/[公告板邮箱]email.txt', 'r') as file:
-                lines = file.readlines()
-                email_address = lines[0].strip()
-                email_password = lines[1].strip()
-            return email_address, email_password
-        except FileNotFoundError:
-            print("邮箱配置文件不存在，请确保 'data/[公告板邮箱]email.txt' 存在并包含正确的邮箱地址和密码。")
-            sys.exit(1)
-        except Exception as e:
-            print(f"读取邮箱配置文件时出现错误: {e}")
-            sys.exit(1)
-
     def handle_new_email(self, msg):
-        # 处理新邮件
         try:
             subject, encoding = decode_header(msg['Subject'])[0]
             if isinstance(subject, bytes):
@@ -299,37 +290,43 @@ class EmailClient(QWidget):
             if '通知' in subject:
                 current_content = self.notice_textEdit.toHtml()
                 self.notice_textEdit.setHtml(f'{new_email_content}{current_content}')
-                if not self.initial_check:
+                if self.initial_check_completed:
                     self.play_audio()
             elif '通报' in subject:
                 current_content = self.report_textEdit.toHtml()
                 self.report_textEdit.setHtml(f'{new_email_content}{current_content}')
-                if not self.initial_check:
+                if self.initial_check_completed:
                     self.play_audio()
             elif '呼叫' in subject or '广播' in subject:
                 current_content = self.call_textEdit.toHtml()
                 self.call_textEdit.setHtml(f'{new_email_content}{current_content}')
-                if not self.initial_check:
+                if self.initial_check_completed:
                     self.play_audio()
                     self.speak_text(body)
+
         except Exception as e:
-            self.notice_textEdit.append(f'处理新邮件时出错: {str(e)}')
+            self.handle_error(f'处理新邮件时出错: {str(e)}')
 
     def play_audio(self):
-        # 播放音频
-        try:
-            audio_path = os.path.join(os.getcwd(), 'audio', 'notice.wav')
-            QSound.play(audio_path)
-        except Exception as e:
-            self.notice_textEdit.append(f'播放音频出错: {str(e)}')
+        audio_file = 'audio/notice.wav'
+        url = QUrl.fromLocalFile(os.path.abspath(audio_file))
+        content = QMediaContent(url)
+        self.player.setMedia(content)
+        self.player.play()
 
     def speak_text(self, text):
-        # 播报文本
+        self.engine.say(text)
+        self.engine.runAndWait()
+
+    def read_email_credentials(self):
+        # 从配置文件中读取邮件地址和密码
         try:
-            self.engine.say(text)
-            self.engine.runAndWait()
-        except Exception as e:
-            self.notice_textEdit.append(f'语音播报出错: {str(e)}')
+            with open('data/[邮箱地址和密码]email_credentials.json', 'r') as f:
+                credentials = json.load(f)
+                return credentials['email_address'], credentials['email_password']
+        except (FileNotFoundError, KeyError, json.JSONDecodeError) as e:
+            self.handle_error(f'读取邮箱凭据时出错: {str(e)}')
+            return '', ''
 
 
 if __name__ == '__main__':

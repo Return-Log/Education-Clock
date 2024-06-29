@@ -7,11 +7,10 @@ coding: UTF-8
 import sys
 from datetime import datetime
 import requests
-from PyQt5.QtCore import Qt, QTimer, QPoint, QSettings, QThread, pyqtSignal
+from PyQt5.QtCore import Qt, QTimer, QPoint, QSettings, QThread, pyqtSignal, QUrl, QSize
 from PyQt5.QtGui import QFont, QPixmap
-from PyQt5.QtWidgets import QApplication, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QDialog, QLineEdit, QMessageBox, \
-    QPushButton
-
+from PyQt5.QtWidgets import QApplication, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QDialog, QLineEdit, QMessageBox, QPushButton
+from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
 
 class WeatherThread(QThread):
     weather_data_fetched = pyqtSignal(dict)
@@ -28,7 +27,6 @@ class WeatherThread(QThread):
         data = response.json()
         self.weather_data_fetched.emit(data)
 
-
 class WeatherApp(QWidget):
     def __init__(self):
         super().__init__()
@@ -36,6 +34,7 @@ class WeatherApp(QWidget):
         self.latitude, self.longitude = self.load_location()
         self.init_ui()
         self.restore_settings()
+        self.network_manager = QNetworkAccessManager(self)
 
     def load_api_key(self):
         with open("data/[天气服务API]OpenWeather-API.txt", "r") as file:
@@ -49,7 +48,7 @@ class WeatherApp(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("天气预报")
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnBottomHint)  # 设置窗口无边框并保持在底层
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnBottomHint)
         layout = QVBoxLayout()
 
         self.current_weather_layout = QHBoxLayout()
@@ -74,7 +73,7 @@ class WeatherApp(QWidget):
 
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.start_weather_thread)
-        self.timer.start(600000)  # 更新时间间隔为10*60*1000毫秒
+        self.timer.start(600000)  # 更新间隔：10 分钟
 
     def open_location_dialog(self, event):
         location_dialog = LocationDialog(self)
@@ -119,16 +118,11 @@ class WeatherApp(QWidget):
             weather_icon = current_weather['weather'][0].get('icon', '01d')
             weather_desc = current_weather['weather'][0].get('main', '')
 
-            if -100 <= current_temp <= 900:
-                current_temp_str = f"{current_temp:.0f}°C"
-            else:
-                current_temp_str = 'N/A'
+            current_temp_str = f"{current_temp:.0f}°C" if -100 <= current_temp <= 900 else 'N/A'
             self.current_temp_label.setText(f"{current_temp_str} | 湿度: {humidity}% | 风速: {wind_speed} m/s")
 
             icon_url = f"http://openweathermap.org/img/wn/{weather_icon}@2x.png"
-            weather_icon_pixmap = QPixmap()
-            weather_icon_pixmap.loadFromData(requests.get(icon_url).content)
-            self.current_weather_icon_label.setPixmap(weather_icon_pixmap.scaled(100, 100, Qt.KeepAspectRatio))
+            self.load_icon(icon_url, self.current_weather_icon_label, QSize(100, 100))
 
             self.update_background()
 
@@ -138,7 +132,6 @@ class WeatherApp(QWidget):
             for day_weather in future_5_days_data:
                 date_time = day_weather['dt_txt']
                 date = date_time.split()[0]
-                time = date_time.split()[1]
                 weather_desc = day_weather['weather'][0].get('main', 'N/A')
                 weather_icon = day_weather['weather'][0].get('icon', '01d')
                 max_temp = day_weather['main'].get('temp_max', -999)
@@ -166,9 +159,8 @@ class WeatherApp(QWidget):
 
                 weather_icon_label = QLabel(self)
                 icon_url = f"http://openweathermap.org/img/wn/{weather_info['icon']}@2x.png"
-                weather_icon_pixmap = QPixmap()
-                weather_icon_pixmap.loadFromData(requests.get(icon_url).content)
-                weather_icon_label.setPixmap(weather_icon_pixmap.scaled(75, 75, Qt.KeepAspectRatio))
+                self.load_icon(icon_url, weather_icon_label, QSize(75, 75))
+
                 weather_icon_label.setAlignment(Qt.AlignCenter)
                 forecast_layout.addWidget(weather_icon_label)
 
@@ -185,13 +177,25 @@ class WeatherApp(QWidget):
         except Exception as e:
             print("Error:", e)
 
+    def load_icon(self, url, label, size):
+        request = QNetworkRequest(QUrl(url))
+        reply = self.network_manager.get(request)
+        reply.finished.connect(lambda: self.on_icon_loaded(reply, label, size))
+
+    def on_icon_loaded(self, reply, label, size):
+        if reply.error():
+            print("Error loading icon:", reply.errorString())
+            return
+        pixmap = QPixmap()
+        pixmap.loadFromData(reply.readAll())
+        label.setPixmap(pixmap.scaled(size, Qt.KeepAspectRatio))
+
     def update_background(self):
         current_hour = datetime.now().hour
-        if 6 <= current_hour < 18:  # 白天时间段
+        if 6 <= current_hour < 18:
             self.setStyleSheet("background-color: lightblue; color: black;")
-        else:  # 晚上时间段
+        else:
             self.setStyleSheet("background-color: darkblue; color: white;")
-
 
 class LocationDialog(QDialog):
     def __init__(self, parent=None):
@@ -246,7 +250,6 @@ class LocationDialog(QDialog):
             self.close()
         else:
             QMessageBox.warning(self, "错误", "请输入有效范围内的纬度和经度。")
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

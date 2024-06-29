@@ -1,2 +1,2 @@
-Event=学考
-EndDate=2024-07-06
+Event=期末
+EndDate=2024-07-13

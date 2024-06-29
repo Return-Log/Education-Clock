@@ -60,6 +60,10 @@ class AutoCCTVController:
             self.close_browser()
             self.end_timer.stop()
 
+    def stop_timers(self):
+        self.start_timer.stop()
+        self.end_timer.stop()
+
 
 if __name__ == "__main__":
     import sys
