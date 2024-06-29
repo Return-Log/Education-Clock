@@ -6,13 +6,11 @@ coding: UTF-8
 
 import os
 import sys
+import json
 import json5
 import requests
 import webbrowser
 import pyautogui
-import win32com.client
-import win32con
-import win32gui
 import imaplib
 import smtplib
 import email
@@ -23,19 +21,28 @@ import pyttsx3
 from email.header import decode_header
 from email.message import EmailMessage
 from datetime import datetime
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QCheckBox, QSystemTrayIcon, QMenu, QAction, \
-    QMessageBox, QPushButton, QSizePolicy
-from PyQt5.QtCore import Qt, QSettings, QTimer, QTime, QDate, QUrl, QPoint, QSize, QThread, pyqtSignal
-from PyQt5.QtGui import QIcon, QFontMetrics, QFont, QColor
-from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 
-# 导入模块
+from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QLabel, QCheckBox,
+                             QSystemTrayIcon, QMenu, QAction, QMessageBox,
+                             QPushButton, QSizePolicy, QLineEdit, QDateEdit,
+                             QDialog, QTextEdit, QDesktopWidget, QHBoxLayout)
+from PyQt5.QtCore import (Qt, QSettings, QTimer, QTime, QDate, QUrl, QPoint,
+                          QSize, QThread, pyqtSignal)
+from PyQt5.QtGui import (QIcon, QFontMetrics, QFont, QColor, QPixmap)
+from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
+
+import win32com.client
+import win32con
+import win32gui
+
 from timetable import ClassSchedule
 from weather import WeatherApp
 from clock import DigitalClock
 import notice_board
 import autocctv
 import timer_shut_down
+
 
 
 class MainApp(QWidget):
