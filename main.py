@@ -1,35 +1,40 @@
 import os
 import sys
+import subprocess
 import json
 import json5
-import requests
-import webbrowser
-import pyautogui
-import imaplib
-import smtplib
-import email
-import subprocess
 import datetime
-import pytz
-import pyttsx3
-from email.header import decode_header
-from email.message import EmailMessage
-from datetime import datetime
-
-from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QLabel, QCheckBox,
-                             QSystemTrayIcon, QMenu, QMessageBox,
-                             QPushButton, QSizePolicy, QLineEdit, QDateEdit,
-                             QDialog, QTextEdit, QHBoxLayout)
-from PyQt6.QtCore import (Qt, QSettings, QTimer, QTime, QDate, QUrl, QPoint,
-                          QSize, QThread, pyqtSignal)
-from PyQt6.QtGui import (QIcon, QFontMetrics, QFont, QColor, QPixmap, QAction)
-
-from PyQt6.QtMultimedia import QMediaPlayer
-from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest
-
+import webbrowser
+import requests
+import pyautogui
+import pyaudio
 import win32com.client
 import win32con
 import win32gui
+import imaplib
+import smtplib
+import email
+from email.header import decode_header
+from email.message import EmailMessage
+import pytz
+import pyttsx3
+
+from PyQt6.QtCore import (
+    Qt, QTimer, QTime, QDate, QPoint, QSize, QSettings, QThread,
+    pyqtSignal, QUrl
+)
+from PyQt6.QtGui import (
+    QFont, QPixmap, QColor, QIcon, QAction
+)
+from PyQt6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QDateEdit,
+    QPushButton, QDialog, QMessageBox, QTextEdit, QMainWindow,
+    QStatusBar, QSizePolicy, QCheckBox, QSystemTrayIcon, QMenu
+)
+from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest
+
+
 
 from timetable import ClassSchedule
 from weather import WeatherApp
@@ -68,7 +73,7 @@ class MainApp(QWidget):
         """
         self.setWindowTitle("Education Clock模块管理")
         self.setGeometry(100, 100, 300, 250)  # 增加窗口高度以容纳新按钮
-        self.setStyleSheet("background-color: #bbcdc5;")  # 设置背景色
+        # self.setStyleSheet("background-color: #bbcdc5;")  # 设置背景色
 
         layout = QVBoxLayout()
 
@@ -256,10 +261,10 @@ class MainApp(QWidget):
         """
         about_text = """
             <p>Education-Clock<br>
-            版本：v1.1<br>
-            更新日期：2024/6/30<br>
+            版本：v2.0<br>
+            更新日期：2024/9/22<br>
             许可证：GPLv3<br>
-            GitHub仓库：<a href='https://github.com/Return-Log/Education-Clock'>https://github.com/Return-Log/Education-Clock</a><br>
+            GitHub仓库：<a href='https://github.com/Return-Log/Education-Clock'>https://github.com/Return-Log/Education-Clock</a><br><br>
             <a href='https://github.com/Return-Log'>Copyright © 2024 Log All rights reserved.</a></p>
         """
         msg = QMessageBox(self)

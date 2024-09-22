@@ -17,8 +17,8 @@ class AutoCCTVController:
         初始化QTimer，每秒检查当前时间是否与开始/结束时间匹配。
         """
         self.url = "https://tv.cctv.com/live/index.shtml"
-        self.start_time = QTime.fromString("09:44:00", "HH:mm:ss")
-        self.end_time = QTime.fromString("19:30:04", "HH:mm:ss")
+        self.start_time = QTime.fromString("13:53:00", "HH:mm:ss")
+        self.end_time = QTime.fromString("13:47:04", "HH:mm:ss")
 
         # 初始化用于检测开始时间的定时器
         self.start_timer = QTimer()
@@ -84,7 +84,7 @@ class AutoCCTVController:
         if audio_output_detected:
             # print("音频输出已检测到，执行全屏操作")
             self.audio_check_timer.stop()  # 停止音频检查定时器
-            QTimer.singleShot(500, self.maximize_and_fullscreen)  # 等待半秒执行最大化和全屏播放
+            QTimer.singleShot(1000, self.maximize_and_fullscreen)  # 等待一秒执行最大化和全屏播放
 
     def close_browser(self):
         """
