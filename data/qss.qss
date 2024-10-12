@@ -1,0 +1,8 @@
+QLabel[timetable="intime"] {
+    color: green;
+    font-weight: bold;
+}
+
+QLabel[timetable="untimely"] {
+    color: gray;
+}

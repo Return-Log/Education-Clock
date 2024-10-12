@@ -17,8 +17,8 @@ class AutoCCTVController:
         初始化QTimer，每秒检查当前时间是否与开始/结束时间匹配。
         """
         self.url = "https://tv.cctv.com/live/index.shtml"
-        self.start_time = QTime.fromString("13:53:00", "HH:mm:ss")
-        self.end_time = QTime.fromString("13:47:04", "HH:mm:ss")
+        self.start_time = QTime.fromString("19:00:00", "HH:mm:ss")
+        self.end_time = QTime.fromString("19:30:04", "HH:mm:ss")
 
         # 初始化用于检测开始时间的定时器
         self.start_timer = QTimer()
