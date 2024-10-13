@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CountdownDialog</class>
+ <widget class="QDialog" name="CountdownDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>509</width>
+    <height>200</height>
+   </rect>
+  </property>
+  <property name="font">
+   <font>
+    <family>凤凰点阵体 16px</family>
+    <pointsize>16</pointsize>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>关机倒计时</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="2" column="1">
+    <widget class="QPushButton" name="shutdown_now_button">
+     <property name="styleSheet">
+      <string notr="true">font-size: 24px; font-weight: bold; font-family: 'SimHei'; background-color: #99CC00; color: #FFFFFF;</string>
+     </property>
+     <property name="text">
+      <string>立即关机</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QPushButton" name="cancel_shutdown_button">
+     <property name="font">
+      <font>
+       <family>SimHei</family>
+       <pointsize>-1</pointsize>
+       <bold>true</bold>
+      </font>
+     </property>
+     <property name="styleSheet">
+      <string notr="true">font-size: 24px; font-weight: bold; font-family: 'SimHei'; background-color: #CC0033; color: #FFFFFF;</string>
+     </property>
+     <property name="text">
+      <string>取消关机</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0" colspan="2">
+    <widget class="QLabel" name="countdown_label">
+     <property name="styleSheet">
+      <string notr="true">font-size: 60px; font-weight: bold; font-family: 'SimHei'; color: #003399;</string>
+     </property>
+     <property name="text">
+      <string>关机倒计时：10秒</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignCenter</set>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

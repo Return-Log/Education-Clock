@@ -1,47 +1,21 @@
 import os
 import sys
 import subprocess
-import json
-import json5
-import datetime
-import webbrowser
-import requests
-import pyautogui
-import pyaudio
-import win32com.client
-import win32con
-import win32gui
-import imaplib
-import smtplib
-import email
-from email.header import decode_header
-from email.message import EmailMessage
-import pytz
-import pyttsx3
 
 from PyQt6.QtCore import (
-    Qt, QTimer, QTime, QDate, QPoint, QSize, QSettings, QThread,
-    pyqtSignal, QUrl
+    Qt, QSettings
 )
 from PyQt6.QtGui import (
-    QFont, QPixmap, QColor, QIcon, QAction
+    QIcon, QAction
 )
 from PyQt6.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QDateEdit,
-    QPushButton, QDialog, QMessageBox, QTextEdit, QMainWindow,
-    QStatusBar, QSizePolicy, QCheckBox, QSystemTrayIcon, QMenu
+    QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, QMessageBox, QCheckBox, QSystemTrayIcon, QMenu
 )
-from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
-from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest
 
-
-
-from timetable import ClassSchedule
-from weather import WeatherApp
-from clock import DigitalClock
-import notice_board
-import autocctv
-import timer_shut_down
+from old.timetable import ClassSchedule
+from old.weather import WeatherApp
+from old.clock import DigitalClock
+from old import notice_board, autocctv, timer_shut_down
 
 
 class MainApp(QWidget):

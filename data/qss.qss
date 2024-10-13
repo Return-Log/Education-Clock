@@ -1,8 +1,38 @@
+* {
+    font-family: "凤凰点阵体 16px";
+    font-size: 16px;
+}
+
 QLabel[timetable="intime"] {
     color: green;
-    font-weight: bold;
+    font-size: 40px;
 }
 
 QLabel[timetable="untimely"] {
     color: gray;
+    font-size: 40px;
+}
+
+QLabel[time="time"] {
+    color: green;
+    font-weight: bold;
+    font-size: 50px;
+}
+
+QLabel[time="date"] {
+    color: green;
+    font-size: 30px;
+
+}
+
+QLabel[time="week"] {
+    color: red;
+    font-size: 30px;
+
+}
+
+QLabel[time="enddate"] {
+    color: red;
+    font-size: 30px;
+
 }

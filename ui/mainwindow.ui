@@ -2,12 +2,15 @@
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
+  <property name="windowModality">
+   <enum>Qt::NonModal</enum>
+  </property>
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>413</width>
-    <height>595</height>
+    <width>403</width>
+    <height>642</height>
    </rect>
   </property>
   <property name="font">
@@ -19,27 +22,90 @@
    <string>Education-Clock</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_3" stretch="3,10">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Preferred" vsizetype="Ignored">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <layout class="QVBoxLayout" name="verticalLayout_3" stretch="1,4">
+    <property name="spacing">
+     <number>6</number>
+    </property>
+    <property name="sizeConstraint">
+     <enum>QLayout::SetDefaultConstraint</enum>
+    </property>
+    <property name="leftMargin">
+     <number>3</number>
+    </property>
+    <property name="topMargin">
+     <number>3</number>
+    </property>
+    <property name="rightMargin">
+     <number>3</number>
+    </property>
+    <property name="bottomMargin">
+     <number>3</number>
+    </property>
     <item>
      <layout class="QGridLayout" name="gridLayout">
+      <property name="sizeConstraint">
+       <enum>QLayout::SetDefaultConstraint</enum>
+      </property>
+      <property name="spacing">
+       <number>2</number>
+      </property>
       <item row="0" column="0">
        <widget class="QLabel" name="label">
         <property name="text">
          <string>TextLabel</string>
         </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
        </widget>
       </item>
-      <item row="1" column="0">
-       <widget class="QLabel" name="label_3">
+      <item row="0" column="2" rowspan="4">
+       <widget class="QLabel" name="label_2">
         <property name="text">
          <string>TextLabel</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="1" rowspan="2">
-       <widget class="QLabel" name="label_2">
+      <item row="0" column="1" rowspan="4">
+       <widget class="Line" name="line_2">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_4">
         <property name="text">
          <string>TextLabel</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>TextLabel</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_5">
+        <property name="text">
+         <string>TextLabel</string>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignCenter</set>
         </property>
        </widget>
       </item>
@@ -48,15 +114,10 @@
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout" stretch="5,1,3">
       <item>
-       <layout class="QVBoxLayout" name="verticalLayout">
+       <layout class="QVBoxLayout" name="verticalLayout" stretch="1,0">
         <item>
-         <widget class="QTextBrowser" name="textBrowser">
-          <property name="lineWrapMode">
-           <enum>QTextEdit::WidgetWidth</enum>
-          </property>
-          <property name="readOnly">
-           <bool>false</bool>
-          </property>
+         <widget class="QWidget" name="widget" native="true">
+          <layout class="QVBoxLayout" name="verticalLayout_5"/>
          </widget>
         </item>
         <item>
@@ -72,8 +133,8 @@
             </property>
             <property name="iconSize">
              <size>
-              <width>24</width>
-              <height>24</height>
+              <width>16</width>
+              <height>16</height>
              </size>
             </property>
             <property name="toolButtonStyle">
@@ -92,8 +153,8 @@
             </property>
             <property name="iconSize">
              <size>
-              <width>24</width>
-              <height>24</height>
+              <width>16</width>
+              <height>16</height>
              </size>
             </property>
             <property name="checkable">
@@ -115,8 +176,8 @@
             </property>
             <property name="iconSize">
              <size>
-              <width>24</width>
-              <height>24</height>
+              <width>16</width>
+              <height>16</height>
              </size>
             </property>
             <property name="toolButtonStyle">
@@ -135,8 +196,8 @@
             </property>
             <property name="iconSize">
              <size>
-              <width>24</width>
-              <height>24</height>
+              <width>16</width>
+              <height>16</height>
              </size>
             </property>
             <property name="toolButtonStyle">
@@ -150,9 +211,6 @@
       </item>
       <item>
        <widget class="Line" name="line">
-        <property name="frameShadow">
-         <enum>QFrame::Sunken</enum>
-        </property>
         <property name="orientation">
          <enum>Qt::Vertical</enum>
         </property>
@@ -160,6 +218,21 @@
       </item>
       <item>
        <layout class="QVBoxLayout" name="verticalLayout_2">
+        <property name="spacing">
+         <number>6</number>
+        </property>
+        <property name="leftMargin">
+         <number>1</number>
+        </property>
+        <property name="topMargin">
+         <number>1</number>
+        </property>
+        <property name="rightMargin">
+         <number>1</number>
+        </property>
+        <property name="bottomMargin">
+         <number>1</number>
+        </property>
         <item>
          <spacer name="verticalSpacer_2">
           <property name="orientation">
@@ -175,6 +248,15 @@
         </item>
         <item>
          <widget class="QComboBox" name="comboBox">
+          <property name="insertPolicy">
+           <enum>QComboBox::InsertAtBottom</enum>
+          </property>
+          <property name="duplicatesEnabled">
+           <bool>false</bool>
+          </property>
+          <property name="frame">
+           <bool>true</bool>
+          </property>
           <item>
            <property name="text">
             <string>无调休</string>
@@ -228,7 +310,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>413</width>
+     <width>403</width>
      <height>18</height>
     </rect>
    </property>
