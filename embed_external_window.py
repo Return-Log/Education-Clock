@@ -1,3 +1,4 @@
+import psutil
 import win32gui
 import win32con
 import win32process
@@ -69,3 +70,24 @@ class ExternalWindowEmbedder:
         if event.type() == QEvent.Type.Resize:
             self.adjust_container_size()
         return super().eventFilter(obj, event)
+
+    def restore_window_to_desktop(self, terminate_process=False):
+        if self.external_hwnd:
+            try:
+                # 将窗口设置回正常的顶级窗口样式
+                win32gui.SetWindowLong(self.external_hwnd, win32con.GWL_STYLE, win32con.WS_OVERLAPPEDWINDOW | win32con.WS_VISIBLE)
+                # 移除父窗口关联
+                win32gui.SetParent(self.external_hwnd, 0)
+                # 显示并激活窗口
+                win32gui.ShowWindow(self.external_hwnd, win32con.SW_RESTORE)
+                win32gui.SetForegroundWindow(self.external_hwnd)
+
+                if terminate_process:
+                    # 获取窗口对应的进程ID
+                    _, pid = win32process.GetWindowThreadProcessId(self.external_hwnd)
+                    # 使用psutil库结束进程
+                    process = psutil.Process(pid)
+                    process.terminate()
+                    process.wait()  # 等待进程真正终止
+            except Exception as e:
+                print(f"Error restoring or terminating window: {e}")

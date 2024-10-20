@@ -1,38 +1,78 @@
 * {
-    font-family: "凤凰点阵体 16px";
+    font-family: "凤凰点阵体 16px", "微软雅黑", "Microsoft YaHei", sans-serif; /* 优先使用凤凰点阵体，如果不可用则使用微软雅黑 */
     font-size: 16px;
 }
 
+/* 选择名为 centralwidget 的部件 */
+#centralwidget {
+    font-family: "凤凰点阵体 16px", "微软雅黑", "Microsoft YaHei", sans-serif; /* 字体设置 */
+    font-size: 16px;
+    background-image: url(./icon/background.jpg); /* 设置背景图片 */
+    background-repeat: no-repeat; /* 不重复背景图片 */
+    background-position: center; /* 背景图片居中 */
+    background-attachment: fixed; /* 固定背景图片 */
+}
+
+#widget_3 {
+    background-color: rgba(211, 211, 211, 0.7); /* 半透明浅灰色 */
+    padding: 2px;  /* 增加内边距 */
+    border-radius: 5px;  /* 圆角 */
+}
+
 QLabel[timetable="intime"] {
-    color: green;
+    color: white;  /* 文字颜色为白色 */
     font-size: 40px;
+    border: 2px solid #8f8f91;         /* 设置边框粗细、样式、颜色 */
+    border-radius: 6px;                /* 设置边框圆角 */
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                      stop: 0 #4fc3f7, stop: 1 #039be5); /* 中蓝到深蓝渐变背景 */
 }
 
 QLabel[timetable="untimely"] {
-    color: gray;
+    color: white;  /* 文字颜色为白色 */
     font-size: 40px;
+    border: 2px solid #8f8f91;         /* 设置边框粗细、样式、颜色 */
+    border-radius: 6px;                /* 设置边框圆角 */
+    background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                      stop: 0 #1a2a3a, stop: 1 #0d1b2a); /* 黑蓝渐变背景 */
 }
 
+
+/* 时间相关标签 */
 QLabel[time="time"] {
-    color: green;
+    color: #007BFF;  /* 深蓝色 */
     font-weight: bold;
     font-size: 50px;
 }
 
 QLabel[time="date"] {
-    color: green;
+    color: #007BFF;  /* 深蓝色 */
     font-size: 30px;
-
 }
 
 QLabel[time="week"] {
-    color: red;
+    color: #FF4500;  /* 橙红色 */
     font-size: 30px;
-
 }
 
 QLabel[time="enddate"] {
-    color: red;
+    color: #FF4500;  /* 橙红色 */
     font-size: 30px;
+}
 
+/* 天气相关标签 */
+QLabel[weather="now"] {
+    font-size: 18px;
+    color: #007BFF;  /* 深蓝色 */
+    background-color: #E6F7FF;  /* 浅蓝色背景 */
+    padding: 2px;  /* 增加内边距 */
+    border-radius: 5px;  /* 圆角 */
+}
+
+QLabel[weather="next"] {
+    font-size: 16px;
+    color: #FF4500;  /* 橙红色 */
+    background-color: #FFF0F5;  /* 浅粉色背景 */
+    padding: 2px;  /* 增加内边距 */
+    border-radius: 5px;  /* 圆角 */
 }

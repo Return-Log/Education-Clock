@@ -1,9 +1,9 @@
 import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget
 from PyQt6.uic import loadUi
-from PyQt6.QtCore import QTimer, Qt
+from PyQt6.QtCore import QTimer, Qt, QUrl
 from PyQt6.QtWidgets import QMessageBox
-from PyQt6.QtGui import QCloseEvent
+from PyQt6.QtGui import QCloseEvent, QDesktopServices
 from PyQt6.QtCore import QSettings
 from datetime import datetime
 import json
@@ -12,6 +12,8 @@ from auto_cctv_controller import AutoCCTVController  # 导入自动新闻联播�
 from shutdown_module import ShutdownModule  # 导入关机模块
 from time_module import TimeModule  # 导入时间模块
 from embed_external_window import ExternalWindowEmbedder  # 导入外部窗口嵌入模块
+from weather_module import WeatherModule
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -30,6 +32,10 @@ class MainWindow(QMainWindow):
         # 初始更新
         self.update_timetable()
 
+        # 调用 setup_weather_module 方法并添加调试信息
+        print("Calling setup_weather_module")
+        self.setup_weather_module()
+
         # 启动定时器以每分钟检查一次设置
         self.settings_timer = QTimer(self)
         self.settings_timer.timeout.connect(self.check_settings)
@@ -37,6 +43,8 @@ class MainWindow(QMainWindow):
 
         # 初始化时间模块
         self.time_module = TimeModule(self)
+
+        self.embedder = None  # 用来保存 ExternalWindowEmbedder 实例
 
         # 保存和恢复窗口大小和位置
         self.restore_window_geometry()
@@ -48,6 +56,24 @@ class MainWindow(QMainWindow):
 
         # 读取 data/exe.txt 文件
         self.read_exe_file()
+
+        # 在状态栏中添加一个带有超链接的 QLabel
+        self.add_github_link_to_statusbar()
+
+    def add_github_link_to_statusbar(self):
+        """在状态栏中添加一个带有超链接的 QLabel"""
+        # 创建一个 QLabel，并设置其为超链接
+        self.github_link_label = QLabel(
+            '<a href="https://github.com/yourusername/yourrepository">GPLv3 License GitHub Repository v3.0</a>', self)
+        self.github_link_label.setOpenExternalLinks(True)  # 允许打开外部链接
+        self.github_link_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)  # 允许与文本交互
+        self.github_link_label.setCursor(Qt.CursorShape.PointingHandCursor)  # 改变鼠标悬停时的光标样式
+
+        # 获取状态栏
+        status_bar = self.statusBar()
+
+        # 将 QLabel 添加到状态栏中作为永久性部件
+        status_bar.addPermanentWidget(self.github_link_label)
 
     def show_message(self, message):
         # 创建 QMessageBox
@@ -79,8 +105,8 @@ class MainWindow(QMainWindow):
         widget = self.findChild(QWidget, "widget")
         if widget is not None:
             # 在 widget 中插入外部窗口
-            embedder = ExternalWindowEmbedder(widget, target_exe_name, self.status_callback)
-            embedder.find_and_embed_window()
+            self.embedder = ExternalWindowEmbedder(widget, target_exe_name, self.status_callback)
+            self.embedder.find_and_embed_window()
         else:
             self.show_message("找不到 widget，请检查 UI 文件")
 
@@ -134,6 +160,16 @@ class MainWindow(QMainWindow):
             del self.shutdown_module
             self.shutdown_module = None  # 清除引用
 
+    def setup_weather_module(self):
+        widget_2 = self.findChild(QWidget, "widget_2")
+        if widget_2 is not None:
+            self.weather_module = WeatherModule(widget_2)
+            layout = QVBoxLayout()
+            layout.addWidget(self.weather_module)
+            widget_2.setLayout(layout)
+        else:
+            self.show_message("找不到 widget_2，请检查 UI 文件")
+
     def restore_window_geometry(self):
         """恢复窗口大小和位置"""
         settings = QSettings("Log", "EC")
@@ -159,12 +195,16 @@ class MainWindow(QMainWindow):
             self.move(default_x, default_y)
 
     def closeEvent(self, event):
-        """在窗口关闭时保存窗口大小和位置"""
+        """在窗口关闭时保存窗口大小和位置，并恢复嵌入的窗口到桌面或终止其进程"""
         settings = QSettings("Log", "EC")
         settings.setValue("windowGeometry", self.saveGeometry())
         settings.setValue("windowPosition", self.pos())
-        event.accept()
 
+        # 恢复嵌入的窗口到桌面或终止其进程
+        if self.embedder and self.embedder.external_hwnd:
+            self.embedder.restore_window_to_desktop(terminate_process=True)  # 设置为True将终止进程
+
+        event.accept()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
