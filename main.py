@@ -60,6 +60,11 @@ class MainWindow(QMainWindow):
         # 在状态栏中添加一个带有超链接的 QLabel
         self.add_github_link_to_statusbar()
 
+        # 设置一个定时器来等待8秒
+        self.initial_delay_timer = QTimer(self)
+        self.initial_delay_timer.timeout.connect(self.activate_and_embed_window)
+        self.initial_delay_timer.start(8000)  # 等待8秒
+
     def add_github_link_to_statusbar(self):
         """在状态栏中添加一个带有超链接的 QLabel"""
         # 创建一个 QLabel，并设置其为超链接
@@ -92,7 +97,7 @@ class MainWindow(QMainWindow):
                 target_exe_name = file.read().strip()
                 if target_exe_name:
                     # 如果文件不为空，初始化外部窗口嵌入器
-                    QTimer.singleShot(8000, lambda: self.embed_external_window(target_exe_name))
+                    self.target_exe_name = target_exe_name
                 else:
                     # 如果文件为空，显示一个消息
                     self.show_message("没有指定要嵌入的程序")
@@ -100,12 +105,20 @@ class MainWindow(QMainWindow):
             # 如果文件不存在，显示一个消息
             self.show_message("data/exe.txt 文件不存在")
 
-    def embed_external_window(self, target_exe_name):
+    def activate_and_embed_window(self):
+        # 激活主窗口
+        self.activateWindow()
+        self.raise_()
+
+        # 等待一段时间以确保主窗口获得焦点
+        QTimer.singleShot(500, self.embed_external_window)
+
+    def embed_external_window(self):
         # 找到 widget
         widget = self.findChild(QWidget, "widget")
         if widget is not None:
             # 在 widget 中插入外部窗口
-            self.embedder = ExternalWindowEmbedder(widget, target_exe_name, self.status_callback)
+            self.embedder = ExternalWindowEmbedder(widget, self.target_exe_name, self.status_callback, self)  # 传递主窗口实例
             self.embedder.find_and_embed_window()
         else:
             self.show_message("找不到 widget，请检查 UI 文件")
