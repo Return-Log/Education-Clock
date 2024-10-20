@@ -11,9 +11,8 @@ from timetable_module import TimetableModule
 from auto_cctv_controller import AutoCCTVController  # 导入自动新闻联播模块
 from shutdown_module import ShutdownModule  # 导入关机模块
 from time_module import TimeModule  # 导入时间模块
-from embed_external_window import ExternalWindowEmbedder  # 导入外部窗口嵌入模块
 from weather_module import WeatherModule
-
+from embed_external_window import ExternalWindowEmbedder  # 导入外部窗口嵌入模块
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -62,7 +61,8 @@ class MainWindow(QMainWindow):
 
         # 设置一个定时器来等待8秒
         self.initial_delay_timer = QTimer(self)
-        self.initial_delay_timer.timeout.connect(self.activate_and_embed_window)
+        self.initial_delay_timer.timeout.connect(self.activate_and_find_window)
+        self.initial_delay_timer.setSingleShot(True)  # 设置为单次定时器
         self.initial_delay_timer.start(8000)  # 等待8秒
 
     def add_github_link_to_statusbar(self):
@@ -105,21 +105,17 @@ class MainWindow(QMainWindow):
             # 如果文件不存在，显示一个消息
             self.show_message("data/exe.txt 文件不存在")
 
-    def activate_and_embed_window(self):
-        # 激活主窗口
+    def activate_and_find_window(self):
+        # 先使主窗口成为焦点
         self.activateWindow()
         self.raise_()
 
-        # 等待一段时间以确保主窗口获得焦点
-        QTimer.singleShot(500, self.embed_external_window)
-
-    def embed_external_window(self):
         # 找到 widget
         widget = self.findChild(QWidget, "widget")
         if widget is not None:
             # 在 widget 中插入外部窗口
             self.embedder = ExternalWindowEmbedder(widget, self.target_exe_name, self.status_callback, self)  # 传递主窗口实例
-            self.embedder.find_and_embed_window()
+            self.embedder.find_and_embed_window_once()
         else:
             self.show_message("找不到 widget，请检查 UI 文件")
 
