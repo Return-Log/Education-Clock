@@ -1,9 +1,8 @@
 import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget
 from PyQt6.uic import loadUi
-from PyQt6.QtCore import QTimer, Qt, QUrl
+from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtWidgets import QMessageBox
-from PyQt6.QtGui import QCloseEvent, QDesktopServices
 from PyQt6.QtCore import QSettings
 from datetime import datetime
 import json
@@ -32,7 +31,6 @@ class MainWindow(QMainWindow):
         self.update_timetable()
 
         # 调用 setup_weather_module 方法并添加调试信息
-        print("Calling setup_weather_module")
         self.setup_weather_module()
 
         # 启动定时器以每分钟检查一次设置
@@ -59,11 +57,11 @@ class MainWindow(QMainWindow):
         # 在状态栏中添加一个带有超链接的 QLabel
         self.add_github_link_to_statusbar()
 
-        # 设置一个定时器来等待8秒
+        # 设置一个定时器来等待1秒
         self.initial_delay_timer = QTimer(self)
         self.initial_delay_timer.timeout.connect(self.activate_and_find_window)
         self.initial_delay_timer.setSingleShot(True)  # 设置为单次定时器
-        self.initial_delay_timer.start(8000)  # 等待8秒
+        self.initial_delay_timer.start(1000)# 等待1秒
 
     def add_github_link_to_statusbar(self):
         """在状态栏中添加一个带有超链接的 QLabel"""
@@ -89,7 +87,7 @@ class MainWindow(QMainWindow):
 
         # 显示消息框并设置自动关闭
         msg_box.show()
-        QTimer.singleShot(3000, msg_box.close)  # 3秒后关闭消息框
+        QTimer.singleShot(2000, msg_box.close)  # 3秒后关闭消息框
 
     def read_exe_file(self):
         try:
@@ -128,8 +126,8 @@ class MainWindow(QMainWindow):
         self.shutdown_module = None
         self.cctv_controller = None
         self.load_settings()  # 确保设置已加载
-        self.init_news_module()
         self.init_shutdown_module()  # 在设置加载后初始化关机模块
+        self.init_news_module()
 
     def update_timetable(self):
         current_time = datetime.now().time()
@@ -152,10 +150,12 @@ class MainWindow(QMainWindow):
 
     def init_news_module(self):
         """根据设置初始化新闻联播模块"""
-        if self.news_status == '开启' and not hasattr(self, 'cctv_controller'):
-            self.cctv_controller = AutoCCTVController()
+        if self.news_status == '开启':
+            if not hasattr(self, 'cctv_controller') or self.cctv_controller is None:
+              self.cctv_controller = AutoCCTVController()  # 确保初始化时自动启动定时器
         elif self.news_status == '关闭' and hasattr(self, 'cctv_controller'):
-            self.cctv_controller.stop_timers()
+            if self.cctv_controller is not None:
+              self.cctv_controller.stop_timers()
             del self.cctv_controller
 
     def init_shutdown_module(self):

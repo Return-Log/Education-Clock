@@ -59,19 +59,19 @@
        <widget class="QWidget" name="widget_3" native="true">
         <layout class="QVBoxLayout" name="verticalLayout_4">
          <property name="spacing">
-          <number>1</number>
+          <number>0</number>
          </property>
          <property name="leftMargin">
-          <number>1</number>
+          <number>0</number>
          </property>
          <property name="topMargin">
-          <number>1</number>
+          <number>0</number>
          </property>
          <property name="rightMargin">
-          <number>1</number>
+          <number>0</number>
          </property>
          <property name="bottomMargin">
-          <number>1</number>
+          <number>0</number>
          </property>
          <item>
           <widget class="QLabel" name="label">
@@ -144,10 +144,6 @@
             <property name="text">
              <string>打开U盘</string>
             </property>
-            <property name="icon">
-             <iconset>
-              <normaloff>../icon/open.svg</normaloff>../icon/open.svg</iconset>
-            </property>
             <property name="iconSize">
              <size>
               <width>16</width>
@@ -163,10 +159,6 @@
            <widget class="QToolButton" name="toolButton_2">
             <property name="text">
              <string>弹出U盘</string>
-            </property>
-            <property name="icon">
-             <iconset>
-              <normaloff>../icon/close.svg</normaloff>../icon/close.svg</iconset>
             </property>
             <property name="iconSize">
              <size>
@@ -187,10 +179,6 @@
             <property name="text">
              <string>button</string>
             </property>
-            <property name="icon">
-             <iconset>
-              <normaloff>../icon/kaoshi.svg</normaloff>../icon/kaoshi.svg</iconset>
-            </property>
             <property name="iconSize">
              <size>
               <width>16</width>
@@ -206,10 +194,6 @@
            <widget class="QToolButton" name="toolButton_3">
             <property name="text">
              <string>设置</string>
-            </property>
-            <property name="icon">
-             <iconset>
-              <normaloff>../icon/set.svg</normaloff>../icon/set.svg</iconset>
             </property>
             <property name="iconSize">
              <size>

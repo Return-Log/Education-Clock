@@ -4,46 +4,62 @@ import win32con
 import win32process
 import win32api
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget
-from PyQt6.QtCore import Qt, QEvent
-from PyQt6.QtGui import QWindow, QScreen
+from PyQt6.QtCore import Qt, QEvent, QTimer
+from PyQt6.QtGui import QWindow
 import pywintypes
+import subprocess
+import time
 
 class ExternalWindowEmbedder:
-    def __init__(self, parent_widget, target_exe_name, status_callback, main_window):
+    def __init__(self, parent_widget, target_exe_path, status_callback, main_window):
         self.parent_widget = parent_widget
-        self.target_exe_name = target_exe_name.lower()
+        self.target_exe_path = target_exe_path
         self.external_hwnd = None
         self.embedded_window = None
         self.status_callback = status_callback  # 回调函数，用于更新状态
         self.main_window = main_window  # 主窗口的引用
         self.init_ui()
 
+        # 启动exe文件
+        self.start_external_process()
+
+        # 使用定时器定期检查窗口是否存在
+        self.check_window_timer = QTimer()
+        self.check_window_timer.timeout.connect(self.find_and_embed_window_once)
+        self.check_window_timer.start(1000)  # 每隔1秒检查一次窗口
+
     def init_ui(self):
-        # 创建一个垂直布局
         layout = QVBoxLayout()
         self.parent_widget.setLayout(layout)
 
+    def start_external_process(self):
+        try:
+            # 启动目标exe文件
+            self.process = subprocess.Popen(self.target_exe_path)
+            time.sleep(1)  # 确保exe有时间启动
+        except Exception as e:
+            self.status_callback(f"启动 {self.target_exe_path} 失败: {e}")
+
     def find_and_embed_window_once(self):
-        # 查找目标进程
-        def enum_windows_callback(hwnd, lparam):
+        # 查找目标进程的窗口
+        def enum_windows_callback(hwnd, _):
             if win32gui.IsWindowVisible(hwnd) and win32gui.GetWindowText(hwnd):
                 try:
                     _, pid = win32process.GetWindowThreadProcessId(hwnd)
-                    h_process = win32api.OpenProcess(win32con.PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
-                    exe_name = win32process.GetModuleFileNameEx(h_process, 0).lower()
-                    if self.target_exe_name in exe_name:
+                    if pid == self.process.pid:
                         self.external_hwnd = hwnd
                         return False  # 停止枚举
                 except pywintypes.error as e:
-                    self.status_callback(f"无法访问进程: {e}")
+                    self.status_callback(f"无法访问进程窗口: {e}")
             return True
 
         win32gui.EnumWindows(enum_windows_callback, None)
 
         if self.external_hwnd:
+            self.check_window_timer.stop()  # 停止定时器
             self.embed_window(self.external_hwnd)
         else:
-            self.status_callback(f"未找到 {self.target_exe_name} 的窗口")
+            self.status_callback(f"未找到 {self.target_exe_path} 的窗口")
 
     def embed_window(self, hwnd):
         # 获取外部窗口的句柄
@@ -72,11 +88,6 @@ class ExternalWindowEmbedder:
             rect = win32gui.GetClientRect(self.external_hwnd)
             self.parent_widget.resize(rect[2], rect[3])
 
-    def eventFilter(self, obj, event):
-        if event.type() == QEvent.Type.Resize:
-            self.adjust_container_size()
-        return super().eventFilter(obj, event)
-
     def restore_window_to_desktop(self, terminate_process=False):
         if self.external_hwnd:
             try:
@@ -89,11 +100,8 @@ class ExternalWindowEmbedder:
                 win32gui.SetForegroundWindow(self.external_hwnd)
 
                 if terminate_process:
-                    # 获取窗口对应的进程ID
-                    _, pid = win32process.GetWindowThreadProcessId(self.external_hwnd)
-                    # 使用psutil库结束进程
-                    process = psutil.Process(pid)
-                    process.terminate()
-                    process.wait()  # 等待进程真正终止
+                    # 终止exe进程
+                    self.process.terminate()
+                    self.process.wait()  # 等待进程真正终止
             except Exception as e:
-                print(f"Error restoring or terminating window: {e}")
+                print(f"恢复窗口或终止进程时出错: {e}")

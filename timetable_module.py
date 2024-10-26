@@ -1,7 +1,7 @@
 import json
 from PyQt6.QtWidgets import QLabel, QMainWindow
 from datetime import time, datetime
-
+from PyQt6.QtCore import Qt
 
 class TimetableModule:
     def __init__(self, main_window: QMainWindow):
@@ -37,6 +37,7 @@ class TimetableModule:
         label = QLabel(f"{subject}")
         label.setProperty("timetable", "intime" if is_intime else "untimely")
         label.setStyleSheet(label.styleSheet())  # 应用样式
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)  # 设置文本居中
         # 在弹簧之前插入课程表标签（顶部）
         self.layout.insertWidget(self.layout.count() - 2, label)
         self.labels.append(label)

@@ -1,7 +1,5 @@
-
 import sys
 from datetime import datetime
-
 import requests
 from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout
 from PyQt6.QtCore import Qt, QTimer
@@ -52,12 +50,12 @@ class WeatherModule(QWidget):
         self.real_time_weather_label = QLabel(self)
         self.real_time_weather_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self.real_time_weather_label.setProperty("weather", "now")  # 设置样式属性
-        self.real_time_weather_label.setContentsMargins(1, 1, 1, 1)  # 设置边距为1像素
+        self.real_time_weather_label.setContentsMargins(0, 0, 0, 0)  # 设置边距为1像素
 
         self.forecast_weather_label = QLabel(self)
         self.forecast_weather_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self.forecast_weather_label.setProperty("weather", "next")  # 设置样式属性
-        self.forecast_weather_label.setContentsMargins(1, 1, 1, 1)  # 设置边距为1像素
+        self.forecast_weather_label.setContentsMargins(0, 0, 0, 0)  # 设置边距为1像素
 
         layout = QVBoxLayout()
         layout.addWidget(self.real_time_weather_label)
@@ -65,7 +63,7 @@ class WeatherModule(QWidget):
         self.setLayout(layout)
 
         # 设置 layout 的边距为 1 像素
-        layout.setContentsMargins(1, 1, 1, 1)
+        layout.setContentsMargins(0, 0, 0, 0)
 
     def load_stylesheet(self):
         # 加载 QSS 文件
@@ -85,15 +83,18 @@ class WeatherModule(QWidget):
 
         lat, lon = self.location
 
-        # 请求和风天气实时天气 API
-        weather_url = f"https://devapi.qweather.com/v7/weather/now?location={lon},{lat}&key={self.api_key}&lang=zh"
-        response = requests.get(weather_url)
+        try:
+            # 请求和风天气实时天气 API
+            weather_url = f"https://devapi.qweather.com/v7/weather/now?location={lon},{lat}&key={self.api_key}&lang=zh"
+            response = requests.get(weather_url)
 
-        if response.status_code == 200:
-            weather_data = response.json()
-            self.parse_real_time_weather_data(weather_data)
-        else:
-            self.display_error("获取实时天气信息失败")
+            if response.status_code == 200:
+                weather_data = response.json()
+                self.parse_real_time_weather_data(weather_data)
+            else:
+                self.display_error(f"获取实时天气信息失败 (状态码: {response.status_code})")
+        except requests.RequestException as e:
+            self.display_error(f"网络请求失败: {e}")
 
     def update_forecast_weather(self):
         if not self.api_key or not self.location:
@@ -101,15 +102,18 @@ class WeatherModule(QWidget):
 
         lat, lon = self.location
 
-        # 请求和风天气3天预报 API
-        forecast_url = f"https://devapi.qweather.com/v7/weather/3d?location={lon},{lat}&key={self.api_key}&lang=zh"
-        response = requests.get(forecast_url)
+        try:
+            # 请求和风天气3天预报 API
+            forecast_url = f"https://devapi.qweather.com/v7/weather/3d?location={lon},{lat}&key={self.api_key}&lang=zh"
+            response = requests.get(forecast_url)
 
-        if response.status_code == 200:
-            forecast_data = response.json()
-            self.parse_forecast_weather_data(forecast_data)
-        else:
-            self.display_error("获取天气预报信息失败")
+            if response.status_code == 200:
+                forecast_data = response.json()
+                self.parse_forecast_weather_data(forecast_data)
+            else:
+                self.display_error(f"获取天气预报信息失败 (状态码: {response.status_code})")
+        except requests.RequestException as e:
+            self.display_error(f"网络请求失败: {e}")
 
     def parse_real_time_weather_data(self, data):
         try:
@@ -125,7 +129,7 @@ class WeatherModule(QWidget):
             humidity = now['humidity']  # 湿度
             text = now['text']  # 天气描述
 
-            real_time_text = f"当前: {text}\n温度: {temp}°C\n体感: {feels_like}°C\n湿度: {humidity}%\n风速: {wind_speed} km/h"
+            real_time_text = f"当前: {text}\n温度: {temp}°C 体感: {feels_like}°C\n湿度: {humidity}%\n风速: {wind_speed} km/h"
             self.real_time_weather_label.setText(real_time_text)
 
         except KeyError:
