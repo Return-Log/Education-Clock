@@ -92,9 +92,9 @@ class WeatherModule(QWidget):
                 weather_data = response.json()
                 self.parse_real_time_weather_data(weather_data)
             else:
-                self.display_error(f"获取实时天气信息失败 (状态码: {response.status_code})")
+                self.display_error(f"获取实时天气信息失败")
         except requests.RequestException as e:
-            self.display_error(f"网络请求失败: {e}")
+            self.display_error(f"网络请求失败")
 
     def update_forecast_weather(self):
         if not self.api_key or not self.location:
@@ -111,9 +111,9 @@ class WeatherModule(QWidget):
                 forecast_data = response.json()
                 self.parse_forecast_weather_data(forecast_data)
             else:
-                self.display_error(f"获取天气预报信息失败 (状态码: {response.status_code})")
+                self.display_error(f"获取天气预报信息失败")
         except requests.RequestException as e:
-            self.display_error(f"网络请求失败: {e}")
+            self.display_error(f"网络请求失败")
 
     def parse_real_time_weather_data(self, data):
         try:
@@ -144,8 +144,8 @@ class WeatherModule(QWidget):
             forecast_today = data['daily'][0]
             forecast_tomorrow = data['daily'][1]
 
-            today_weather = f"今:{forecast_today['textDay']}, {forecast_today['tempMax']}至{forecast_today['tempMin']}°C"
-            tomorrow_weather = f"明:{forecast_tomorrow['textDay']}, {forecast_tomorrow['tempMax']}至{forecast_tomorrow['tempMin']}°C"
+            today_weather = f"今: {forecast_today['textDay']}, {forecast_today['tempMax']}至{forecast_today['tempMin']}°C"
+            tomorrow_weather = f"明: {forecast_tomorrow['textDay']}, {forecast_tomorrow['tempMax']}至{forecast_tomorrow['tempMin']}°C"
 
             forecast_text = f"{today_weather}\n{tomorrow_weather}"
             self.forecast_weather_label.setText(forecast_text)

@@ -28,6 +28,10 @@ class ExternalWindowEmbedder:
         self.check_window_timer.timeout.connect(self.find_and_embed_window_once)
         self.check_window_timer.start(1000)  # 每隔1秒检查一次窗口
 
+        # 枚举窗口的尝试次数
+        self.enum_attempts = 0
+        self.max_enum_attempts = 5
+
     def init_ui(self):
         layout = QVBoxLayout()
         self.parent_widget.setLayout(layout)
@@ -56,10 +60,13 @@ class ExternalWindowEmbedder:
         win32gui.EnumWindows(enum_windows_callback, None)
 
         if self.external_hwnd:
-            self.check_window_timer.stop()  # 停止定时器
+            self.check_window_timer.stop()  # 找到窗口后停止定时器
             self.embed_window(self.external_hwnd)
         else:
-            self.status_callback(f"未找到 {self.target_exe_path} 的窗口")
+            self.enum_attempts += 1
+            if self.enum_attempts >= self.max_enum_attempts:
+                self.check_window_timer.stop()  # 达到最大尝试次数后停止定时器
+                self.status_callback(f"未找到 {self.target_exe_path} 的窗口，已达到最大尝试次数")
 
     def embed_window(self, hwnd):
         # 获取外部窗口的句柄

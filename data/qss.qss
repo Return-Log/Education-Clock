@@ -59,9 +59,10 @@ QLabel {
 /* 特定标签样式 */
 QLabel[timetable="intime"] {
     color: #FFFFFF;  /* 文字颜色为白色 */
-    font-size: 30px;
+    font-size: 28px;
     border: 2px solid #32373E;         /* 设置边框粗细、样式、颜色 */
     border-radius: 6px;                /* 设置边框圆角 */
+    font-weight: bold;
     background-color: #4cc2ff;         /* 蓝色背景 */
     padding: 5px;                      /* 内边距 */
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* 阴影效果 */
@@ -69,7 +70,7 @@ QLabel[timetable="intime"] {
 
 QLabel[timetable="untimely"] {
     color: #FFFFFF;  /* 文字颜色为白色 */
-    font-size: 30px;
+    font-size: 28px;
     border: 2px solid #32373E;         /* 设置边框粗细、样式、颜色 */
     border-radius: 6px;                /* 设置边框圆角 */
     background-color: #1F242A;         /* 深灰色背景 */
@@ -81,50 +82,45 @@ QLabel[timetable="untimely"] {
 
 /* 时间相关标签 */
 QLabel[time="time"] {
-    color: #007BFF;  /* 深蓝色 */
+    color: #ffffff;  /* 白色 */
     border-radius: 0px;  /* 设置边框圆角 */
     padding: 0px;  /* 增加内边距 */
     font-weight: bold;
-    font-size: 50px;
+    font-size: 45px;
 }
 
 QLabel[time="date"] {
-    color: #007BFF;  /* 深蓝色 */
+    color: #ffffff;  /* 白色 */
     border-radius: 0px;  /* 设置边框圆角 */
     padding: 0px;  /* 增加内边距 */
-    font-size: 30px;
+    font-size: 28px;
 }
 
 QLabel[time="week"] {
-    color: #FF4500;  /* 橙红色 */
+    color: #4cc2ff;  /* 浅蓝色 */
     border-radius: 0px;  /* 设置边框圆角 */
     padding: 0px;  /* 增加内边距 */
-    font-size: 30px;
+    font-size: 28px;
 }
 
 QLabel[time="enddate"] {
-    color: #FF4500;  /* 橙红色 */
+    color: #4cc2ff;  /* 浅蓝色 */
     border-radius: 0px;  /* 设置边框圆角 */
     padding: 0px;  /* 增加内边距 */
-    font-size: 30px;
+    font-size: 28px;
 }
 
 /* 天气相关标签 */
 QLabel[weather="now"] {
     font-size: 18px;
-    color: #007BFF;  /* 深蓝色 */
+    color: #ffffff;  /* 白色 */
     padding: 0px;  /* 增加内边距 */
     border-radius: 5px;  /* 圆角 */
 }
 
 QLabel[weather="next"] {
     font-size: 20px;
-    color: #FF4500;  /* 橙红色 */
+    color: #4cc2ff;  /* 浅蓝色 */
     padding: 0px;  /* 增加内边距 */
     border-radius: 5px;  /* 圆角 */
-}
-
-#widget_2 {
-    padding: 0px;  /* 增加内边距 */
-
 }

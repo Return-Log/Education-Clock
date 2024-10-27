@@ -9,17 +9,16 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>403</width>
-    <height>642</height>
+    <width>432</width>
+    <height>680</height>
    </rect>
-  </property>
-  <property name="font">
-   <font>
-    <family>凤凰点阵体 16px</family>
-   </font>
   </property>
   <property name="windowTitle">
    <string>Education-Clock</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>../icon/icon.PNG</normaloff>../icon/icon.PNG</iconset>
   </property>
   <widget class="QWidget" name="centralwidget">
    <property name="sizePolicy">
@@ -28,9 +27,9 @@
      <verstretch>0</verstretch>
     </sizepolicy>
    </property>
-   <layout class="QVBoxLayout" name="verticalLayout_3" stretch="1,4">
+   <layout class="QVBoxLayout" name="verticalLayout_3" stretch="1,5">
     <property name="spacing">
-     <number>6</number>
+     <number>3</number>
     </property>
     <property name="sizeConstraint">
      <enum>QLayout::SetDefaultConstraint</enum>
@@ -61,6 +60,9 @@
          <property name="spacing">
           <number>0</number>
          </property>
+         <property name="sizeConstraint">
+          <enum>QLayout::SetDefaultConstraint</enum>
+         </property>
          <property name="leftMargin">
           <number>0</number>
          </property>
@@ -75,6 +77,12 @@
          </property>
          <item>
           <widget class="QLabel" name="label">
+           <property name="frameShape">
+            <enum>QFrame::NoFrame</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Sunken</enum>
+           </property>
            <property name="text">
             <string>TextLabel</string>
            </property>
@@ -129,12 +137,49 @@
      </layout>
     </item>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout" stretch="6,1,2">
+     <layout class="QHBoxLayout" name="horizontalLayout" stretch="10,1,2">
+      <property name="spacing">
+       <number>2</number>
+      </property>
+      <property name="sizeConstraint">
+       <enum>QLayout::SetDefaultConstraint</enum>
+      </property>
       <item>
-       <layout class="QVBoxLayout" name="verticalLayout" stretch="1,0">
+       <layout class="QVBoxLayout" name="verticalLayout" stretch="100,1">
         <item>
          <widget class="QWidget" name="widget" native="true">
-          <layout class="QVBoxLayout" name="verticalLayout_5"/>
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>360</width>
+            <height>500</height>
+           </size>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_5">
+           <property name="spacing">
+            <number>0</number>
+           </property>
+           <property name="sizeConstraint">
+            <enum>QLayout::SetDefaultConstraint</enum>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+          </layout>
          </widget>
         </item>
         <item>
@@ -306,17 +351,6 @@
     </item>
    </layout>
   </widget>
-  <widget class="QMenuBar" name="menubar">
-   <property name="geometry">
-    <rect>
-     <x>0</x>
-     <y>0</y>
-     <width>403</width>
-     <height>18</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <resources/>
  <connections/>

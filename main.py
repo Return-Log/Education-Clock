@@ -1,5 +1,5 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget
+from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget, QToolButton
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtWidgets import QMessageBox
@@ -12,6 +12,7 @@ from shutdown_module import ShutdownModule  # 导入关机模块
 from time_module import TimeModule  # 导入时间模块
 from weather_module import WeatherModule
 from embed_external_window import ExternalWindowEmbedder  # 导入外部窗口嵌入模块
+from settings_window import SettingsWindow  # 导入设置窗口类
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -54,29 +55,14 @@ class MainWindow(QMainWindow):
         # 读取 data/exe.txt 文件
         self.read_exe_file()
 
-        # 在状态栏中添加一个带有超链接的 QLabel
-        self.add_github_link_to_statusbar()
-
         # 设置一个定时器来等待1秒
         self.initial_delay_timer = QTimer(self)
         self.initial_delay_timer.timeout.connect(self.activate_and_find_window)
         self.initial_delay_timer.setSingleShot(True)  # 设置为单次定时器
-        self.initial_delay_timer.start(1000)# 等待1秒
+        self.initial_delay_timer.start(1000)  # 等待1秒
 
-    def add_github_link_to_statusbar(self):
-        """在状态栏中添加一个带有超链接的 QLabel"""
-        # 创建一个 QLabel，并设置其为超链接
-        self.github_link_label = QLabel(
-            '<a href="https://github.com/yourusername/yourrepository">GPLv3 License GitHub Repository v3.0</a>', self)
-        self.github_link_label.setOpenExternalLinks(True)  # 允许打开外部链接
-        self.github_link_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)  # 允许与文本交互
-        self.github_link_label.setCursor(Qt.CursorShape.PointingHandCursor)  # 改变鼠标悬停时的光标样式
-
-        # 获取状态栏
-        status_bar = self.statusBar()
-
-        # 将 QLabel 添加到状态栏中作为永久性部件
-        status_bar.addPermanentWidget(self.github_link_label)
+        # 连接 toolButton_3 到打开设置窗口的方法
+        self.toolButton_3.clicked.connect(self.open_settings_window)
 
     def show_message(self, message):
         # 创建 QMessageBox
@@ -87,7 +73,7 @@ class MainWindow(QMainWindow):
 
         # 显示消息框并设置自动关闭
         msg_box.show()
-        QTimer.singleShot(2000, msg_box.close)  # 3秒后关闭消息框
+        QTimer.singleShot(2000, msg_box.close)  # 2秒后关闭消息框
 
     def read_exe_file(self):
         try:
@@ -99,9 +85,11 @@ class MainWindow(QMainWindow):
                 else:
                     # 如果文件为空，显示一个消息
                     self.show_message("没有指定要嵌入的程序")
+                    self.target_exe_name = None
         except FileNotFoundError:
             # 如果文件不存在，显示一个消息
             self.show_message("data/exe.txt 文件不存在")
+            self.target_exe_name = None
 
     def activate_and_find_window(self):
         # 先使主窗口成为焦点
@@ -110,11 +98,11 @@ class MainWindow(QMainWindow):
 
         # 找到 widget
         widget = self.findChild(QWidget, "widget")
-        if widget is not None:
+        if widget is not None and self.target_exe_name:
             # 在 widget 中插入外部窗口
             self.embedder = ExternalWindowEmbedder(widget, self.target_exe_name, self.status_callback, self)  # 传递主窗口实例
             self.embedder.find_and_embed_window_once()
-        else:
+        elif widget is None:
             self.show_message("找不到 widget，请检查 UI 文件")
 
     def status_callback(self, message):
@@ -214,6 +202,12 @@ class MainWindow(QMainWindow):
             self.embedder.restore_window_to_desktop(terminate_process=True)  # 设置为True将终止进程
 
         event.accept()
+
+    def open_settings_window(self):
+        # 创建并显示设置窗口
+        settings_window = SettingsWindow(self)
+        settings_window.exec()
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
