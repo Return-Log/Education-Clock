@@ -75,7 +75,7 @@ class AutoCCTVController:
             # print(f"检测到设备: {device_info['name']}")
 
             # 如果设备有音频输出通道
-            if device_info['maxOutputChannels'] > 7:
+            if device_info['maxOutputChannels'] > 0:
                 # print("检测到音频输出设备")
                 audio_output_detected = True
                 break

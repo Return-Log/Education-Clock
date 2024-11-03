@@ -12,45 +12,12 @@ class SettingsWindow(QDialog):
         # 加载 setting.ui 文件
         loadUi('./ui/setting.ui', self)
 
-        # 初始化时读取 data/exe.txt 并更新 label_5
-        self.load_exe_path()
-
         # 设置 textBrowser 样式
         self.textBrowser.setStyleSheet("background-color: black; color: green; font-family: 'Courier New', Courier, monospace;")
 
         # 连接 tab_6 的激活事件
         self.tabWidget.currentChanged.connect(self.on_tab_changed)
 
-    def connect_signals(self):
-        # 连接 pushButton 的点击事件到 open_file_dialog 方法
-        self.pushButton.clicked.connect(self.open_file_dialog)
-
-    def open_file_dialog(self):
-        # 打开文件对话框，只允许选择 .exe 文件
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, "选择可执行文件", "", "Executable Files (*.exe)"
-        )
-        if file_path:
-            # 保存路径到 data/exe.txt
-            with open('data/exe.txt', 'w', encoding='utf-8') as file:
-                file.write(file_path)
-            # 更新 label_5 显示路径
-            self.label_5.setText(file_path)
-
-    def load_exe_path(self):
-        # 读取 data/exe.txt 文件内容
-        try:
-            with open('data/exe.txt', 'r', encoding='utf-8') as file:
-                exe_path = file.read().strip()
-                if exe_path:
-                    # 如果文件不为空，更新 label_5 显示路径
-                    self.label_5.setText(exe_path)
-                else:
-                    # 如果文件为空，显示默认文本
-                    self.label_5.setText("未选择文件")
-        except FileNotFoundError:
-            # 如果文件不存在，显示默认文本
-            self.label_5.setText("未选择文件")
 
     def on_tab_changed(self, index):
         # 当切换到 tab_6 时开始流式输出
@@ -77,14 +44,14 @@ class SettingsWindow(QDialog):
            \_____|_|\___/ \___|_|\_\                     
            """,
             "欢迎使用本软件！",
-            "版本: 3.1",
+            "版本: 3.2",
             "更新日志: ",
-            " - 嵌入窗口程序可由程序启动不再需要设置自启动",
-            " - 修复自动新闻联播没有运行问题",
-            " - 设置窗口初步实现",
+            " - 取消嵌入窗口，改为通知栏",
+            " - 使用钉钉机器人和远程服务器实现消息更新",
+            " - 增加运行稳定性",
             " - 界面美化",
             "作者: Return-Log",
-            "日期: 2024/10/27",
+            "日期: 2024/11/3",
             "项目仓库: https://github.com/Return-Log/Education-Clock",
             "本软件遵循CPL-3.0协议发布",
             "============================================",

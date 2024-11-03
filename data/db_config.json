@@ -1,0 +1,14 @@
+{
+    "db_config": {
+        "host": "",
+        "port": 3306,
+        "user": "",
+        "password": "",
+        "database": ""
+    },
+    "filter_conditions": {
+        "robot_names": [],
+        "sender_names": [],
+        "conversation_titles": [""]
+    }
+}

@@ -1,5 +1,5 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget, QToolButton
+from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget, QToolButton, QTextEdit
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtWidgets import QMessageBox
@@ -11,8 +11,10 @@ from auto_cctv_controller import AutoCCTVController  # 导入自动新闻联播�
 from shutdown_module import ShutdownModule  # 导入关机模块
 from time_module import TimeModule  # 导入时间模块
 from weather_module import WeatherModule
-from embed_external_window import ExternalWindowEmbedder  # 导入外部窗口嵌入模块
+
 from settings_window import SettingsWindow  # 导入设置窗口类
+from bulletin_board_module import BulletinBoardModule  # 导入公告板模块
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -42,7 +44,7 @@ class MainWindow(QMainWindow):
         # 初始化时间模块
         self.time_module = TimeModule(self)
 
-        self.embedder = None  # 用来保存 ExternalWindowEmbedder 实例
+
 
         # 保存和恢复窗口大小和位置
         self.restore_window_geometry()
@@ -52,17 +54,14 @@ class MainWindow(QMainWindow):
         self.show()
         self.lower()  # 将窗口置于最下层
 
-        # 读取 data/exe.txt 文件
-        self.read_exe_file()
 
-        # 设置一个定时器来等待1秒
-        self.initial_delay_timer = QTimer(self)
-        self.initial_delay_timer.timeout.connect(self.activate_and_find_window)
-        self.initial_delay_timer.setSingleShot(True)  # 设置为单次定时器
-        self.initial_delay_timer.start(1000)  # 等待1秒
+
 
         # 连接 toolButton_3 到打开设置窗口的方法
         self.toolButton_3.clicked.connect(self.open_settings_window)
+
+        # 初始化公告板模块
+        self.init_bulletin_board_module()
 
     def show_message(self, message):
         # 创建 QMessageBox
@@ -75,35 +74,9 @@ class MainWindow(QMainWindow):
         msg_box.show()
         QTimer.singleShot(2000, msg_box.close)  # 2秒后关闭消息框
 
-    def read_exe_file(self):
-        try:
-            with open('data/exe.txt', 'r', encoding='utf-8') as file:
-                target_exe_name = file.read().strip()
-                if target_exe_name:
-                    # 如果文件不为空，初始化外部窗口嵌入器
-                    self.target_exe_name = target_exe_name
-                else:
-                    # 如果文件为空，显示一个消息
-                    self.show_message("没有指定要嵌入的程序")
-                    self.target_exe_name = None
-        except FileNotFoundError:
-            # 如果文件不存在，显示一个消息
-            self.show_message("data/exe.txt 文件不存在")
-            self.target_exe_name = None
 
-    def activate_and_find_window(self):
-        # 先使主窗口成为焦点
-        self.activateWindow()
-        self.raise_()
 
-        # 找到 widget
-        widget = self.findChild(QWidget, "widget")
-        if widget is not None and self.target_exe_name:
-            # 在 widget 中插入外部窗口
-            self.embedder = ExternalWindowEmbedder(widget, self.target_exe_name, self.status_callback, self)  # 传递主窗口实例
-            self.embedder.find_and_embed_window_once()
-        elif widget is None:
-            self.show_message("找不到 widget，请检查 UI 文件")
+
 
     def status_callback(self, message):
         # 使用 show_message 方法显示消息
@@ -140,10 +113,10 @@ class MainWindow(QMainWindow):
         """根据设置初始化新闻联播模块"""
         if self.news_status == '开启':
             if not hasattr(self, 'cctv_controller') or self.cctv_controller is None:
-              self.cctv_controller = AutoCCTVController()  # 确保初始化时自动启动定时器
+                self.cctv_controller = AutoCCTVController()  # 确保初始化时自动启动定时器
         elif self.news_status == '关闭' and hasattr(self, 'cctv_controller'):
             if self.cctv_controller is not None:
-              self.cctv_controller.stop_timers()
+                self.cctv_controller.stop_timers()
             del self.cctv_controller
 
     def init_shutdown_module(self):
@@ -197,10 +170,6 @@ class MainWindow(QMainWindow):
         settings.setValue("windowGeometry", self.saveGeometry())
         settings.setValue("windowPosition", self.pos())
 
-        # 恢复嵌入的窗口到桌面或终止其进程
-        if self.embedder and self.embedder.external_hwnd:
-            self.embedder.restore_window_to_desktop(terminate_process=True)  # 设置为True将终止进程
-
         event.accept()
 
     def open_settings_window(self):
@@ -208,12 +177,20 @@ class MainWindow(QMainWindow):
         settings_window = SettingsWindow(self)
         settings_window.exec()
 
+    def init_bulletin_board_module(self):
+        text_edit = self.findChild(QTextEdit, "textEdit")
+        if text_edit is not None:
+            self.bulletin_board_module = BulletinBoardModule(self, text_edit)
+        else:
+            self.show_message("找不到 textEdit，请检查 UI 文件")
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     # 加载 QSS 文件
     with open('data/qss.qss', 'r', encoding="utf-8") as f:
         app.setStyleSheet(f.read())
+
     window = MainWindow()
     window.show()
     sys.exit(app.exec())

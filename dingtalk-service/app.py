@@ -15,17 +15,17 @@ app = Flask(__name__)
 # 数据库配置
 db_config = {
     "host": "localhost",
-    "user": "dingtalk",
-    "password": "CTBiGCemTzdjnnYd",
-    "database": "dingtalk_messages"
+    "user": "",
+    "password": "",
+    "database": ""
 }
 
 # 钉钉机器人配置
 robots = {
     "29464001": {
-        "agent_id": "29464001",
-        "app_key": "dingri1t4kfs8dhp0ps0",
-        "app_secret": "_jHGM5Xn9Cjg0vZu1dN4jqA3QKG14h1Y91ufHSR9imFc8GhUliPHoXgfGFzh0uFS"
+        "agent_id": "",
+        "app_key": "",
+        "app_secret": ""
     }
 }
 
