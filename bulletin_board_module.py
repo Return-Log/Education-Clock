@@ -100,30 +100,52 @@ class BulletinBoardModule:
         self.text_edit = text_edit
         self.timer = QTimer(self.main_window)
         self.timer.timeout.connect(self.update_bulletin_board)
-        self.timer.start(5000)  # 每隔5秒更新
         self.last_update_time = datetime.now()
         self.last_message_text = ""  # 用于记录最新的消息内容
         self.sound_effect = QSoundEffect()
         self.sound_effect.setSource(QUrl.fromLocalFile("icon/newmessage.wav"))
-        # self.sound_effect.setLoopCount(1)  # 确保音效只播放一次
         self.played_for_latest_message = False  # 标志位，用于控制每条新消息只播放一次音效
 
-    def update_bulletin_board(self):
+        # 初始化时检查配置文件
+        if not self.check_db_config():
+            self.timer.stop()  # 停止定时器，避免后续操作
+
+    def check_db_config(self):
         try:
             # 读取数据库配置和过滤条件
             with open('data/db_config.json', 'r', encoding='utf-8') as f:
                 config_data = json.load(f)
-                db_config = config_data["db_config"]
-                filter_conditions = config_data["filter_conditions"]
+                db_config = config_data.get("db_config", {})
 
-            self.worker = BulletinBoardWorker(db_config, filter_conditions)
-            self.worker.update_signal.connect(self.update_text_edit)
-            self.worker.start()
+            # 检查配置项是否为空
+            required_fields = ["host", "port", "user", "password", "database"]
+            for field in required_fields:
+                if not db_config.get(field):
+                    self.update_text_edit(f"Configuration Error: {field} is empty in db_config.json")
+                    return False
+
+            # 保存配置项
+            self.db_config = db_config
+            self.filter_conditions = config_data.get("filter_conditions", {})
+            self.timer.start(5000)  # 每隔5秒更新
+            return True
 
         except FileNotFoundError as e:
             self.update_text_edit(f"File Not Found Error: {str(e)}")
+            return False
         except json.JSONDecodeError as e:
             self.update_text_edit(f"JSON Decode Error: {str(e)}")
+            return False
+        except Exception as e:
+            self.update_text_edit(f"Unexpected Error: {str(e)}")
+            return False
+
+    def update_bulletin_board(self):
+        try:
+            self.worker = BulletinBoardWorker(self.db_config, self.filter_conditions)
+            self.worker.update_signal.connect(self.update_text_edit)
+            self.worker.start()
+
         except Exception as e:
             self.update_text_edit(f"Unexpected Error: {str(e)}")
 
@@ -161,6 +183,6 @@ class BulletinBoardModule:
 
     def cleanup(self):
         self.stop_timer()
-        if self.worker.isRunning():
+        if hasattr(self, 'worker') and self.worker.isRunning():
             self.worker.quit()
             self.worker.wait()
