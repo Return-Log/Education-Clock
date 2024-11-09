@@ -1,14 +1,14 @@
 {
     "db_config": {
-        "host": "",
+        "host": "39.104.57.128",
         "port": 3306,
-        "user": "",
-        "password": "",
-        "database": ""
+        "user": "dingtalk",
+        "password": "CTBiGCemTzdjnnYd",
+        "database": "dingtalk_messages"
     },
     "filter_conditions": {
         "robot_names": [],
         "sender_names": [],
-        "conversation_titles": [""]
+        "conversation_titles": ["高二二班消息推送"]
     }
 }

@@ -6,7 +6,6 @@ class SettingsWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setup_ui()
-        self.connect_signals()
 
     def setup_ui(self):
         # 加载 setting.ui 文件
@@ -61,9 +60,10 @@ class SettingsWindow(QDialog):
 
         # 将软件信息转换为包含换行符的字符串
         software_info_str = "\n".join(software_info) + "\n"
-        self.add_text_line(software_info_str, delay=10)  # 每个字符之间的延迟
+        self.add_text_line(software_info_str, delay=2)  # 每个字符之间的延迟
 
-    def add_text_line(self, text, delay=10):
+
+    def add_text_line(self, text, delay=2):
         self.target_text = text
         self.character_delay = delay
         self.current_index = 0
@@ -78,6 +78,12 @@ class SettingsWindow(QDialog):
             self.textBrowser.setTextCursor(cursor)
             self.current_index += 1
             QTimer.singleShot(self.character_delay, self.print_next_character)
+        else:
+            cursor = self.textBrowser.textCursor()
+            cursor.movePosition(cursor.MoveOperation.End)
+            cursor.insertHtml(
+                "<br><a href='https://github.com/Return-Log/Education-Clock' style='color:green;'>GitHub仓库</a>")
+            self.textBrowser.setTextCursor(cursor)
 
 # 主程序入口
 if __name__ == "__main__":
@@ -90,4 +96,5 @@ if __name__ == "__main__":
         app.setStyleSheet(f.read())
     window = SettingsWindow()
     window.show()
+
     sys.exit(app.exec())

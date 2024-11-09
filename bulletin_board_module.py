@@ -14,7 +14,7 @@ class DateTimeEncoder(json.JSONEncoder):
         return super(DateTimeEncoder, self).default(obj)
 
 class BulletinBoardWorker(QThread):
-    update_signal = pyqtSignal(str)
+    update_signal = pyqtSignal(str, bool)  # 新增一个布尔参数，表示是否播放提示音
 
     def __init__(self, db_config, filter_conditions):
         super().__init__()
@@ -22,50 +22,92 @@ class BulletinBoardWorker(QThread):
         self.filter_conditions = filter_conditions
 
     def run(self):
+        last_message = self.read_last_message_from_json()
+        new_messages, has_new_message = self.fetch_and_filter_messages(last_message)
+
+        # 更新 textEdit 并发送信号
+        formatted_text = self.format_text(new_messages)
+        self.update_signal.emit(formatted_text, has_new_message)
+
+    def read_last_message_from_json(self):
+        """ 读取 sql.json 文件中的最后一条消息 """
+        if os.path.exists('data/sql.json'):
+            try:
+                with open('data/sql.json', 'r', encoding='utf-8') as f:
+                    messages = json.load(f)
+                    if messages:
+                        return messages[0]  # 返回最后一条消息
+                    else:
+                        # 文件存在但内容为空
+                        return None
+            except json.JSONDecodeError:
+                # 文件为空或包含无效的 JSON 数据
+                return None
+        else:
+            # 文件不存在
+            return None
+
+    def fetch_and_filter_messages(self, last_message):
+        """ 从数据库中获取并过滤消息，同时检查是否有新消息 """
         try:
-            # 连接数据库
-            connection = pymysql.connect(
+            # 使用上下文管理器来管理数据库连接
+            with pymysql.connect(
                 host=self.db_config["host"],
                 port=self.db_config["port"],
                 user=self.db_config["user"],
                 password=self.db_config["password"],
                 database=self.db_config["database"],
                 cursorclass=pymysql.cursors.DictCursor
-            )
-            cursor = connection.cursor()
+            ) as connection:
+                with connection.cursor() as cursor:
+                    # 获取最近7天的数据
+                    start_date = datetime.now() - timedelta(days=7)
+                    query = """
+                    SELECT * FROM messages
+                    WHERE timestamp >= %s
+                    ORDER BY timestamp DESC
+                    """
+                    cursor.execute(query, (start_date,))
+                    rows = cursor.fetchall()
 
-            # 获取最近7天的数据
-            start_date = datetime.now() - timedelta(days=7)
-            query = """
-            SELECT * FROM messages
-            WHERE timestamp >= %s
-            ORDER BY timestamp DESC
-            """
-            cursor.execute(query, (start_date,))
-            rows = cursor.fetchall()
+                    # 过滤数据
+                    filtered_rows = self.filter_data(rows)
 
-            # 过滤数据
-            filtered_rows = self.filter_data(rows)
+                    # 检查是否有新消息
+                    has_new_message = False
+                    if last_message and filtered_rows:
+                        # 确保 last_message 不是 None
+                        if last_message and 'id' in last_message:
+                            has_new_message = last_message['id'] != filtered_rows[0]['id']  # 假设消息表有一个唯一的 id 字段
 
-            # 存储在 data/sql.json
-            with open('data/sql.json', 'w', encoding='utf-8') as f:
-                json.dump(filtered_rows, f, ensure_ascii=False, indent=4, cls=DateTimeEncoder)
+                    # 存储在 data/sql.json
+                    with open('data/sql.json', 'w', encoding='utf-8') as f:
+                        json.dump(filtered_rows, f, ensure_ascii=False, indent=4, cls=DateTimeEncoder)
 
-            # 更新 textEdit
-            formatted_text = self.format_text(filtered_rows)
-            self.update_signal.emit(formatted_text)
+                    return filtered_rows, has_new_message
 
         except pymysql.MySQLError as e:
-            self.update_signal.emit(f"Database Error: {str(e)}")
+            # 数据库错误
+            self.update_signal.emit(f"Database Error: {str(e)}", False)
+            return [], False
         except FileNotFoundError as e:
-            self.update_signal.emit(f"File Not Found Error: {str(e)}")
+            # 文件未找到错误
+            self.update_signal.emit(f"File Not Found Error: {str(e)}", False)
+            return [], False
         except json.JSONDecodeError as e:
-            self.update_signal.emit(f"JSON Decode Error: {str(e)}")
+            # JSON 解码错误
+            self.update_signal.emit(f"JSON Decode Error: {str(e)}", False)
+            return [], False
         except Exception as e:
-            self.update_signal.emit(f"Unexpected Error: {str(e)}")
-        finally:
-            if connection:
-                connection.close()
+            # 其他异常
+            if "Errno 99" in str(e) or "Errno 111" in str(e) or "Errno 10065" in str(e):
+                # 处理网络连接错误
+                self.update_signal.emit(f"Network Error: {str(e)}", False)
+                return [], False
+            else:
+                # 未知错误
+                self.update_signal.emit(f"Unexpected Error: {str(e)}", False)
+                return [], False
 
     def filter_data(self, rows):
         filtered_rows = []
@@ -100,11 +142,9 @@ class BulletinBoardModule:
         self.text_edit = text_edit
         self.timer = QTimer(self.main_window)
         self.timer.timeout.connect(self.update_bulletin_board)
-        self.last_update_time = datetime.now()
         self.last_message_text = ""  # 用于记录最新的消息内容
         self.sound_effect = QSoundEffect()
         self.sound_effect.setSource(QUrl.fromLocalFile("icon/newmessage.wav"))
-        self.played_for_latest_message = False  # 标志位，用于控制每条新消息只播放一次音效
 
         # 初始化时检查配置文件
         if not self.check_db_config():
@@ -147,31 +187,25 @@ class BulletinBoardModule:
             self.worker.start()
 
         except Exception as e:
-            self.update_text_edit(f"Unexpected Error: {str(e)}")
+            self.update_text_edit(f"Unexpected Error: {str(e)}", False)
 
-    def update_text_edit(self, text):
+    def update_text_edit(self, text, has_new_message):
         try:
             current_text = self.text_edit.toPlainText()
-            if "Error" not in text and current_text != text:
-                # 检查是否需要播放音效
-                if text != self.last_message_text:
-                    self.play_new_message_sound_if_needed()
-                    self.last_message_text = text  # 更新最新消息内容
-                    self.played_for_latest_message = False  # 重置标志位，以便下次新消息可以播放音效
+            if current_text != text:
+                # 更新文本编辑框
+                self.text_edit.setHtml(text)
+                self.last_message_text = text  # 更新最新消息内容
 
-            self.text_edit.setHtml(text)
-            self.last_update_time = datetime.now()
+                # 如果有新消息，则播放提示音
+                if has_new_message:
+                    self.play_new_message_sound()
+
         except Exception as e:
-            print(f"Error updating text edit: {str(e)}")
+            self.update_text_edit(f"Unexpected Error: {str(e)}", False)
 
-    def play_new_message_sound_if_needed(self):
-        current_time = datetime.now()
-        time_diff = current_time - self.last_update_time
-
-        # 如果新消息和系统时间的差值小于等于5秒，并且音效还未播放
-        if time_diff.total_seconds() <= 5 and not self.played_for_latest_message:
-            self.sound_effect.play()
-            self.played_for_latest_message = True  # 设置标志位，确保当前消息音效只播放一次
+    def play_new_message_sound(self):
+        self.sound_effect.play()
 
     def stop_timer(self):
         if self.timer.isActive():
