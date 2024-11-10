@@ -171,13 +171,13 @@ class BulletinBoardModule:
             return True
 
         except FileNotFoundError as e:
-            self.update_text_edit(f"File Not Found Error: {str(e)}")
+            self.update_text_edit(f"File Not Found Error: {str(e)}", has_new_message=False)
             return False
         except json.JSONDecodeError as e:
-            self.update_text_edit(f"JSON Decode Error: {str(e)}")
+            self.update_text_edit(f"JSON Decode Error: {str(e)}", has_new_message=False)
             return False
         except Exception as e:
-            self.update_text_edit(f"Unexpected Error: {str(e)}")
+            self.update_text_edit(f"Unexpected Error: {str(e)}", has_new_message=False)
             return False
 
     def update_bulletin_board(self):
