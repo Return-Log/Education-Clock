@@ -42,7 +42,7 @@
       <enum>QTabWidget::Rounded</enum>
      </property>
      <property name="currentIndex">
-      <number>6</number>
+      <number>0</number>
      </property>
      <property name="elideMode">
       <enum>Qt::ElideNone</enum>
@@ -64,53 +64,137 @@
        <string>课程表</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_7">
-       <item row="0" column="0">
+       <item row="2" column="0">
+        <widget class="QPushButton" name="pushButton">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700; color:#00007f;&quot;&gt;在选中项下方插入行&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>插入行</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QPushButton" name="pushButton_2">
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700; color:#00007f;&quot;&gt;删除选中行&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="text">
+          <string>删除行</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0" colspan="2">
         <widget class="QTabWidget" name="tabWidget_2">
          <property name="tabPosition">
           <enum>QTabWidget::South</enum>
          </property>
          <property name="currentIndex">
-          <number>1</number>
+          <number>0</number>
          </property>
-         <widget class="QWidget" name="tab_8">
+         <widget class="QWidget" name="tab_11">
           <attribute name="title">
            <string>周一</string>
           </attribute>
-          <layout class="QGridLayout" name="gridLayout_8">
-           <item row="0" column="0">
-            <widget class="QTableWidget" name="tableWidget"/>
+          <layout class="QVBoxLayout" name="verticalLayout_3">
+           <item>
+            <widget class="QTableWidget" name="tableWidget_1">
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+             <property name="gridStyle">
+              <enum>Qt::SolidLine</enum>
+             </property>
+            </widget>
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="tab_9">
+         <widget class="QWidget" name="tab_12">
           <attribute name="title">
            <string>周二</string>
           </attribute>
-         </widget>
-         <widget class="QWidget" name="tab_10">
-          <attribute name="title">
-           <string>周三</string>
-          </attribute>
-         </widget>
-         <widget class="QWidget" name="tab_11">
-          <attribute name="title">
-           <string>周四</string>
-          </attribute>
-         </widget>
-         <widget class="QWidget" name="tab_12">
-          <attribute name="title">
-           <string>周五</string>
-          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+           <item>
+            <widget class="QTableWidget" name="tableWidget_2">
+             <property name="autoFillBackground">
+              <bool>false</bool>
+             </property>
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </widget>
          <widget class="QWidget" name="tab_13">
           <attribute name="title">
-           <string>周六</string>
+           <string>周三</string>
           </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_4">
+           <item>
+            <widget class="QTableWidget" name="tableWidget_3">
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </widget>
          <widget class="QWidget" name="tab_14">
           <attribute name="title">
+           <string>周四</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_5">
+           <item>
+            <widget class="QTableWidget" name="tableWidget_4">
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="tab_15">
+          <attribute name="title">
+           <string>周五</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_6">
+           <item>
+            <widget class="QTableWidget" name="tableWidget_5">
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="tab_16">
+          <attribute name="title">
+           <string>周六</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_7">
+           <item>
+            <widget class="QTableWidget" name="tableWidget_6">
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="tab_17">
+          <attribute name="title">
            <string>周日</string>
           </attribute>
+          <layout class="QVBoxLayout" name="verticalLayout_8">
+           <item>
+            <widget class="QTableWidget" name="tableWidget_7">
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </widget>
         </widget>
        </item>
@@ -239,24 +323,10 @@
      </widget>
      <widget class="QWidget" name="tab_7">
       <attribute name="title">
-       <string>嵌入窗口</string>
+       <string>公告板</string>
       </attribute>
-      <layout class="QGridLayout" name="gridLayout_4" columnstretch="0,1">
+      <layout class="QGridLayout" name="gridLayout_4" columnstretch="0">
        <item row="0" column="0">
-        <widget class="QPushButton" name="pushButton">
-         <property name="text">
-          <string>选择程序路径</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLabel" name="label_5">
-         <property name="text">
-          <string>程序路径</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
         <spacer name="verticalSpacer_3">
          <property name="orientation">
           <enum>Qt::Vertical</enum>

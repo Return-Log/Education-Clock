@@ -12,7 +12,7 @@
 }
 
 /* 通用按钮样式 */
-QPushButton, QToolButton, QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QCheckBox, QRadioButton, QGroupBox, QTabBar::tab, QMenu, QMenuBar, QHeaderView, QListView, QTreeView, QTableView, QColumnView, QStatusBar, QSlider, QDial, QScrollBar, QProgressBar, QFrame, QAbstractItemView, QAbstractScrollArea, QPlainTextEdit, QTextEdit, QInputDialog, QMessageBox, QDialog, QFileDialog, QColorDialog, QFontDialog, QPrintDialog, QPageSetupDialog, QWizard, QDockWidget, QMdiSubWindow, QMdiArea, QSplitter, QStackedWidget, QToolBox, QTabWidget, QScrollArea, QWidget {
+QPushButton, QToolButton, QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QCheckBox, QRadioButton, QGroupBox, QTabBar::tab, QMenu, QMenuBar, QListView, QTreeView, QColumnView, QStatusBar, QSlider, QDial, QScrollBar, QProgressBar, QFrame, QAbstractItemView, QAbstractScrollArea, QPlainTextEdit, QTextEdit, QInputDialog, QMessageBox, QDialog, QFileDialog, QColorDialog, QFontDialog, QPrintDialog, QPageSetupDialog, QWizard, QDockWidget, QMdiSubWindow, QMdiArea, QSplitter, QStackedWidget, QToolBox, QTabWidget, QScrollArea, QWidget {
     background-color: #252931; /* 按钮背景颜色 */
     border: 1px solid #32373E; /* 边框颜色 */
     color: #FFFFFF; /* 文字颜色 */
@@ -21,17 +21,16 @@ QPushButton, QToolButton, QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QCheck
 }
 
 /* 按钮悬停效果 */
-QPushButton:hover, QToolButton:hover, QComboBox:hover, QSpinBox:hover, QDoubleSpinBox:hover, QLineEdit:hover, QCheckBox:hover, QRadioButton:hover, QGroupBox:hover, QTabBar::tab:hover, QMenu:hover, QMenuBar:hover, QHeaderView:hover, QListView:hover, QTreeView:hover, QTableView:hover, QColumnView:hover, QStatusBar:hover, QSlider:hover, QDial:hover, QScrollBar:hover, QProgressBar:hover, QFrame:hover, QAbstractItemView:hover, QAbstractScrollArea:hover, QPlainTextEdit:hover, QInputDialog:hover, QMessageBox:hover, QDialog:hover, QFileDialog:hover, QColorDialog:hover, QFontDialog:hover, QPrintDialog:hover, QPageSetupDialog:hover, QWizard:hover, QDockWidget:hover, QMdiSubWindow:hover, QMdiArea:hover, QSplitter:hover, QStackedWidget:hover, QToolBox:hover, QTabWidget:hover, QScrollArea:hover {
+QPushButton:hover, QToolButton:hover, QComboBox:hover, QSpinBox:hover, QDoubleSpinBox:hover, QLineEdit:hover, QCheckBox:hover, QRadioButton:hover, QGroupBox:hover, QTabBar::tab:hover, QMenu:hover, QMenuBar:hover, QListView:hover, QTreeView:hover, QColumnView:hover, QStatusBar:hover, QSlider:hover, QDial:hover, QScrollBar:hover, QProgressBar:hover, QFrame:hover, QAbstractItemView:hover, QAbstractScrollArea:hover, QPlainTextEdit:hover, QInputDialog:hover, QMessageBox:hover, QDialog:hover, QFileDialog:hover, QColorDialog:hover, QFontDialog:hover, QPrintDialog:hover, QPageSetupDialog:hover, QWizard:hover, QDockWidget:hover, QMdiSubWindow:hover, QMdiArea:hover, QSplitter:hover, QStackedWidget:hover, QToolBox:hover, QTabWidget:hover, QScrollArea:hover {
     background-color: #3B404B; /* 悬停时背景颜色 */
     border: 1px solid #565C65; /* 悬停时边框颜色 */
 }
 
 /* 按钮按下效果 */
-QPushButton:pressed, QToolButton:pressed, QComboBox:pressed, QSpinBox:pressed, QDoubleSpinBox:pressed, QLineEdit:pressed, QCheckBox:pressed, QRadioButton:pressed, QGroupBox:pressed, QTabBar::tab:pressed, QMenu:pressed, QMenuBar:pressed, QHeaderView:pressed, QListView:pressed, QTreeView:pressed, QTableView:pressed, QColumnView:pressed, QStatusBar:pressed, QSlider:pressed, QDial:pressed, QScrollBar:pressed, QProgressBar:pressed, QFrame:pressed, QAbstractItemView:pressed, QAbstractScrollArea:pressed, QPlainTextEdit:pressed, QTextEdit:pressed, QInputDialog:pressed, QMessageBox:pressed, QDialog:pressed, QFileDialog:pressed, QColorDialog:pressed, QFontDialog:pressed, QPrintDialog:pressed, QPageSetupDialog:pressed, QWizard:pressed, QDockWidget:pressed, QMdiSubWindow:pressed, QMdiArea:pressed, QSplitter:pressed, QStackedWidget:pressed, QToolBox:pressed, QTabWidget:pressed, QScrollArea:pressed {
+QPushButton:pressed, QToolButton:pressed, QComboBox:pressed, QSpinBox:pressed, QDoubleSpinBox:pressed, QLineEdit:pressed, QCheckBox:pressed, QRadioButton:pressed, QGroupBox:pressed, QTabBar::tab:pressed, QMenu:pressed, QMenuBar:pressed, QListView:pressed, QTreeView:pressed, QColumnView:pressed, QStatusBar:pressed, QSlider:pressed, QDial:pressed, QScrollBar:pressed, QProgressBar:pressed, QFrame:pressed, QAbstractItemView:pressed, QAbstractScrollArea:pressed, QPlainTextEdit:pressed, QTextEdit:pressed, QInputDialog:pressed, QMessageBox:pressed, QDialog:pressed, QFileDialog:pressed, QColorDialog:pressed, QFontDialog:pressed, QPrintDialog:pressed, QPageSetupDialog:pressed, QWizard:pressed, QDockWidget:pressed, QMdiSubWindow:pressed, QMdiArea:pressed, QSplitter:pressed, QStackedWidget:pressed, QToolBox:pressed, QTabWidget:pressed, QScrollArea:pressed {
     background-color: #484E58; /* 按下时背景颜色 */
     border: 1px solid #6C757D; /* 按下时边框颜色 */
 }
-
 
 /* 下拉菜单和组合框 */
 QComboBox::drop-down, QComboBox::down-arrow, QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
@@ -130,3 +129,86 @@ QLabel[weather="next"] {
     font-size: 18px;
 
 }
+
+/* 表格背景 */
+QTableWidget {
+    background-color: #1F242A; /* 深灰色背景 */
+    color: #FFFFFF; /* 文字颜色 */
+    font-size: 16px;
+    alternate-background-color: #252931; /* 斑马线效果 */
+    gridline-color: #32373E; /* 网格线颜色 */
+    border: 0px solid #32373E; /* 表格外边框 */
+}
+
+/* 表头样式 */
+QHeaderView::section {
+    background-color: #252931; /* 表头背景颜色 */
+    color: #FFFFFF; /* 表头文字颜色 */
+    border: 1px solid #32373E; /* 表头边框颜色 */
+    padding: 8px; /* 内边距 */
+    border-radius: 3px; /* 圆角 */
+}
+
+/* 表头悬停效果 */
+QHeaderView::section:hover {
+    background-color: #3B404B; /* 悬停时背景颜色 */
+    border: 0.1px solid #565C65; /* 悬停时边框颜色 */
+}
+
+/* 表头按下效果 */
+QHeaderView::section:pressed {
+    background-color: #484E58; /* 按下时背景颜色 */
+    border: 1px solid #6C757D; /* 按下时边框颜色 */
+}
+
+/* 表格单元格样式 */
+QTableWidget::item {
+    padding: 5px; /* 单元格内边距 */
+    border: 0px solid #32373E; /* 减少边框宽度 */
+    border-radius: ¾px; /* 减少圆角 */
+}
+
+/* 表格单元格悬停效果 */
+QTableWidget::item:hover {
+    background-color: #3B404B; /* 悬停时背景颜色 */
+}
+
+/* 表格单元格按下效果 */
+QTableWidget::item:pressed {
+    background-color: #484E58; /* 按下时背景颜色 */
+}
+
+/* 左上角全选按钮样式 */
+QTableWidget::corner,
+QTableWidget::corner:hover,
+QTableWidget::corner:pressed {
+    background-color: #252931; /* 背景颜色 */
+    border: 1px solid #32373E; /* 边框颜色 */
+    border-top-left-radius: 4px; /* 左上角圆角 */
+}
+
+/* 左上角全选按钮悬停效果 */
+QTableWidget::corner:hover {
+    background-color: #3B404B; /* 悬停时背景颜色 */
+    border: 1px solid #565C65; /* 悬停时边框颜色 */
+}
+
+/* 左上角全选按钮按下效果 */
+QTableWidget::corner:pressed {
+    background-color: #484E58; /* 按下时背景颜色 */
+    border: 1px solid #6C757D; /* 按下时边框颜色 */
+}
+
+/* 编号列样式 */
+QTableWidget::item:selected, QTableWidget::item:focus {
+    background-color: #3B404B; /* 选中时背景颜色 */
+    color: #FFFFFF; /* 选中时文字颜色 */
+}
+
+/* 交替行颜色（斑马线效果）*/
+QTableWidget::item:alternate {
+    background-color: #252931; /* 交替行背景颜色 */
+}
+
+
+
