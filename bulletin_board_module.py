@@ -1,11 +1,11 @@
-import os
 import json
-import pymysql
-from datetime import datetime, timedelta
-from markdown import markdown
+import os
+import base64
 from PyQt6.QtCore import QThread, pyqtSignal, QTimer, QUrl
 from PyQt6.QtMultimedia import QSoundEffect
-
+from datetime import datetime, timedelta
+from markdown import markdown
+import pymysql
 
 class DateTimeEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -16,10 +16,11 @@ class DateTimeEncoder(json.JSONEncoder):
 class BulletinBoardWorker(QThread):
     update_signal = pyqtSignal(str, bool)  # 新增一个布尔参数，表示是否播放提示音
 
-    def __init__(self, db_config, filter_conditions):
+    def __init__(self, db_config, filter_conditions, text_edit):
         super().__init__()
         self.db_config = db_config
         self.filter_conditions = filter_conditions
+        self.text_edit = text_edit
 
     def run(self):
         last_message = self.read_last_message_from_json()
@@ -38,19 +39,17 @@ class BulletinBoardWorker(QThread):
                     if messages:
                         return messages[0]  # 返回最后一条消息
                     else:
-                        # 文件存在但内容为空
                         return None
-            except json.JSONDecodeError:
-                # 文件为空或包含无效的 JSON 数据
+            except json.JSONDecodeError as e:
+                self.update_text_edit(f"JSON Decode Error: {str(e)}", False)
                 return None
         else:
-            # 文件不存在
+            self.update_text_edit("File not found: data/sql.json", False)
             return None
 
     def fetch_and_filter_messages(self, last_message):
         """ 从数据库中获取并过滤消息，同时检查是否有新消息 """
         try:
-            # 使用上下文管理器来管理数据库连接
             with pymysql.connect(
                 host=self.db_config["host"],
                 port=self.db_config["port"],
@@ -60,7 +59,6 @@ class BulletinBoardWorker(QThread):
                 cursorclass=pymysql.cursors.DictCursor
             ) as connection:
                 with connection.cursor() as cursor:
-                    # 获取最近7天的数据
                     start_date = datetime.now() - timedelta(days=7)
                     query = """
                     SELECT * FROM messages
@@ -70,17 +68,12 @@ class BulletinBoardWorker(QThread):
                     cursor.execute(query, (start_date,))
                     rows = cursor.fetchall()
 
-                    # 过滤数据
                     filtered_rows = self.filter_data(rows)
-
-                    # 检查是否有新消息
                     has_new_message = False
                     if last_message and filtered_rows:
-                        # 确保 last_message 不是 None
                         if last_message and 'id' in last_message:
-                            has_new_message = last_message['id'] != filtered_rows[0]['id']  # 假设消息表有一个唯一的 id 字段
+                            has_new_message = last_message['id'] != filtered_rows[0]['id']
 
-                    # 存储在 data/sql.json
                     with open('data/sql.json', 'w', encoding='utf-8') as f:
                         json.dump(filtered_rows, f, ensure_ascii=False, indent=4, cls=DateTimeEncoder)
 
@@ -112,13 +105,12 @@ class BulletinBoardWorker(QThread):
     def filter_data(self, rows):
         filtered_rows = []
         for row in rows:
-            # 检查每个过滤条件是否为空，为空则跳过该条件
-            robot_names = self.filter_conditions["robot_names"]
-            sender_names = self.filter_conditions["sender_names"]
-            conversation_titles = self.filter_conditions["conversation_titles"]
+            robot_names = self.filter_conditions.get("robot_names", [])
+            sender_names = self.filter_conditions.get("sender_names", [])
+            conversation_titles = self.filter_conditions.get("conversation_titles", [])
 
-            if (not robot_names or row['robot_name'] in robot_names) and \
-               (not sender_names or row['sender_name'] in sender_names) and \
+            if (not robot_names or row['robot_name'] in robot_names) or \
+               (not sender_names or row['sender_name'] in sender_names) or \
                (not conversation_titles or row['conversationTitle'] in conversation_titles):
                 filtered_rows.append(row)
         return filtered_rows
@@ -127,17 +119,37 @@ class BulletinBoardWorker(QThread):
         formatted_text = ""
         for row in rows:
             sender_name = row['sender_name']
+            conversationTitle = row['conversationTitle']
             created_at = row['timestamp'].strftime("%m-%d %H:%M")
             message_content = row['message_content']
 
-            # 格式化消息
-            formatted_message = f"<b style='color:#4cc2ff; font-size:16px;'>{sender_name} ({created_at})</b>{markdown(message_content)}<hr>"
+            # 根据 sender_name 设置颜色
+            color = "#4cc2ff" if conversationTitle != "管理组" else "#FFD700"  # 金色
+
+            formatted_message = f"<b style='color:{color}; font-size:16px;'>{sender_name} ({created_at})</b>{markdown(message_content)}<hr>"
             formatted_text += formatted_message
 
         return formatted_text
 
+    def update_text_edit(self, text, has_new_message):
+        try:
+            current_text = self.text_edit.toPlainText()
+            if current_text != text:
+                self.text_edit.setHtml(text)
+                self.last_message_text = text
+
+                if has_new_message:
+                    self.play_new_message_sound()
+
+        except Exception as e:
+            self.update_text_edit(f"Unexpected Error: {str(e)}", False)
+
+    def play_new_message_sound(self):
+        self.sound_effect.play()
+
 class BulletinBoardModule:
     def __init__(self, main_window, text_edit):
+        self.encryption_key = 0x5A
         self.main_window = main_window
         self.text_edit = text_edit
         self.timer = QTimer(self.main_window)
@@ -146,43 +158,55 @@ class BulletinBoardModule:
         self.sound_effect = QSoundEffect()
         self.sound_effect.setSource(QUrl.fromLocalFile("icon/newmessage.wav"))
 
-        # 初始化时检查配置文件
         if not self.check_db_config():
             self.timer.stop()  # 停止定时器，避免后续操作
 
     def check_db_config(self):
         try:
-            # 读取数据库配置和过滤条件
             with open('data/db_config.json', 'r', encoding='utf-8') as f:
-                config_data = json.load(f)
+                encrypted_data = f.read()
+                config_data = self.decrypt_data(encrypted_data, self.encryption_key)
                 db_config = config_data.get("db_config", {})
 
-            # 检查配置项是否为空
             required_fields = ["host", "port", "user", "password", "database"]
             for field in required_fields:
                 if not db_config.get(field):
-                    self.update_text_edit(f"Configuration Error: {field} is empty in db_config.json")
+                    self.update_text_edit(f"Configuration Error: {field} is empty in db_config.json", False)
                     return False
 
-            # 保存配置项
+            db_config['port'] = int(db_config['port'])
+
             self.db_config = db_config
             self.filter_conditions = config_data.get("filter_conditions", {})
             self.timer.start(5000)  # 每隔5秒更新
             return True
 
         except FileNotFoundError as e:
-            self.update_text_edit(f"File Not Found Error: {str(e)}", has_new_message=False)
+            self.update_text_edit(f"File Not Found Error: {str(e)}", False)
             return False
         except json.JSONDecodeError as e:
-            self.update_text_edit(f"JSON Decode Error: {str(e)}", has_new_message=False)
+            self.update_text_edit(f"JSON Decode Error: {str(e)}", False)
+            return False
+        except ValueError as e:
+            self.update_text_edit(f"Value Error: {str(e)}", False)
             return False
         except Exception as e:
-            self.update_text_edit(f"Unexpected Error: {str(e)}", has_new_message=False)
+            self.update_text_edit(f"Unexpected Error: {str(e)}", False)
             return False
+
+    def decrypt_data(self, encrypted_data, key):
+        """解密数据"""
+        decoded_data = base64.b64decode(encrypted_data.encode('utf-8'))
+        decrypted_data = self.xor_encrypt_decrypt(decoded_data, key)
+        return json.loads(decrypted_data.decode('utf-8'))
+
+    def xor_encrypt_decrypt(self, data, key):
+        """XOR 加密/解密函数"""
+        return bytes([b ^ key for b in data])
 
     def update_bulletin_board(self):
         try:
-            self.worker = BulletinBoardWorker(self.db_config, self.filter_conditions)
+            self.worker = BulletinBoardWorker(self.db_config, self.filter_conditions, self.text_edit)
             self.worker.update_signal.connect(self.update_text_edit)
             self.worker.start()
 
@@ -193,11 +217,9 @@ class BulletinBoardModule:
         try:
             current_text = self.text_edit.toPlainText()
             if current_text != text:
-                # 更新文本编辑框
                 self.text_edit.setHtml(text)
-                self.last_message_text = text  # 更新最新消息内容
+                self.last_message_text = text
 
-                # 如果有新消息，则播放提示音
                 if has_new_message:
                     self.play_new_message_sound()
 

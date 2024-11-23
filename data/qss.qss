@@ -20,12 +20,6 @@ QPushButton, QToolButton, QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QCheck
     border-radius: 4px; /* 圆角 */
 }
 
-/* 按钮悬停效果 */
-QPushButton:hover, QToolButton:hover, QComboBox:hover, QSpinBox:hover, QDoubleSpinBox:hover, QLineEdit:hover, QCheckBox:hover, QRadioButton:hover, QGroupBox:hover, QTabBar::tab:hover, QMenu:hover, QMenuBar:hover, QListView:hover, QTreeView:hover, QColumnView:hover, QStatusBar:hover, QSlider:hover, QDial:hover, QScrollBar:hover, QProgressBar:hover, QFrame:hover, QAbstractItemView:hover, QAbstractScrollArea:hover, QPlainTextEdit:hover, QInputDialog:hover, QMessageBox:hover, QDialog:hover, QFileDialog:hover, QColorDialog:hover, QFontDialog:hover, QPrintDialog:hover, QPageSetupDialog:hover, QWizard:hover, QDockWidget:hover, QMdiSubWindow:hover, QMdiArea:hover, QSplitter:hover, QStackedWidget:hover, QToolBox:hover, QTabWidget:hover, QScrollArea:hover {
-    background-color: #3B404B; /* 悬停时背景颜色 */
-    border: 1px solid #565C65; /* 悬停时边框颜色 */
-}
-
 /* 按钮按下效果 */
 QPushButton:pressed, QToolButton:pressed, QComboBox:pressed, QSpinBox:pressed, QDoubleSpinBox:pressed, QLineEdit:pressed, QCheckBox:pressed, QRadioButton:pressed, QGroupBox:pressed, QTabBar::tab:pressed, QMenu:pressed, QMenuBar:pressed, QListView:pressed, QTreeView:pressed, QColumnView:pressed, QStatusBar:pressed, QSlider:pressed, QDial:pressed, QScrollBar:pressed, QProgressBar:pressed, QFrame:pressed, QAbstractItemView:pressed, QAbstractScrollArea:pressed, QPlainTextEdit:pressed, QTextEdit:pressed, QInputDialog:pressed, QMessageBox:pressed, QDialog:pressed, QFileDialog:pressed, QColorDialog:pressed, QFontDialog:pressed, QPrintDialog:pressed, QPageSetupDialog:pressed, QWizard:pressed, QDockWidget:pressed, QMdiSubWindow:pressed, QMdiArea:pressed, QSplitter:pressed, QStackedWidget:pressed, QToolBox:pressed, QTabWidget:pressed, QScrollArea:pressed {
     background-color: #484E58; /* 按下时背景颜色 */
@@ -128,6 +122,10 @@ QLabel[weather="next"] {
 #textEdit {
     font-size: 18px;
 
+}
+
+#label_28 {
+    color: red;
 }
 
 /* 表格背景 */

@@ -3,6 +3,7 @@ import logging
 import re
 import sys
 import json
+import base64
 import os
 from PyQt6.QtWidgets import (
     QDialog, QPushButton, QLabel, QFileDialog, QTextBrowser, QTabWidget,
@@ -11,7 +12,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, QDateTime
 
-# logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 class SettingsWindow(QDialog):
@@ -19,8 +20,11 @@ class SettingsWindow(QDialog):
         super().__init__(parent)
         self.setup_ui()
         self.timetable_file = './data/timetable.json'
-        self.timetable_data = {}  # Initialize an empty dictionary to hold timetable data
-        self.load_timetable()  # Load the timetable data
+        self.db_config_file = './data/db_config.json'
+        self.encryption_key = 0x5A  # 选择一个简单的密钥
+        self.timetable_data = {}  # 初始化一个空字典以保存时间表数据
+        self.load_timetable()  # 加载时刻表数据
+        self.load_db_config()  # 加载数据库配置
 
     def setup_ui(self):
         loadUi('./ui/setting.ui', self)
@@ -29,12 +33,14 @@ class SettingsWindow(QDialog):
         self.tabWidget.currentChanged.connect(self.on_tab_changed)
         # 连接 tabWidget_2 的 currentChanged 信号
         self.tabWidget_2.currentChanged.connect(self.on_tab_changed_2)
-
         self.pushButton.clicked.connect(self.insert_row)
         self.pushButton_2.clicked.connect(self.delete_row)
+        self.connect_line_edit_signals()
 
     def on_tab_changed(self, index):
-        if index == 6:
+        if index == 3:  # 假设 tab_4 的索引是 3
+            self.load_db_config()
+        elif index == 6:
             self.init_streaming_text()
 
     def on_tab_changed_2(self, index):
@@ -70,7 +76,7 @@ class SettingsWindow(QDialog):
             "",
             "日期: 2024/11/10",
             "项目仓库: https://github.com/Return-Log/Education-Clock",
-            "本软件遵循CPL-3.0协议发布",
+            "本软件遵循GPL-3.0协议发布",
             "============================================",
             "Copyright © 2024  Log  All rights reserved.",
         ]
@@ -229,10 +235,92 @@ class SettingsWindow(QDialog):
             return day_names[day_index]
         return None
 
-    def closeEvent(self, event):
-        QMessageBox.information(self, "重启", "设置已更改，重启应用程序以应用更改。")
-        python = sys.executable
-        os.execl(python, python, *sys.argv)
+#####################################通知栏设置################################################################
+    def xor_encrypt_decrypt(self, data, key):
+        """XOR 加密/解密函数"""
+        return bytes([b ^ key for b in data])
+
+    def encrypt_data(self, data, key):
+        """加密数据"""
+        json_data = json.dumps(data, ensure_ascii=False, indent=4).encode('utf-8')
+        encrypted_data = self.xor_encrypt_decrypt(json_data, key)
+        return base64.b64encode(encrypted_data).decode('utf-8')
+
+    def decrypt_data(self, encrypted_data, key):
+        """解密数据"""
+        decoded_data = base64.b64decode(encrypted_data.encode('utf-8'))
+        decrypted_data = self.xor_encrypt_decrypt(decoded_data, key)
+        return json.loads(decrypted_data.decode('utf-8'))
+
+    def load_db_config(self):
+        try:
+            with open(self.db_config_file, 'r', encoding='utf-8') as f:
+                encrypted_data = f.read()
+                config = self.decrypt_data(encrypted_data, self.encryption_key)
+                db_config = config['db_config']
+                filter_conditions = config['filter_conditions']
+
+                self.lineEdit_3.setText(db_config['host'])
+                self.lineEdit_4.setText(str(db_config['port']))
+                self.lineEdit_5.setText(db_config['user'])
+                self.lineEdit_6.setText(db_config['password'])
+                self.lineEdit_7.setText(db_config['database'])
+
+                self.lineEdit_8.setText(','.join(filter_conditions['robot_names']))
+                self.lineEdit_9.setText(','.join(filter_conditions['sender_names']))
+                self.lineEdit_10.setText(','.join(filter_conditions['conversation_titles']))
+
+                logging.debug("Database configuration loaded.")
+        except Exception as e:
+            logging.error(f"Failed to load database configuration: {e}")
+
+    def connect_line_edit_signals(self):
+        line_edits = [self.lineEdit_3, self.lineEdit_4, self.lineEdit_5, self.lineEdit_6, self.lineEdit_7,
+                      self.lineEdit_8, self.lineEdit_9, self.lineEdit_10]
+        for line_edit in line_edits:
+            line_edit.textChanged.connect(self.on_line_edit_text_changed)
+
+    def on_line_edit_text_changed(self):
+        # 替换中文逗号为英文逗号
+        for line_edit in [self.lineEdit_8, self.lineEdit_9, self.lineEdit_10]:
+            line_edit.setText(line_edit.text().replace('，', ','))
+
+        self.save_db_config()
+
+    def save_db_config(self):
+        config = {
+            "db_config": {
+                "host": self.lineEdit_3.text(),
+                "port": self.lineEdit_4.text(),  # 不再强制转换为整数
+                "user": self.lineEdit_5.text(),
+                "password": self.lineEdit_6.text(),
+                "database": self.lineEdit_7.text()
+            },
+            "filter_conditions": {
+                "robot_names": self.lineEdit_8.text().split(','),
+                "sender_names": self.lineEdit_9.text().split(','),
+                "conversation_titles": self.lineEdit_10.text().split(',')
+            }
+        }
+
+        try:
+            # 生成 JSON 字符串
+            json_data = json.dumps(config, ensure_ascii=False, indent=4)
+            logging.debug(f"Generated JSON data: {json_data}")
+
+            # 加密数据
+            encrypted_data = self.encrypt_data(config, self.encryption_key)
+
+            # 保存到文件
+            with open(self.db_config_file, 'w', encoding='utf-8') as f:
+                f.write(encrypted_data)
+                logging.info("Database configuration saved.")
+        except Exception as e:
+            logging.error(f"Failed to save database configuration: {e}")
+    # def closeEvent(self, event):
+    #     QMessageBox.information(self, "重启", "设置已更改，重启应用程序以应用更改。")
+    #     python = sys.executable
+    #     os.execl(python, python, *sys.argv)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
