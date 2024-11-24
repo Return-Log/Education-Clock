@@ -1,7 +1,9 @@
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget, QToolButton, QTextEdit
+import requests
+from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget, QToolButton, QTextEdit, QLabel
 from PyQt6.uic import loadUi
-from PyQt6.QtCore import QTimer, Qt
+from PyQt6.QtCore import QTimer, Qt, QUrl
+from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import QMessageBox
 from PyQt6.QtCore import QSettings
 from datetime import datetime
@@ -11,10 +13,8 @@ from auto_cctv_controller import AutoCCTVController  # 导入自动新闻联播�
 from shutdown_module import ShutdownModule  # 导入关机模块
 from time_module import TimeModule  # 导入时间模块
 from weather_module import WeatherModule
-
 from settings_window import SettingsWindow  # 导入设置窗口类
 from bulletin_board_module import BulletinBoardModule  # 导入公告板模块
-
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -44,8 +44,6 @@ class MainWindow(QMainWindow):
         # 初始化时间模块
         self.time_module = TimeModule(self)
 
-
-
         # 保存和恢复窗口大小和位置
         self.restore_window_geometry()
 
@@ -54,14 +52,19 @@ class MainWindow(QMainWindow):
         self.show()
         self.lower()  # 将窗口置于最下层
 
-
-
-
         # 连接 toolButton_3 到打开设置窗口的方法
         self.toolButton_3.clicked.connect(self.open_settings_window)
 
         # 初始化公告板模块
         self.init_bulletin_board_module()
+
+        # 找到 label_update 控件
+        self.label_update = self.findChild(QLabel, "label_update")
+        if self.label_update is None:
+            raise ValueError("找不到 label_update，请检查 UI 文件")
+
+        # 在启动时检测更新
+        self.check_for_updates()
 
     def show_message(self, message):
         # 创建 QMessageBox
@@ -73,10 +76,6 @@ class MainWindow(QMainWindow):
         # 显示消息框并设置自动关闭
         msg_box.show()
         QTimer.singleShot(2000, msg_box.close)  # 2秒后关闭消息框
-
-
-
-
 
     def status_callback(self, message):
         # 使用 show_message 方法显示消息
@@ -184,6 +183,25 @@ class MainWindow(QMainWindow):
         else:
             self.show_message("找不到 textEdit，请检查 UI 文件")
 
+    def check_for_updates(self):
+        """检测最新版本并更新状态"""
+        try:
+            response = requests.get('https://api.github.com/repos/Return-Log/Education-Clock/tags', timeout=5)
+            response.raise_for_status()
+            tags = response.json()
+            if tags:
+                latest_tag = tags[0]['name']
+                current_version = "v3.4"  # 替换为你的当前版本号
+                if latest_tag != current_version:
+                    self.label_update.setText(f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest">有新版本 {latest_tag} 更新, 当前版本 {current_version}</a>')
+                    self.label_update.setOpenExternalLinks(True)
+                else:
+                    self.label_update.setText(f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest">已是最新版 {latest_tag}</a>')
+                    self.label_update.setOpenExternalLinks(True)
+            else:
+                self.label_update.setText("无法检测更新")
+        except requests.RequestException:
+            self.label_update.setText("无法检测更新")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

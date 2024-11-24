@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, QDateTime, QDate
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+# logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 class SettingsWindow(QDialog):
@@ -92,14 +92,14 @@ class SettingsWindow(QDialog):
            \\_____|_|\\___/ \\___|_|\\_\\                      
             """,
             "欢迎使用本软件！",
-            "版本: 3.3",
+            "版本: 3.4",
             "",
             "更新日志: ",
-            " - 设置项可修改课程表",
-            " - 修复公告板无网络时闪退问题",
-            " - 增加运行稳定性",
+            " - 设置项全部更新完毕",
+            " - 启动时自动检查更新",
+            " - 调节公告板更新频率减轻服务端压力",
             "",
-            "日期: 2024/11/10",
+            "日期: 2024/11/24",
             "项目仓库: https://github.com/Return-Log/Education-Clock",
             "本软件遵循GPL-3.0协议发布",
             "============================================",
@@ -702,10 +702,10 @@ class SettingsWindow(QDialog):
         except Exception as e:
             logging.error(f"Failed to save location settings: {e}")
 
-    # def closeEvent(self, event):
-    #     QMessageBox.information(self, "重启", "设置已更改，重启应用程序以应用更改。")
-    #     python = sys.executable
-    #     os.execl(python, python, *sys.argv)
+    def closeEvent(self, event):
+        QMessageBox.information(self, "重启", "设置已更改，重启应用程序以应用更改。")
+        python = sys.executable
+        os.execl(python, python, *sys.argv)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

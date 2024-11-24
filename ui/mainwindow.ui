@@ -159,53 +159,9 @@
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
           <item>
-           <widget class="QToolButton" name="toolButton">
+           <widget class="QLabel" name="label_update">
             <property name="text">
-             <string>打开U盘</string>
-            </property>
-            <property name="iconSize">
-             <size>
-              <width>16</width>
-              <height>16</height>
-             </size>
-            </property>
-            <property name="toolButtonStyle">
-             <enum>Qt::ToolButtonTextUnderIcon</enum>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QToolButton" name="toolButton_2">
-            <property name="text">
-             <string>弹出U盘</string>
-            </property>
-            <property name="iconSize">
-             <size>
-              <width>16</width>
-              <height>16</height>
-             </size>
-            </property>
-            <property name="checkable">
-             <bool>false</bool>
-            </property>
-            <property name="toolButtonStyle">
-             <enum>Qt::ToolButtonTextUnderIcon</enum>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QToolButton" name="toolButton_4">
-            <property name="text">
-             <string>button</string>
-            </property>
-            <property name="iconSize">
-             <size>
-              <width>16</width>
-              <height>16</height>
-             </size>
-            </property>
-            <property name="toolButtonStyle">
-             <enum>Qt::ToolButtonTextUnderIcon</enum>
+             <string>更新状态</string>
             </property>
            </widget>
           </item>

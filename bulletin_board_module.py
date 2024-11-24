@@ -124,7 +124,7 @@ class BulletinBoardWorker(QThread):
             message_content = row['message_content']
 
             # 根据 sender_name 设置颜色
-            color = "#4cc2ff" if conversationTitle != "管理组" else "#FFD700"  # 金色
+            color = "#FFD700" if "管理组" in conversationTitle else "#4cc2ff"
 
             formatted_message = f"<b style='color:{color}; font-size:16px;'>{sender_name} ({created_at})</b>{markdown(message_content)}<hr>"
             formatted_text += formatted_message
@@ -178,7 +178,7 @@ class BulletinBoardModule:
 
             self.db_config = db_config
             self.filter_conditions = config_data.get("filter_conditions", {})
-            self.timer.start(5000)  # 每隔5秒更新
+            self.timer.start(10000)  # 每隔10秒更新
             return True
 
         except FileNotFoundError as e:
@@ -235,7 +235,7 @@ class BulletinBoardModule:
 
     def start_timer(self):
         if not self.timer.isActive():
-            self.timer.start(5000)
+            self.timer.start(10000)
 
     def cleanup(self):
         self.stop_timer()
