@@ -24,6 +24,8 @@ class SettingsWindow(QDialog):
         self.countdown_file = './data/time.json'
         self.launch_file = './data/launch.json'
         self.closetime_file = './data/closetime.json'
+        self.weather_file = './data/weather.txt'
+        self.location_file = './data/location.txt'
         self.encryption_key = 0x5A  # 选择一个简单的密钥
         self.timetable_data = {}  # 初始化一个空字典以保存时间表数据
         self.load_timetable()  # 加载时刻表数据
@@ -32,6 +34,8 @@ class SettingsWindow(QDialog):
         self.load_countdown()  # 加载倒计时数据
         self.load_shutdown_settings()  # 加载自动关机设置
         self.load_news_settings()  # 加载新闻设置
+        self.load_weather_settings()  # 加载天气设置
+        self.load_location_settings()  # 加载位置设置
 
     def setup_ui(self):
         loadUi('./ui/setting.ui', self)
@@ -46,18 +50,23 @@ class SettingsWindow(QDialog):
         self.connect_count_line_edit_signals()  # 连接倒计时设置文本框的信号
         self.connect_shutdown_signals()  # 连接自动关机设置文本框的信号
         self.connect_news_signals()  # 连接新闻设置信号
+        self.connect_weather_signals()  # 连接天气设置信号
+        self.connect_location_signals()  # 连接位置设置信号
 
     def on_tab_changed(self, index):
-        if index == 6:  # 假设 tab_4 的索引是 3
+        if index == 3:
             self.load_db_config()
         elif index == 6:
             self.init_streaming_text()
         elif index == 1:
             self.load_countdown()
-        elif index == 3:
+        elif index == 4:
             self.load_shutdown_settings()
-        elif index == 5:  # 假设 tab_5 的索引是 5
+        elif index == 5:
             self.load_news_settings()
+        elif index == 2:
+            self.load_weather_settings()
+            self.load_location_settings()
 
     def on_tab_changed_2(self, index):
         if 0 <= index <= 6:
@@ -421,7 +430,7 @@ class SettingsWindow(QDialog):
             with open(self.launch_file, 'r', encoding='utf-8') as f:
                 launch_data = json.load(f)
                 shutdown_status = launch_data.get('shutdown', '关闭')
-                self.label_4.setText(f"当前状态: {shutdown_status}")
+                self.label_4.setText(f"{shutdown_status}")
 
             with open(self.closetime_file, 'r', encoding='utf-8') as f:
                 closetime_data = json.load(f)
@@ -434,9 +443,6 @@ class SettingsWindow(QDialog):
                 self.lineEdit_16.setText(",".join(shutdown_times.get('Saturday', [])))
                 self.lineEdit_17.setText(",".join(shutdown_times.get('Sunday', [])))
 
-            # 设置按钮文本
-            button = self.buttonBox.button(QDialogButtonBox.StandardButton.Ok)
-            button.setText("关闭" if shutdown_status == "开启" else "开启")
 
             logging.debug("Shutdown settings loaded successfully.")
         except json.JSONDecodeError as e:
@@ -495,7 +501,7 @@ class SettingsWindow(QDialog):
                 with open(self.launch_file, 'w', encoding='utf-8') as f:
                     json.dump(launch_data, f, ensure_ascii=False, indent=4)
 
-                self.label_4.setText(f"当前状态: {new_status}")
+                self.label_4.setText(f"{new_status}")
                 logging.info(f"Shutdown status toggled to: {new_status}")
         except Exception as e:
             logging.error(f"Failed to toggle shutdown status: {e}")
@@ -507,9 +513,59 @@ class SettingsWindow(QDialog):
 
             with open(self.closetime_file, 'r', encoding='utf-8') as f:
                 closetime_data = json.load(f)
-            for line_edit in [self.lineEdit_11, self.lineEdit_12, self.lineEdit_13, self.lineEdit_14, self.lineEdit_15, self.lineEdit_16, self.lineEdit_17]:
-                line_edit.setText(line_edit.text().replace('，', ','))
 
+            # 自动合法化时间输入
+            def legalize_time(time_str):
+                # 将中文逗号替换为英文逗号
+                time_str = time_str.replace('，', ',')
+                # 分割时间字符串
+                times = time_str.split(',')
+                legalized_times = []
+
+                for time in times:
+                    # 去除前后空格
+                    time = time.strip()
+                    # 检查是否为空
+                    if not time:
+                        continue
+
+                    # 检查是否已经有冒号
+                    if ':' in time:
+                        parts = time.split(':')
+                        if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                            hour = int(parts[0])
+                            minute = int(parts[1])
+                            if 0 <= hour < 24 and 0 <= minute < 60:
+                                legalized_times.append(f"{hour:02}:{minute:02}")
+                            else:
+                                logging.warning(f"Illegal time format: {time}. Ignoring.")
+                        else:
+                            logging.warning(f"Illegal time format: {time}. Ignoring.")
+                    else:
+                        # 如果没有冒号，尝试将其解释为 HHMM 格式
+                        if len(time) == 4 and time.isdigit():
+                            hour = int(time[:2])
+                            minute = int(time[2:])
+                            if 0 <= hour < 24 and 0 <= minute < 60:
+                                legalized_times.append(f"{hour:02}:{minute:02}")
+                            else:
+                                logging.warning(f"Illegal time format: {time}. Ignoring.")
+                        else:
+                            logging.warning(f"Illegal time format: {time}. Ignoring.")
+
+                return legalized_times
+
+            shutdown_times = {
+                "Monday": legalize_time(self.lineEdit_11.text()),
+                "Tuesday": legalize_time(self.lineEdit_12.text()),
+                "Wednesday": legalize_time(self.lineEdit_13.text()),
+                "Thursday": legalize_time(self.lineEdit_14.text()),
+                "Friday": legalize_time(self.lineEdit_15.text()),
+                "Saturday": legalize_time(self.lineEdit_16.text()),
+                "Sunday": legalize_time(self.lineEdit_17.text())
+            }
+
+            closetime_data['shutdown_times'] = shutdown_times
 
             with open(self.closetime_file, 'w', encoding='utf-8') as f:
                 json.dump(closetime_data, f, ensure_ascii=False, indent=4)
@@ -532,7 +588,7 @@ class SettingsWindow(QDialog):
             with open(self.launch_file, 'r', encoding='utf-8') as f:
                 launch_data = json.load(f)
                 news_status = launch_data.get('news', '开启')
-                self.label_2.setText(f"当前状态: {news_status}")
+                self.label_2.setText(f"{news_status}")
 
             logging.debug("News settings loaded successfully.")
         except json.JSONDecodeError as e:
@@ -558,10 +614,93 @@ class SettingsWindow(QDialog):
                 with open(self.launch_file, 'w', encoding='utf-8') as f:
                     json.dump(launch_data, f, ensure_ascii=False, indent=4)
 
-                self.label_2.setText(f"当前状态: {new_status}")
+                self.label_2.setText(f"{new_status}")
                 logging.info(f"News status toggled to: {new_status}")
         except Exception as e:
             logging.error(f"Failed to toggle news status: {e}")
+
+#####################天气模块设置########################################################################################
+    def connect_weather_signals(self):
+        self.lineEdit_2.textChanged.connect(self.save_weather_settings)
+
+    def load_weather_settings(self):
+        try:
+            logging.debug("Loading weather settings from file.")
+            if not os.path.exists(self.weather_file):
+                logging.warning("Weather file not found. Creating a default one.")
+                self.create_default_weather_file()
+
+            with open(self.weather_file, 'r', encoding='utf-8') as f:
+                api_key = f.read().strip()
+                self.lineEdit_2.setText(api_key)
+
+            logging.debug("Weather settings loaded successfully.")
+        except Exception as e:
+            logging.error(f"Failed to load weather settings: {e}")
+
+    def create_default_weather_file(self):
+        default_api_key = "your_api_key_here"
+        try:
+            with open(self.weather_file, 'w', encoding='utf-8') as f:
+                f.write(default_api_key)
+                logging.info("Default weather file created.")
+        except Exception as e:
+            logging.error(f"Failed to create default weather file: {e}")
+
+    def save_weather_settings(self):
+        try:
+            api_key = self.lineEdit_2.text().strip()
+            with open(self.weather_file, 'w', encoding='utf-8') as f:
+                f.write(api_key)
+            logging.info("Weather settings saved successfully.")
+        except Exception as e:
+            logging.error(f"Failed to save weather settings: {e}")
+
+    def connect_location_signals(self):
+        self.doubleSpinBox.valueChanged.connect(self.save_location_settings)
+        self.doubleSpinBox_2.valueChanged.connect(self.save_location_settings)
+
+    def load_location_settings(self):
+        try:
+            logging.debug("Loading location settings from file.")
+            if not os.path.exists(self.location_file):
+                logging.warning("Location file not found. Creating a default one.")
+                self.create_default_location_file()
+
+            with open(self.location_file, 'r', encoding='utf-8') as f:
+                location_data = f.read().strip()
+                latitude, longitude = map(float, location_data.split(','))
+                self.doubleSpinBox.setValue(latitude)
+                self.doubleSpinBox_2.setValue(longitude)
+
+            logging.debug("Location settings loaded successfully.")
+        except Exception as e:
+            logging.error(f"Failed to load location settings: {e}")
+
+    def create_default_location_file(self):
+        default_location = "40.605403,111.843386"
+        try:
+            with open(self.location_file, 'w', encoding='utf-8') as f:
+                f.write(default_location)
+                logging.info("Default location file created.")
+        except Exception as e:
+            logging.error(f"Failed to create default location file: {e}")
+
+    def save_location_settings(self):
+        try:
+            latitude = self.doubleSpinBox.value()
+            longitude = self.doubleSpinBox_2.value()
+
+            if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
+                QMessageBox.critical(self, "错误", "经纬度超出有效范围。")
+                return
+
+            location_data = f"{latitude},{longitude}"
+            with open(self.location_file, 'w', encoding='utf-8') as f:
+                f.write(location_data)
+            logging.info("Location settings saved successfully.")
+        except Exception as e:
+            logging.error(f"Failed to save location settings: {e}")
 
     # def closeEvent(self, event):
     #     QMessageBox.information(self, "重启", "设置已更改，重启应用程序以应用更改。")

@@ -124,7 +124,7 @@ QLabel[weather="next"] {
 
 }
 
-#label_28 {
+#label_28, #label_29 {
     color: red;
 }
 
