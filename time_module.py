@@ -75,7 +75,7 @@ class TimeModule:
                         message = f"{event}已经过去"
 
                     self.enddate_label.setText(message)
-                    self.animate_text(self.enddate_label, message)
+
                 else:
                     self.enddate_label.setText("无倒计时信息")
         except (FileNotFoundError, json.JSONDecodeError):

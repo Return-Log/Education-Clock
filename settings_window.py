@@ -7,10 +7,10 @@ import base64
 import os
 from PyQt6.QtWidgets import (
     QDialog, QPushButton, QLabel, QFileDialog, QTextBrowser, QTabWidget,
-    QTableWidgetItem, QMessageBox, QApplication
+    QTableWidgetItem, QMessageBox, QApplication, QDialogButtonBox
 )
 from PyQt6.uic import loadUi
-from PyQt6.QtCore import QTimer, QDateTime
+from PyQt6.QtCore import QTimer, QDateTime, QDate
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -21,10 +21,17 @@ class SettingsWindow(QDialog):
         self.setup_ui()
         self.timetable_file = './data/timetable.json'
         self.db_config_file = './data/db_config.json'
+        self.countdown_file = './data/time.json'
+        self.launch_file = './data/launch.json'
+        self.closetime_file = './data/closetime.json'
         self.encryption_key = 0x5A  # 选择一个简单的密钥
         self.timetable_data = {}  # 初始化一个空字典以保存时间表数据
         self.load_timetable()  # 加载时刻表数据
         self.load_db_config()  # 加载数据库配置
+        self.load_countdown()  # 加载倒计时数据
+        self.load_countdown()  # 加载倒计时数据
+        self.load_shutdown_settings()  # 加载自动关机设置
+        self.load_news_settings()  # 加载新闻设置
 
     def setup_ui(self):
         loadUi('./ui/setting.ui', self)
@@ -35,13 +42,22 @@ class SettingsWindow(QDialog):
         self.tabWidget_2.currentChanged.connect(self.on_tab_changed_2)
         self.pushButton.clicked.connect(self.insert_row)
         self.pushButton_2.clicked.connect(self.delete_row)
-        self.connect_line_edit_signals()
+        self.connect_line_edit_signals()  # 连接通知栏设置文本框的信号
+        self.connect_count_line_edit_signals()  # 连接倒计时设置文本框的信号
+        self.connect_shutdown_signals()  # 连接自动关机设置文本框的信号
+        self.connect_news_signals()  # 连接新闻设置信号
 
     def on_tab_changed(self, index):
-        if index == 3:  # 假设 tab_4 的索引是 3
+        if index == 6:  # 假设 tab_4 的索引是 3
             self.load_db_config()
         elif index == 6:
             self.init_streaming_text()
+        elif index == 1:
+            self.load_countdown()
+        elif index == 3:
+            self.load_shutdown_settings()
+        elif index == 5:  # 假设 tab_5 的索引是 5
+            self.load_news_settings()
 
     def on_tab_changed_2(self, index):
         if 0 <= index <= 6:
@@ -317,6 +333,236 @@ class SettingsWindow(QDialog):
                 logging.info("Database configuration saved.")
         except Exception as e:
             logging.error(f"Failed to save database configuration: {e}")
+
+#############################倒计时设置########################################################################
+    def load_countdown(self):
+        try:
+            logging.debug("Loading countdown from file.")
+            if not os.path.exists(self.countdown_file):
+                logging.warning("Countdown file not found. Creating a default one.")
+                self.create_default_countdown_file()
+
+            with open(self.countdown_file, 'r', encoding='utf-8') as f:
+                countdown_data = f.read()
+                countdown_json = json.loads(countdown_data)
+                event = countdown_json.get('event', '')
+                enddate = countdown_json.get('enddate', '')
+
+                self.lineEdit.setText(event)
+                self.dateEdit.setDate(QDate.fromString(enddate, "yyyy-MM-dd"))
+                logging.debug("Countdown loaded successfully.")
+        except json.JSONDecodeError as e:
+            logging.error(f"Failed to decode JSON: {e}")
+            self.create_default_countdown_file()
+        except Exception as e:
+            logging.error(f"Failed to load countdown: {e}")
+
+    def create_default_countdown_file(self):
+        default_countdown = {
+            "event": "New Event",
+            "enddate": QDate.currentDate().addDays(7).toString("yyyy-MM-dd")
+        }
+        try:
+            json_data = json.dumps(default_countdown, ensure_ascii=False, indent=4)
+            with open(self.countdown_file, 'w', encoding='utf-8') as f:
+                f.write(json_data)
+                logging.info("Default countdown file created.")
+        except Exception as e:
+            logging.error(f"Failed to create default countdown file: {e}")
+
+    def connect_count_line_edit_signals(self):
+        self.lineEdit.textChanged.connect(self.on_count_line_edit_text_changed)
+        self.dateEdit.dateChanged.connect(self.on_count_line_edit_text_changed)
+
+    def on_count_line_edit_text_changed(self):
+        self.save_countdown()
+
+    def save_countdown(self):
+        try:
+            event = self.lineEdit.text()
+            enddate = self.dateEdit.date().toString("yyyy-MM-dd")
+
+            countdown = {
+                "event": event,
+                "enddate": enddate
+            }
+
+            json_data = json.dumps(countdown, ensure_ascii=False, indent=4)
+            logging.debug(f"Generated JSON data: {json_data}")
+
+            with open(self.countdown_file, 'w', encoding='utf-8') as f:
+                f.write(json_data)
+                logging.info("Countdown saved successfully.")
+        except Exception as e:
+            logging.error(f"Failed to save countdown: {e}")
+
+######################自动关机设置###########################################################################
+    def connect_shutdown_signals(self):
+        self.buttonBox.clicked.connect(self.toggle_shutdown)
+        self.lineEdit_11.textChanged.connect(self.save_shutdown_settings)
+        self.lineEdit_12.textChanged.connect(self.save_shutdown_settings)
+        self.lineEdit_13.textChanged.connect(self.save_shutdown_settings)
+        self.lineEdit_14.textChanged.connect(self.save_shutdown_settings)
+        self.lineEdit_15.textChanged.connect(self.save_shutdown_settings)
+        self.lineEdit_16.textChanged.connect(self.save_shutdown_settings)
+        self.lineEdit_17.textChanged.connect(self.save_shutdown_settings)
+
+    def load_shutdown_settings(self):
+        try:
+            logging.debug("Loading shutdown settings from files.")
+            if not os.path.exists(self.launch_file):
+                logging.warning("Launch file not found. Creating a default one.")
+                self.create_default_launch_file()
+
+            if not os.path.exists(self.closetime_file):
+                logging.warning("Closetime file not found. Creating a default one.")
+                self.create_default_closetime_file()
+
+            with open(self.launch_file, 'r', encoding='utf-8') as f:
+                launch_data = json.load(f)
+                shutdown_status = launch_data.get('shutdown', '关闭')
+                self.label_4.setText(f"当前状态: {shutdown_status}")
+
+            with open(self.closetime_file, 'r', encoding='utf-8') as f:
+                closetime_data = json.load(f)
+                shutdown_times = closetime_data.get('shutdown_times', {})
+                self.lineEdit_11.setText(",".join(shutdown_times.get('Monday', [])))
+                self.lineEdit_12.setText(",".join(shutdown_times.get('Tuesday', [])))
+                self.lineEdit_13.setText(",".join(shutdown_times.get('Wednesday', [])))
+                self.lineEdit_14.setText(",".join(shutdown_times.get('Thursday', [])))
+                self.lineEdit_15.setText(",".join(shutdown_times.get('Friday', [])))
+                self.lineEdit_16.setText(",".join(shutdown_times.get('Saturday', [])))
+                self.lineEdit_17.setText(",".join(shutdown_times.get('Sunday', [])))
+
+            # 设置按钮文本
+            button = self.buttonBox.button(QDialogButtonBox.StandardButton.Ok)
+            button.setText("关闭" if shutdown_status == "开启" else "开启")
+
+            logging.debug("Shutdown settings loaded successfully.")
+        except json.JSONDecodeError as e:
+            logging.error(f"Failed to decode JSON: {e}")
+        except Exception as e:
+            logging.error(f"Failed to load shutdown settings: {e}")
+
+    def create_default_launch_file(self):
+        default_launch = {
+            "shutdown": "关闭",
+            "news": "开启"
+        }
+        try:
+            json_data = json.dumps(default_launch, ensure_ascii=False, indent=4)
+            with open(self.launch_file, 'w', encoding='utf-8') as f:
+                f.write(json_data)
+                logging.info("Default launch file created.")
+        except Exception as e:
+            logging.error(f"Failed to create default launch file: {e}")
+
+    def create_default_closetime_file(self):
+        default_closetime = {
+            "shutdown_times": {
+                "Monday": ["12:01", "22:29"],
+                "Tuesday": ["12:01", "22:29"],
+                "Wednesday": ["12:01", "22:29"],
+                "Thursday": ["12:01", "22:29"],
+                "Friday": ["12:01", "22:29"],
+                "Saturday": ["12:01", "15:45"],
+                "Sunday": ["12:01", "21:59"]
+            }
+        }
+        try:
+            json_data = json.dumps(default_closetime, ensure_ascii=False, indent=4)
+            with open(self.closetime_file, 'w', encoding='utf-8') as f:
+                f.write(json_data)
+                logging.info("Default closetime file created.")
+        except Exception as e:
+            logging.error(f"Failed to create default closetime file: {e}")
+
+    def toggle_shutdown(self, button):
+        try:
+            with open(self.launch_file, 'r', encoding='utf-8') as f:
+                launch_data = json.load(f)
+
+            current_status = launch_data.get('shutdown', '关闭')
+            if button == self.buttonBox.button(QDialogButtonBox.StandardButton.Open):
+                new_status = "开启"
+            elif button == self.buttonBox.button(QDialogButtonBox.StandardButton.Close):
+                new_status = "关闭"
+            else:
+                return
+
+            if current_status != new_status:
+                launch_data['shutdown'] = new_status
+                with open(self.launch_file, 'w', encoding='utf-8') as f:
+                    json.dump(launch_data, f, ensure_ascii=False, indent=4)
+
+                self.label_4.setText(f"当前状态: {new_status}")
+                logging.info(f"Shutdown status toggled to: {new_status}")
+        except Exception as e:
+            logging.error(f"Failed to toggle shutdown status: {e}")
+
+    def save_shutdown_settings(self):
+        try:
+            with open(self.launch_file, 'r', encoding='utf-8') as f:
+                launch_data = json.load(f)
+
+            with open(self.closetime_file, 'r', encoding='utf-8') as f:
+                closetime_data = json.load(f)
+            for line_edit in [self.lineEdit_11, self.lineEdit_12, self.lineEdit_13, self.lineEdit_14, self.lineEdit_15, self.lineEdit_16, self.lineEdit_17]:
+                line_edit.setText(line_edit.text().replace('，', ','))
+
+
+            with open(self.closetime_file, 'w', encoding='utf-8') as f:
+                json.dump(closetime_data, f, ensure_ascii=False, indent=4)
+
+            logging.info("Shutdown times saved successfully.")
+        except Exception as e:
+            logging.error(f"Failed to save shutdown settings: {e}")
+
+###############自动新闻联播设置#########################################################################################
+    def connect_news_signals(self):
+        self.buttonBox_3.clicked.connect(self.toggle_news)
+
+    def load_news_settings(self):
+        try:
+            logging.debug("Loading news settings from files.")
+            if not os.path.exists(self.launch_file):
+                logging.warning("Launch file not found. Creating a default one.")
+                self.create_default_launch_file()
+
+            with open(self.launch_file, 'r', encoding='utf-8') as f:
+                launch_data = json.load(f)
+                news_status = launch_data.get('news', '开启')
+                self.label_2.setText(f"当前状态: {news_status}")
+
+            logging.debug("News settings loaded successfully.")
+        except json.JSONDecodeError as e:
+            logging.error(f"Failed to decode JSON: {e}")
+        except Exception as e:
+            logging.error(f"Failed to load news settings: {e}")
+
+    def toggle_news(self, button):
+        try:
+            with open(self.launch_file, 'r', encoding='utf-8') as f:
+                launch_data = json.load(f)
+
+            current_status = launch_data.get('news', '关闭')
+            if button == self.buttonBox_3.button(QDialogButtonBox.StandardButton.Open):
+                new_status = "开启"
+            elif button == self.buttonBox_3.button(QDialogButtonBox.StandardButton.Close):
+                new_status = "关闭"
+            else:
+                return
+
+            if current_status != new_status:
+                launch_data['news'] = new_status
+                with open(self.launch_file, 'w', encoding='utf-8') as f:
+                    json.dump(launch_data, f, ensure_ascii=False, indent=4)
+
+                self.label_2.setText(f"当前状态: {new_status}")
+                logging.info(f"News status toggled to: {new_status}")
+        except Exception as e:
+            logging.error(f"Failed to toggle news status: {e}")
+
     # def closeEvent(self, event):
     #     QMessageBox.information(self, "重启", "设置已更改，重启应用程序以应用更改。")
     #     python = sys.executable
