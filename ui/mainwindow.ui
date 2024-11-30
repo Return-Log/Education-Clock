@@ -158,10 +158,20 @@
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <property name="spacing">
+           <number>1</number>
+          </property>
           <item>
            <widget class="QLabel" name="label_update">
             <property name="text">
              <string>更新状态</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QToolButton" name="toolButton">
+            <property name="text">
+             <string>点名</string>
             </property>
            </widget>
           </item>

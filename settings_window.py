@@ -7,7 +7,7 @@ import base64
 import os
 from PyQt6.QtWidgets import (
     QDialog, QPushButton, QLabel, QFileDialog, QTextBrowser, QTabWidget,
-    QTableWidgetItem, QMessageBox, QApplication, QDialogButtonBox
+    QTableWidgetItem, QMessageBox, QApplication, QDialogButtonBox, QPlainTextEdit
 )
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, QDateTime, QDate
@@ -26,6 +26,7 @@ class SettingsWindow(QDialog):
         self.closetime_file = './data/closetime.json'
         self.weather_file = './data/weather.txt'
         self.location_file = './data/location.txt'
+        self.names_file = './data/name.txt'
         self.encryption_key = 0x5A  # 选择一个简单的密钥
         self.timetable_data = {}  # 初始化一个空字典以保存时间表数据
         self.load_timetable()  # 加载时刻表数据
@@ -36,6 +37,7 @@ class SettingsWindow(QDialog):
         self.load_news_settings()  # 加载新闻设置
         self.load_weather_settings()  # 加载天气设置
         self.load_location_settings()  # 加载位置设置
+        self.load_names()  # 加载名字列表
 
     def setup_ui(self):
         loadUi('./ui/setting.ui', self)
@@ -52,11 +54,13 @@ class SettingsWindow(QDialog):
         self.connect_news_signals()  # 连接新闻设置信号
         self.connect_weather_signals()  # 连接天气设置信号
         self.connect_location_signals()  # 连接位置设置信号
+        self.plainTextEdit_names = self.findChild(QPlainTextEdit, "plainTextEdit")  # 获取名字编辑器
+        self.plainTextEdit_names.textChanged.connect(self.save_names)  # 连接 textChanged 信号
 
     def on_tab_changed(self, index):
         if index == 3:
             self.load_db_config()
-        elif index == 6:
+        elif index == 7:
             self.init_streaming_text()
         elif index == 1:
             self.load_countdown()
@@ -67,6 +71,8 @@ class SettingsWindow(QDialog):
         elif index == 2:
             self.load_weather_settings()
             self.load_location_settings()
+        elif index == 6:
+            self.load_names()
 
     def on_tab_changed_2(self, index):
         if 0 <= index <= 6:
@@ -701,6 +707,34 @@ class SettingsWindow(QDialog):
             logging.info("Location settings saved successfully.")
         except Exception as e:
             logging.error(f"Failed to save location settings: {e}")
+
+#########################################随机点名设置################################################
+    def load_names(self):
+        """从文件中加载名字列表"""
+        try:
+            with open(self.names_file, 'r', encoding='utf-8') as file:
+                names = file.read()
+            self.plainTextEdit_names.setPlainText(names)
+        except FileNotFoundError:
+            self.plainTextEdit_names.setPlainText("")  # 如果文件不存在，清空编辑器
+
+    def save_names(self):
+        """保存名字列表到文件，并去除空的换行符"""
+        # 获取纯文本编辑器中的所有文本
+        names = self.plainTextEdit_names.toPlainText()
+
+        # 将文本按行分割
+        lines = names.splitlines()
+
+        # 过滤掉空行
+        non_empty_lines = [line for line in lines if line.strip()]
+
+        # 重新组合成一个字符串，每行之间保留一个换行符
+        cleaned_names = '\n'.join(non_empty_lines)
+
+        # 写入文件
+        with open(self.names_file, 'w', encoding='utf-8') as file:
+            file.write(cleaned_names)
 
     def closeEvent(self, event):
         QMessageBox.information(self, "重启", "设置已更改，重启应用程序以应用更改。")

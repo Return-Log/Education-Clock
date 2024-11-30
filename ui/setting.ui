@@ -42,7 +42,7 @@
       <enum>QTabWidget::Rounded</enum>
      </property>
      <property name="currentIndex">
-      <number>0</number>
+      <number>6</number>
      </property>
      <property name="elideMode">
       <enum>Qt::ElideNone</enum>
@@ -650,6 +650,23 @@
         <widget class="QDialogButtonBox" name="buttonBox_3">
          <property name="standardButtons">
           <set>QDialogButtonBox::Close|QDialogButtonBox::Open</set>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tab_8">
+      <attribute name="title">
+       <string>随机点名</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_8">
+       <item row="0" column="0">
+        <widget class="QPlainTextEdit" name="plainTextEdit"/>
+       </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_30">
+         <property name="text">
+          <string>一行设置一个名字，请勿输入无关的空格与换行符</string>
          </property>
         </widget>
        </item>

@@ -124,8 +124,14 @@ QLabel[weather="next"] {
 
 }
 
-#label_28, #label_29 {
+#label_28, #label_29, #label_30 {
     color: red;
+}
+
+#name_label {
+    font-size: 100px;
+    color: #4cc2ff;  /* 浅蓝色 */
+    border-radius: 5px;  /* 圆角 */
 }
 
 

@@ -8,6 +8,8 @@ from PyQt6.QtWidgets import QMessageBox
 from PyQt6.QtCore import QSettings
 from datetime import datetime
 import json
+
+from roll_call_module import RollCallDialog
 from timetable_module import TimetableModule
 from auto_cctv_controller import AutoCCTVController  # 导入自动新闻联播模块
 from shutdown_module import ShutdownModule  # 导入关机模块
@@ -51,6 +53,8 @@ class MainWindow(QMainWindow):
 
         # 连接 toolButton_3 到打开设置窗口的方法
         self.toolButton_3.clicked.connect(self.open_settings_window)
+
+        self.toolButton.clicked.connect(self.open_roll_call_window)  # 打开点名窗口的按钮
 
         # 初始化公告板模块
         self.init_bulletin_board_module()
@@ -250,6 +254,12 @@ class MainWindow(QMainWindow):
                 self.label_update.setText("无法检测更新")
         except requests.RequestException:
             self.label_update.setText("无法检测更新")
+
+    # 在 MainWindow 类中添加打开点名窗口的方法
+    def open_roll_call_window(self):
+        """打开随机点名窗口"""
+        self.roll_call_dialog = RollCallDialog(self)
+        self.roll_call_dialog.exec()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
