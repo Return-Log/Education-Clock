@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask, request, jsonify
 import hashlib
 import hmac
@@ -110,4 +112,5 @@ def receive_message(robot_name):
     return jsonify({"status": "消息已接收并存储"}), 200
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10086, debug=True)
+    port = int(os.getenv('APP_PORT', 10240))
+    app.run(host='0.0.0.0', port=port, debug=True)
