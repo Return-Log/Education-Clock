@@ -50,7 +50,7 @@
    <item row="0" column="0" colspan="2">
     <widget class="QLabel" name="countdown_label">
      <property name="styleSheet">
-      <string notr="true">font-size: 60px; font-weight: bold; font-family: 'SimHei'; color: #003399;</string>
+      <string notr="true">font-size: 60px; font-weight: bold; font-family: 'SimHei'; color: #4cc2ff;</string>
      </property>
      <property name="text">
       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:45pt; color:#ffffff;&quot;&gt;关机倒计时：10秒&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>

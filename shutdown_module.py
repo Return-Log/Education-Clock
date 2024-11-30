@@ -14,7 +14,7 @@ class CountdownDialog(QDialog):
         super().__init__(parent)
         loadUi('./ui/shutdown.ui', self)  # 加载UI文件
         self.setWindowTitle('关机倒计时')
-        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.FramelessWindowHint)
 
         # 获取主屏幕的尺寸
         screen = QApplication.primaryScreen()
@@ -42,7 +42,10 @@ class CountdownDialog(QDialog):
         self.countdown_label.setText(f"关机倒计时：{self.countdown_seconds}秒")
         if self.countdown_seconds == 0:
             self.shutdown_now()
-        self.countdown_seconds -= 1
+        else:
+            self.countdown_seconds -= 1
+            self.raise_()  # 确保窗口在最上层
+            self.activateWindow()  # 激活窗口
 
     def cancel_shutdown(self):
         """

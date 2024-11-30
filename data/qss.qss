@@ -128,6 +128,7 @@ QLabel[weather="next"] {
     color: red;
 }
 
+
 /* 表格背景 */
 QTableWidget {
     background-color: #1F242A; /* 深灰色背景 */

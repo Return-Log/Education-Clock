@@ -16,6 +16,8 @@ from weather_module import WeatherModule
 from settings_window import SettingsWindow  # 导入设置窗口类
 from bulletin_board_module import BulletinBoardModule  # 导入公告板模块
 
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -47,11 +49,6 @@ class MainWindow(QMainWindow):
         # 保存和恢复窗口大小和位置
         self.restore_window_geometry()
 
-        # 将窗口置于最下层
-        self.setWindowState(Qt.WindowState.WindowNoState)  # 确保窗口状态正常
-        self.show()
-        self.lower()  # 将窗口置于最下层
-
         # 连接 toolButton_3 到打开设置窗口的方法
         self.toolButton_3.clicked.connect(self.open_settings_window)
 
@@ -65,6 +62,57 @@ class MainWindow(QMainWindow):
 
         # 在启动时检测更新
         self.check_for_updates()
+
+        # 移除窗口边框
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        # 固定窗口位置和大小
+        self.fix_window_position_and_size()
+
+        # 将窗口置于最下层
+        self.lower()
+
+
+    def fix_window_position_and_size(self):
+        # 获取屏幕的尺寸
+        screen = QApplication.primaryScreen().geometry()
+        screen_width = screen.width()
+        screen_height = screen.height()
+
+        # 获取任务栏的高度
+        taskbar_height = self.get_taskbar_height()
+
+        # 确保任务栏高度合理
+        if taskbar_height >= screen_height:
+            taskbar_height = 25  # 使用默认任务栏高度
+
+        # 计算窗口的宽度和高度
+        window_width = screen_width // 3
+        window_height = screen_height - taskbar_height
+
+        # 确保窗口高度不为负数
+        if window_height <= 0:
+            window_height = screen_height - 25  # 使用默认任务栏高度
+
+        # 计算窗口的位置
+        window_x = screen_width - window_width
+        window_y = 0
+
+        # 设置窗口的位置和大小
+        self.setGeometry(window_x, window_y, window_width, window_height)
+
+    def get_taskbar_height(self):
+        """获取任务栏的高度"""
+        screen = QApplication.primaryScreen()
+        available_geometry = screen.availableGeometry()
+        screen_geometry = screen.geometry()
+
+        # 获取屏幕的高度
+        screen_height = screen_geometry.height()
+
+        # 获取任务栏的高度
+        taskbar_height = screen_height - available_geometry.height()
+
+        return taskbar_height
 
     def show_message(self, message):
         # 创建 QMessageBox
