@@ -1,8 +1,8 @@
-# Education Clock v3.1 简介
+# Education Clock v3.5 简介
 
 > [!NOTE]
 >
-> 软件具有-桌面时钟 -课程表 -天气预报 -自动新闻联播 -定时关机-消息通知栏等功能
+> 软件具有-桌面时钟 -课程表 -天气预报 -自动新闻联播 -定时关机 -消息通知栏 -随机点名等功能
 
 ![Snipaste_2024-10-27_14-46-12.png](https://s2.loli.net/2024/10/27/wC2fM1sVGmhSt6z.png)
 
