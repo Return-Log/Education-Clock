@@ -1,13 +1,9 @@
-import os
-
 from flask import Flask, request, jsonify
 import hashlib
 import hmac
 import base64
 import pymysql
-import json
 import logging
-from datetime import datetime
 
 # 配置日志
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -15,20 +11,20 @@ logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %
 app = Flask(__name__)
 
 # 数据库配置
-db_config = {
+db_config = {  # 数据库配置
     "host": "localhost",
     "user": "",
     "password": "",
     "database": ""
 }
 
-# 钉钉机器人配置
-robots = {
-    "robot1_name": {
-        "agent_id": "",
-        "app_key": "",
-        "app_secret": ""
+# 钉钉机器人配置（多个机器人）
+robots = {  # 机器人应用凭证
+    "dingri1t4kfs8dhp0ps0": {  # AppKey
+        "agent_id": "29464001",  # AgentId
+        "app_secret": "_jHGM5Xn9Cjg0vZu1dN4jqA3QKG14h1Y91ufHSR9imFc8GhUliPHoXgfGFzh0uFS"  # AppSecret
     }
+    # 可以继续增加更多的机器人配置
 }
 
 def get_db_connection():
@@ -40,46 +36,48 @@ def get_db_connection():
             database=db_config["database"],
             cursorclass=pymysql.cursors.DictCursor
         )
-        logging.info("Database connection successful")  # 打印数据库连接成功的日志
+        logging.info("Database connection successful")
         return connection
     except Exception as e:
-        logging.error(f"Database connection error: {e}")  # 打印数据库连接失败的错误信息
+        logging.error(f"Database connection error: {e}")
         return None
 
 def verify_signature(app_secret, timestamp, sign):
     string_to_sign = f'{timestamp}\n{app_secret}'
     hmac_code = hmac.new(app_secret.encode('utf-8'), string_to_sign.encode('utf-8'), digestmod=hashlib.sha256).digest()
     expected_sign = base64.b64encode(hmac_code).decode('utf-8')
-    logging.debug(f"Expected Sign: {expected_sign}, Received Sign: {sign}")  # 调试签名
-    if expected_sign != sign:
-        logging.error("Signature verification failed")  # 调试签名验证失败
+    logging.debug(f"Expected Sign: {expected_sign}, Received Sign: {sign}")
     return expected_sign == sign
 
 @app.route('/', methods=['POST'])
 def root_webhook():
     logging.info("Received request at root path")
-    return receive_message('29464001')
 
-@app.route('/webhook/<robot_name>', methods=['POST'])
-def receive_message(robot_name):
-    logging.info(f"Received request for robot: {robot_name}")  # 打印收到请求的日志
+    # 获取请求数据并打印
+    data = request.json
+    logging.debug(f"Received data: {data}")
 
-    if robot_name not in robots:
-        logging.error("Invalid robot name")
+    # 获取机器人代码 (robotCode) 对应的 app_key
+    robot_code = data.get('robotCode', None)
+
+    # 检查 robotCode 是否有效，应该对应到 robots 中的 app_key
+    if not robot_code or robot_code not in robots:
+        logging.error("Invalid robotCode")
         return jsonify({"error": "机器人名称无效"}), 400
 
-    robot_info = robots[robot_name]
+    # 获取机器人配置信息
+    robot_info = robots[robot_code]
     app_secret = robot_info["app_secret"]
 
+    # 获取签名信息
     timestamp = request.headers.get("timestamp")
     sign = request.headers.get("sign")
+    logging.debug(f"Received timestamp: {timestamp}, sign: {sign}")
 
+    # 验证签名
     if not verify_signature(app_secret, timestamp, sign):
         logging.error("Signature verification failed")
         return jsonify({"error": "签名验证失败"}), 403
-
-    data = request.json
-    logging.debug(f"Received data: {data}")  # 打印接收到的数据
 
     # 解析消息内容
     msgtype = data.get("msgtype")
@@ -91,6 +89,7 @@ def receive_message(robot_name):
         logging.error("Message content is empty")
         return jsonify({"error": "消息内容为空"}), 400
 
+    # 处理数据库操作
     connection = get_db_connection()
     if connection is None:
         logging.error("Database connection failed")
@@ -99,12 +98,12 @@ def receive_message(robot_name):
     try:
         with connection.cursor() as cursor:
             sql = "INSERT INTO messages (robot_name, conversationTitle, sender_name, message_content) VALUES (%s, %s, %s, %s)"
-            values = (robot_name, conversationTitle, sender_name, text_content)
+            values = (robot_code, conversationTitle, sender_name, text_content)
             cursor.execute(sql, values)
-            logging.info("Data inserted successfully")  # 打印插入成功的日志
+            logging.info("Data inserted successfully")
         connection.commit()
     except Exception as e:
-        logging.error(f"Error inserting data: {e}")  # 打印插入失败的错误信息
+        logging.error(f"Error inserting data: {e}")
         connection.rollback()
     finally:
         connection.close()
@@ -112,5 +111,4 @@ def receive_message(robot_name):
     return jsonify({"status": "消息已接收并存储"}), 200
 
 if __name__ == '__main__':
-    port = int(os.getenv('APP_PORT', 10240))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=10240, debug=True)
