@@ -23,31 +23,32 @@ class BulletinBoardWorker(QThread):
         self.text_edit = text_edit
 
     def run(self):
-        last_message = self.read_last_message_from_json()
-        new_messages, has_new_message = self.fetch_and_filter_messages(last_message)
+        # 读取最后的消息 ID
+        last_id = self.read_last_db_id()
+
+        # 获取新消息并判断是否有新消息
+        new_messages, has_new_message = self.fetch_and_filter_messages(last_id)
 
         # 更新 textEdit 并发送信号
         formatted_text = self.format_text(new_messages)
         self.update_signal.emit(formatted_text, has_new_message)
 
-    def read_last_message_from_json(self):
-        """ 读取 sql.json 文件中的最后一条消息 """
-        if os.path.exists('data/sql.json'):
+    def read_last_db_id(self):
+        """ 读取 dbid.txt 文件中的最后一条消息 ID """
+        last_id = 0
+        if os.path.exists('data/dbid.txt'):
             try:
-                with open('data/sql.json', 'r', encoding='utf-8') as f:
-                    messages = json.load(f)
-                    if messages:
-                        return messages[0]  # 返回最后一条消息
-                    else:
-                        return None
-            except json.JSONDecodeError as e:
-                self.update_text_edit(f"JSON Decode Error: {str(e)}", False)
-                return None
-        else:
-            self.update_text_edit("File not found: data/sql.json", False)
-            return None
+                with open('data/dbid.txt', 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                    if content:
+                        last_id = int(content)
+            except ValueError as e:
+                self.update_signal.emit(f"值错误: {str(e)}", False)
+            except Exception as e:
+                self.update_signal.emit(f"意外错误: {str(e)}", False)
+        return last_id
 
-    def fetch_and_filter_messages(self, last_message):
+    def fetch_and_filter_messages(self, last_id):
         """ 从数据库中获取并过滤消息，同时检查是否有新消息 """
         try:
             with pymysql.connect(
@@ -70,36 +71,32 @@ class BulletinBoardWorker(QThread):
 
                     filtered_rows = self.filter_data(rows)
                     has_new_message = False
-                    if last_message and filtered_rows:
-                        if last_message and 'id' in last_message:
-                            has_new_message = last_message['id'] != filtered_rows[0]['id']
-
-                    with open('data/sql.json', 'w', encoding='utf-8') as f:
-                        json.dump(filtered_rows, f, ensure_ascii=False, indent=4, cls=DateTimeEncoder)
+                    if filtered_rows:
+                        latest_id = filtered_rows[0]['id']
+                        has_new_message = last_id != latest_id
+                        # 更新 dbid.txt 文件
+                        with open('data/dbid.txt', 'w', encoding='utf-8') as f:
+                            f.write(str(latest_id))
 
                     return filtered_rows, has_new_message
 
         except pymysql.MySQLError as e:
             # 数据库错误
-            self.update_signal.emit(f"Database Error: {str(e)}", False)
+            self.update_signal.emit(f"数据库错误: {str(e)}", False)
             return [], False
         except FileNotFoundError as e:
             # 文件未找到错误
-            self.update_signal.emit(f"File Not Found Error: {str(e)}", False)
-            return [], False
-        except json.JSONDecodeError as e:
-            # JSON 解码错误
-            self.update_signal.emit(f"JSON Decode Error: {str(e)}", False)
+            self.update_signal.emit(f"找不到文件: {str(e)}", False)
             return [], False
         except Exception as e:
             # 其他异常
             if "Errno 99" in str(e) or "Errno 111" in str(e) or "Errno 10065" in str(e):
                 # 处理网络连接错误
-                self.update_signal.emit(f"Network Error: {str(e)}", False)
+                self.update_signal.emit(f"网络错误: {str(e)}", False)
                 return [], False
             else:
                 # 未知错误
-                self.update_signal.emit(f"Unexpected Error: {str(e)}", False)
+                self.update_signal.emit(f"意外错误: {str(e)}", False)
                 return [], False
 
     def filter_data(self, rows):
@@ -142,7 +139,7 @@ class BulletinBoardWorker(QThread):
                     self.play_new_message_sound()
 
         except Exception as e:
-            self.update_text_edit(f"Unexpected Error: {str(e)}", False)
+            self.update_text_edit(f"意外错误: {str(e)}", False)
 
     def play_new_message_sound(self):
         self.sound_effect.play()
@@ -171,7 +168,7 @@ class BulletinBoardModule:
             required_fields = ["host", "port", "user", "password", "database"]
             for field in required_fields:
                 if not db_config.get(field):
-                    self.update_text_edit(f"Configuration Error: {field} is empty in db_config.json", False)
+                    self.update_text_edit(f"配置错误: {field} 在 db_config.json 中为空", False)
                     return False
 
             db_config['port'] = int(db_config['port'])
@@ -182,16 +179,16 @@ class BulletinBoardModule:
             return True
 
         except FileNotFoundError as e:
-            self.update_text_edit(f"File Not Found Error: {str(e)}", False)
+            self.update_text_edit(f"找不到文件: {str(e)}", False)
             return False
         except json.JSONDecodeError as e:
-            self.update_text_edit(f"JSON Decode Error: {str(e)}", False)
+            self.update_text_edit(f"JSON 解码错误: {str(e)}", False)
             return False
         except ValueError as e:
-            self.update_text_edit(f"Value Error: {str(e)}", False)
+            self.update_text_edit(f"值错误: {str(e)}", False)
             return False
         except Exception as e:
-            self.update_text_edit(f"Unexpected Error: {str(e)}", False)
+            self.update_text_edit(f"意外错误: {str(e)}", False)
             return False
 
     def decrypt_data(self, encrypted_data, key):
@@ -211,7 +208,7 @@ class BulletinBoardModule:
             self.worker.start()
 
         except Exception as e:
-            self.update_text_edit(f"Unexpected Error: {str(e)}", False)
+            self.update_text_edit(f"意外错误: {str(e)}", False)
 
     def update_text_edit(self, text, has_new_message):
         try:
@@ -224,7 +221,7 @@ class BulletinBoardModule:
                     self.play_new_message_sound()
 
         except Exception as e:
-            self.update_text_edit(f"Unexpected Error: {str(e)}", False)
+            self.update_text_edit(f"意外错误: {str(e)}", False)
 
     def play_new_message_sound(self):
         self.sound_effect.play()

@@ -1,5 +1,5 @@
 Log
-AGPL-3.0
+GPL-3.0
 Return-Log
 1
 2

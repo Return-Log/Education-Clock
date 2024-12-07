@@ -24,7 +24,7 @@ db_config = {
 
 # 钉钉机器人配置
 robots = {
-    "29464001": {
+    "robot1_name": {
         "agent_id": "",
         "app_key": "",
         "app_secret": ""

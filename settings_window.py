@@ -38,8 +38,6 @@ class SettingsWindow(QDialog):
 
     def setup_ui(self):
         loadUi('./ui/setting.ui', self)
-        self.textBrowser.setStyleSheet(
-            "background-color: black; color: green; font-family: 'Courier New', Courier, monospace;")
         self.tabWidget.currentChanged.connect(self.on_tab_changed)
         # 连接 tabWidget_2 的 currentChanged 信号
         self.tabWidget_2.currentChanged.connect(self.on_tab_changed_2)
@@ -57,8 +55,6 @@ class SettingsWindow(QDialog):
     def on_tab_changed(self, index):
         if index == 3:
             self.load_db_config()
-        elif index == 7:
-            self.init_streaming_text()
         elif index == 1:
             self.load_countdown()
         elif index == 4:
@@ -77,61 +73,6 @@ class SettingsWindow(QDialog):
             self.load_timetable_day(index)
         else:
             logging.warning(f"Unexpected tab index: {index}")
-
-    def init_streaming_text(self):
-        self.textBrowser.clear()
-        software_info = [
-            """                               
-  ______    _                 _   _             
- |  ____|  | |               | | (_)            
- | |__   __| |_   _  ___ __ _| |_ _  ___  _ __  
- |  __| / _` | | | |/ __/ _` | __| |/ _ \\| '_ \\ 
- | |___| (_| | |_| | (_| (_| | |_| | (_) | | | |
- |______\\__,_|\\__,_|\\___\\__,_|\\__|_|\\___/|_| |_|
-           / ____| |          | |               
-          | |    | | ___   ___| | __            
-          | |    | |/ _ \\ / __| |/ /            
-          | |____| | (_) | (__|   <             
-           \\_____|_|\\___/ \\___|_|\\_\\                      
-            """,
-            "欢迎使用本软件！",
-            "版本: 3.5",
-            "",
-            "更新日志: ",
-            " - 添加自动点名功能",
-            " - 更新协议为AGPL-3.0",
-            " - 窗口位置大小改为不可调整",
-            "",
-            "日期: 2024/12/01",
-            "项目仓库: https://github.com/Return-Log/Education-Clock",
-            "本软件遵循AGPL-3.0协议发布",
-            "============================================",
-            "Copyright © 2024  Log  All rights reserved.",
-        ]
-        software_info_str = "\n".join(software_info) + "\n"
-        self.add_text_line(software_info_str, delay=1)
-
-    def add_text_line(self, text, delay=1):
-        self.target_text = text
-        self.character_delay = delay
-        self.current_index = 0
-        self.print_next_character()
-
-    def print_next_character(self):
-        if self.current_index < len(self.target_text):
-            current_char = self.target_text[self.current_index]
-            cursor = self.textBrowser.textCursor()
-            cursor.movePosition(cursor.MoveOperation.End)
-            cursor.insertText(current_char)
-            self.textBrowser.setTextCursor(cursor)
-            self.current_index += 1
-            QTimer.singleShot(self.character_delay, self.print_next_character)
-        else:
-            cursor = self.textBrowser.textCursor()
-            cursor.movePosition(cursor.MoveOperation.End)
-            cursor.insertHtml(
-                "<br><a href='https://github.com/Return-Log/Education-Clock' style='color:green;'>GitHub仓库</a>")
-            self.textBrowser.setTextCursor(cursor)
 
 ######################课程表设置##########################################################################################
 
@@ -733,10 +674,10 @@ class SettingsWindow(QDialog):
         with open(self.names_file, 'w', encoding='utf-8') as file:
             file.write(cleaned_names)
 
-    def closeEvent(self, event):
-        QMessageBox.information(self, "重启", "设置已更改，重启应用程序以应用更改。")
-        python = sys.executable
-        os.execl(python, python, *sys.argv)
+    # def closeEvent(self, event):
+    #     QMessageBox.information(self, "重启", "设置已更改，重启应用程序以应用更改。")
+    #     python = sys.executable
+    #     os.execl(python, python, *sys.argv)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
