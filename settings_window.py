@@ -674,10 +674,10 @@ class SettingsWindow(QDialog):
         with open(self.names_file, 'w', encoding='utf-8') as file:
             file.write(cleaned_names)
 
-    # def closeEvent(self, event):
-    #     QMessageBox.information(self, "重启", "设置已更改，重启应用程序以应用更改。")
-    #     python = sys.executable
-    #     os.execl(python, python, *sys.argv)
+    def closeEvent(self, event):
+        QMessageBox.information(self, "重启", "设置已更改，重启应用程序以应用更改。")
+        python = sys.executable
+        os.execl(python, python, *sys.argv)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

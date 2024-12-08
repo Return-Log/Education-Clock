@@ -20,9 +20,9 @@ db_config = {  # 数据库配置
 
 # 钉钉机器人配置（多个机器人）
 robots = {  # 机器人应用凭证
-    "dingri1t4kfs8dhp0ps0": {  # AppKey
-        "agent_id": "29464001",  # AgentId
-        "app_secret": "_jHGM5Xn9Cjg0vZu1dN4jqA3QKG14h1Y91ufHSR9imFc8GhUliPHoXgfGFzh0uFS"  # AppSecret
+    "": {  # AppKey
+        "agent_id": "",  # AgentId
+        "app_secret": ""  # AppSecret
     }
     # 可以继续增加更多的机器人配置
 }
