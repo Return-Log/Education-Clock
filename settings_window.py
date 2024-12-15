@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, QDateTime, QDate
 
+
 class SettingsWindow(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)

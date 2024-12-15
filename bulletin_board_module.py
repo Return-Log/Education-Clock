@@ -44,15 +44,30 @@ class DanmakuWindow(QWidget):
             label = QLabel(self.sanitize_message(message), self)
             label.setStyleSheet("color: #ffffff; font-size: 30px;")
             label.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
+            label.setProperty('bulletin', 'danmaku')  # 设置自定义属性
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            fm = QFontMetrics(label.font())
-            text_rect = fm.boundingRect(label.text())
-            label.setFixedSize(text_rect.width() + 40, text_rect.height() + 10)
+
+            # 确保所有属性设置完毕后调整大小
+            label.adjustSize()  # 根据内容自动调整大小
+
+            # 获取调整后的尺寸并设置最小和最大尺寸
+            size_hint = label.sizeHint()
+            padding = 40  # 左右各20像素的填充
+            height_padding = 10  # 上下各5像素的填充
+
+            label.setMinimumSize(size_hint.width() + padding, size_hint.height() + height_padding)
+            label.setMaximumSize(size_hint.width() + padding, size_hint.height() + height_padding)
+
             self.layout.addWidget(label)
             self.labels.append(label)
 
-        max_label_height = max(label.height() for label in self.labels)
-        self.resize(screen_geometry.width(), len(self.messages) * (max_label_height + self.layout.spacing()))
+        # 调整窗口大小以适应所有标签
+        if self.labels:
+            max_label_height = max(label.height() for label in self.labels)
+            total_height = len(self.messages) * (max_label_height + self.layout.spacing()) - self.layout.spacing()
+            self.resize(screen_geometry.width(), min(total_height, screen_geometry.height()))
+        else:
+            self.resize(screen_geometry.width(), 0)
 
     def sanitize_message(self, message):
         return message.replace("\n", " ").strip()
@@ -63,8 +78,10 @@ class DanmakuWindow(QWidget):
         for i, label in enumerate(self.labels):
             animation = QPropertyAnimation(label, b"geometry")
             animation.setDuration(30000)
-            animation.setStartValue(QRect(screen_width + 50, i * (label.height() + self.layout.spacing()), label.width(), label.height()))
-            animation.setEndValue(QRect(-label.width() - 50, i * (label.height() + self.layout.spacing()), label.width(), label.height()))
+            animation.setStartValue(
+                QRect(screen_width + 50, i * (label.height() + self.layout.spacing()), label.width(), label.height()))
+            animation.setEndValue(
+                QRect(-label.width() - 50, i * (label.height() + self.layout.spacing()), label.width(), label.height()))
             animation.setEasingCurve(QEasingCurve.Type.Linear)
             self.animations.append(animation)
             self.animation_group.addAnimation(animation)

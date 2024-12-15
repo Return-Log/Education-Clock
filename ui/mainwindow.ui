@@ -84,7 +84,7 @@
             <enum>QFrame::Sunken</enum>
            </property>
            <property name="text">
-            <string>TextLabel</string>
+            <string/>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -94,7 +94,7 @@
          <item>
           <widget class="QLabel" name="label_5">
            <property name="text">
-            <string>TextLabel</string>
+            <string/>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -104,7 +104,7 @@
          <item>
           <widget class="QLabel" name="label_4">
            <property name="text">
-            <string>TextLabel</string>
+            <string/>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -114,7 +114,7 @@
          <item>
           <widget class="QLabel" name="label_3">
            <property name="text">
-            <string>TextLabel</string>
+            <string/>
            </property>
            <property name="alignment">
             <set>Qt::AlignCenter</set>
@@ -236,6 +236,9 @@
          <widget class="QComboBox" name="comboBox">
           <property name="insertPolicy">
            <enum>QComboBox::InsertAtBottom</enum>
+          </property>
+          <property name="sizeAdjustPolicy">
+           <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
           </property>
           <property name="duplicatesEnabled">
            <bool>false</bool>

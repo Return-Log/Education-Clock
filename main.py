@@ -243,9 +243,9 @@ class MainWindow(QMainWindow):
             tags = response.json()
             if tags:
                 latest_tag = tags[0]['name']
-                current_version = "v3.6"  # 替换为你的当前版本号
+                current_version = "v3.7"  # 替换为你的当前版本号
                 if latest_tag != current_version:
-                    self.label_update.setText(f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: green;">有新版本 {latest_tag} 更新, 当前版本 {current_version}</a>')
+                    self.label_update.setText(f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: yellow;">检测到新版本 {latest_tag}, 当前版本 {current_version}</a>')
                     self.label_update.setOpenExternalLinks(True)
                 else:
                     self.label_update.setText(f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: green;">已是最新版 {latest_tag}</a>')
