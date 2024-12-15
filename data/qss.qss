@@ -108,7 +108,7 @@ QLabel[time="enddate"] {
 QLabel[bulletin="danmaku"] {
     color: #ffffff;
     font-size: 30px;
-    background-color: rgba(0, 0, 0, 0.5); /* 半透明背景 */
+    background-color: rgba(0, 0, 0, 0.3); /* 半透明背景 */
     border-radius: 3px;
     padding: 1px;
 }

@@ -1,4 +1,4 @@
-# Education Clock v3.6
+# Education Clock v3.7
 
 > [!NOTE]
 >
@@ -75,6 +75,8 @@ API可在和风天气开发平台自行注册获得
 ### 信息显示规则
 
 - 以时间倒序显示近7天数据
+
+- 最新消息以弹幕形式在屏幕上滚动
 
 - 支持markdown格式
 
