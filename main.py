@@ -264,7 +264,7 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     # 加载 QSS 文件
-    with open('data/qss.qss', 'r', encoding="utf-8") as f:
+    with open('ui/qss/dark.qss', 'r', encoding="utf-8") as f:
         app.setStyleSheet(f.read())
 
     window = MainWindow()

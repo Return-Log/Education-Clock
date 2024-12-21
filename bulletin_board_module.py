@@ -1,6 +1,8 @@
 import json
+import logging
 import os
 import base64
+import re
 import sys
 from queue import Queue
 
@@ -107,6 +109,7 @@ class BulletinBoardWorker(QThread):
         self.db_config = db_config
         self.filter_conditions = filter_conditions
         self.text_edit = text_edit
+        self.theme_config = self.load_theme()
 
 
     def run(self):
@@ -199,6 +202,49 @@ class BulletinBoardWorker(QThread):
                 filtered_rows.append(row)
         return filtered_rows
 
+    def get_qss_path(self):
+        default_qss = './ui/qss/dark.qss'
+        qss_txt_path = './data/qss.txt'
+
+        if not os.path.exists(qss_txt_path):
+            return default_qss
+
+        try:
+            with open(qss_txt_path, 'r', encoding='utf-8') as f:
+                qss_file = f.read().strip()
+                if not qss_file:
+                    return default_qss
+                qss_path = os.path.join('./ui/qss', qss_file)
+                if os.path.exists(qss_path):
+                    return qss_path
+                else:
+                    print(f"QSS file {qss_file} does not exist, using default.")
+                    return default_qss
+        except Exception as e:
+            print(f"Error reading qss.txt: {e}, using default.")
+            return default_qss
+
+    def parse_qss_colors(self, qss_file):
+        colors = {}
+        try:
+            with open(qss_file, 'r', encoding='utf-8') as f:
+                qss_content = f.read()
+
+            # 使用正则表达式匹配颜色值
+            pattern = re.compile(r'\.(\w+)\s*\{\s*color:\s*#([0-9a-fA-F]{6})\s*;\s*\}')
+            matches = pattern.findall(qss_content)
+
+            for match in matches:
+                css_class, hex_color = match
+                colors[css_class] = f"#{hex_color}"
+        except Exception as e:
+            print(f"Error parsing QSS file: {e}")
+        return colors
+
+    def load_theme(self):
+        qss_path = self.get_qss_path()
+        return self.parse_qss_colors(qss_path)
+
     def format_text(self, rows):
         formatted_text = ""
         for row in rows:
@@ -207,8 +253,9 @@ class BulletinBoardWorker(QThread):
             created_at = row['timestamp'].strftime("%m-%d %H:%M")
             message_content = row['message_content']
 
-            # 根据 sender_name 设置颜色
-            color = "#FFD700" if "管理组" in conversationTitle else "#4cc2ff"
+            # 根据 conversationTitle 设置 CSS 类
+            css_class = 'admin-sender' if "管理组" in conversationTitle else 'sender'
+            color = self.theme_config.get(css_class, '#4cc2ff')  # 默认颜色
 
             formatted_message = f"<b style='color:{color}; font-size:16px;'>{sender_name} ({created_at})</b>{markdown(message_content)}<hr>"
             formatted_text += formatted_message
@@ -360,10 +407,3 @@ class BulletinBoardModule:
         if hasattr(self, 'worker') and self.worker.isRunning():
             self.worker.quit()
             self.worker.wait()
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    messages = ["Hello World", "弹幕功能测试，以下这是长文本测试：强电解质的定义：在水溶液或熔融状态下能完全电离的完全电离的物质强电解质的定义：在水溶液或熔融状态下能完全电离的物质"]
-    window = DanmakuWindow(messages)
-    window.show()
-    sys.exit(app.exec())

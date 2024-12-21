@@ -1,0 +1,239 @@
+/* 全局字体设置 */
+* {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif; /* 使用 Segoe UI 字体 */
+    font-size: 14px;
+    color: #FFFFFF; /* 默认文字颜色为白色 */
+}
+
+/* 主窗口背景 */
+#centralwidget {
+    background-color: #1F242A; /* 深灰色背景 */
+    color: #FFFFFF; /* 文字颜色为白色 */
+}
+
+/* 通用按钮样式 */
+QPushButton, QToolButton, QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QCheckBox, QRadioButton, QGroupBox, QTabBar::tab, QMenu, QMenuBar, QListView, QTreeView, QColumnView, QStatusBar, QSlider, QDial, QScrollBar, QProgressBar, QFrame, QAbstractItemView, QAbstractScrollArea, QPlainTextEdit, QTextEdit, QInputDialog, QMessageBox, QDialog, QFileDialog, QColorDialog, QFontDialog, QPrintDialog, QPageSetupDialog, QWizard, QDockWidget, QMdiSubWindow, QMdiArea, QSplitter, QStackedWidget, QToolBox, QTabWidget, QScrollArea, QWidget {
+    background-color: #252931; /* 按钮背景颜色 */
+    border: 1px solid #32373E; /* 边框颜色 */
+    color: #FFFFFF; /* 文字颜色 */
+    padding: 5px; /* 内边距 */
+    border-radius: 4px; /* 圆角 */
+}
+
+/* 按钮按下效果 */
+QPushButton:pressed, QToolButton:pressed, QComboBox:pressed, QSpinBox:pressed, QDoubleSpinBox:pressed, QLineEdit:pressed, QCheckBox:pressed, QRadioButton:pressed, QGroupBox:pressed, QTabBar::tab:pressed, QMenu:pressed, QMenuBar:pressed, QListView:pressed, QTreeView:pressed, QColumnView:pressed, QStatusBar:pressed, QSlider:pressed, QDial:pressed, QScrollBar:pressed, QProgressBar:pressed, QFrame:pressed, QAbstractItemView:pressed, QAbstractScrollArea:pressed, QPlainTextEdit:pressed, QTextEdit:pressed, QInputDialog:pressed, QMessageBox:pressed, QDialog:pressed, QFileDialog:pressed, QColorDialog:pressed, QFontDialog:pressed, QPrintDialog:pressed, QPageSetupDialog:pressed, QWizard:pressed, QDockWidget:pressed, QMdiSubWindow:pressed, QMdiArea:pressed, QSplitter:pressed, QStackedWidget:pressed, QToolBox:pressed, QTabWidget:pressed, QScrollArea:pressed {
+    background-color: #484E58; /* 按下时背景颜色 */
+    border: 1px solid #6C757D; /* 按下时边框颜色 */
+}
+
+/* 下拉菜单和组合框 */
+QComboBox::drop-down, QComboBox::down-arrow, QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+    border: 1px solid #32373E; /* 边框颜色 */
+    width: 20px; /* 宽度 */
+    height: 20px; /* 高度 */
+    subcontrol-position: right; /* 位置 */
+    subcontrol-origin: padding; /* 基准点 */
+}
+
+/* 菜单 */
+QMenu, QMenuBar, QMenu::item {
+    background-color: #252931; /* 背景颜色 */
+    color: #FFFFFF; /* 文字颜色 */
+}
+
+QMenu::item:selected, QMenuBar::item:selected {
+    background-color: #3B404B; /* 选中时背景颜色 */
+}
+
+/* 标签 */
+QLabel {
+    color: #FFFFFF; /* 文字颜色 */
+}
+
+/* 特定标签样式 */
+QLabel[timetable="intime"] {
+    color: #FFFFFF;  /* 文字颜色为白色 */
+    font-size: 26px;
+    border: 2px solid #4cc2ff;         /* 设置边框粗细、样式、颜色 */
+    border-radius: 6px;                /* 设置边框圆角 */
+    font-weight: bold;
+    background-color: #1F242A;         /* 蓝色背景 */
+    padding: 5px;                      /* 内边距 */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* 阴影效果 */
+}
+
+QLabel[timetable="untimely"] {
+    color: #FFFFFF;  /* 文字颜色为白色 */
+    font-size: 26px;
+    border: 2px solid #32373E;         /* 设置边框粗细、样式、颜色 */
+    border-radius: 6px;                /* 设置边框圆角 */
+    background-color: #1F242A;         /* 深灰色背景 */
+    padding: 5px;                      /* 内边距 */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* 阴影效果 */
+}
+
+
+
+/* 时间相关标签 */
+QLabel[time="time"] {
+    color: #ffffff;  /* 白色 */
+    border-radius: 0px;  /* 设置边框圆角 */
+    padding: 0px;  /* 增加内边距 */
+    font-weight: bold;
+    font-size: 45px;
+}
+
+QLabel[time="date"] {
+    color: #ffffff;  /* 白色 */
+    border-radius: 0px;  /* 设置边框圆角 */
+    padding: 0px;  /* 增加内边距 */
+    font-size: 28px;
+}
+
+QLabel[time="week"] {
+    color: #4cc2ff;  /* 浅蓝色 */
+    border-radius: 0px;  /* 设置边框圆角 */
+    padding: 0px;  /* 增加内边距 */
+    font-size: 28px;
+}
+
+QLabel[time="enddate"] {
+    color: #4cc2ff;  /* 浅蓝色 */
+    border-radius: 0px;  /* 设置边框圆角 */
+    padding: 0px;  /* 增加内边距 */
+    font-size: 28px;
+}
+
+/* 弹幕 */
+QLabel[bulletin="danmaku"] {
+    color: #ffffff;
+    font-size: 30px;
+    background-color: rgba(0, 0, 0, 0.3); /* 半透明背景 */
+    border-radius: 3px;
+    padding: 1px;
+}
+
+/* 天气相关标签 */
+QLabel[weather="now"] {
+    font-size: 18px;
+    color: #ffffff;  /* 白色 */
+    padding: 0px;  /* 增加内边距 */
+    border-radius: 5px;  /* 圆角 */
+}
+
+QLabel[weather="next"] {
+    font-size: 20px;
+    color: #4cc2ff;  /* 浅蓝色 */
+    padding: 0px;  /* 增加内边距 */
+    border-radius: 5px;  /* 圆角 */
+}
+
+#textEdit {
+    font-size: 18px;
+
+}
+
+#label_28, #label_29, #label_30, #label_40, #label_39 {
+    color: red;
+}
+
+#label_update {
+    color: green;
+}
+
+#name_label {
+    font-size: 100px;
+    color: #4cc2ff;  /* 浅蓝色 */
+    border-radius: 5px;  /* 圆角 */
+}
+
+
+/* 表格背景 */
+QTableWidget {
+    background-color: #1F242A; /* 深灰色背景 */
+    color: #FFFFFF; /* 文字颜色 */
+    font-size: 16px;
+    alternate-background-color: #252931; /* 斑马线效果 */
+    gridline-color: #32373E; /* 网格线颜色 */
+    border: 0px solid #32373E; /* 表格外边框 */
+}
+
+/* 表头样式 */
+QHeaderView::section {
+    background-color: #252931; /* 表头背景颜色 */
+    color: #FFFFFF; /* 表头文字颜色 */
+    border: 1px solid #32373E; /* 表头边框颜色 */
+    padding: 8px; /* 内边距 */
+    border-radius: 3px; /* 圆角 */
+}
+
+/* 表头悬停效果 */
+QHeaderView::section:hover {
+    background-color: #3B404B; /* 悬停时背景颜色 */
+    border: 0.1px solid #565C65; /* 悬停时边框颜色 */
+}
+
+/* 表头按下效果 */
+QHeaderView::section:pressed {
+    background-color: #484E58; /* 按下时背景颜色 */
+    border: 1px solid #6C757D; /* 按下时边框颜色 */
+}
+
+/* 表格单元格样式 */
+QTableWidget::item {
+    padding: 5px; /* 单元格内边距 */
+    border: 0px solid #32373E; /* 减少边框宽度 */
+    border-radius: ¾px; /* 减少圆角 */
+}
+
+/* 表格单元格悬停效果 */
+QTableWidget::item:hover {
+    background-color: #3B404B; /* 悬停时背景颜色 */
+}
+
+/* 表格单元格按下效果 */
+QTableWidget::item:pressed {
+    background-color: #484E58; /* 按下时背景颜色 */
+}
+
+/* 左上角全选按钮样式 */
+QTableWidget::corner,
+QTableWidget::corner:hover,
+QTableWidget::corner:pressed {
+    background-color: #252931; /* 背景颜色 */
+    border: 1px solid #32373E; /* 边框颜色 */
+    border-top-left-radius: 4px; /* 左上角圆角 */
+}
+
+/* 左上角全选按钮悬停效果 */
+QTableWidget::corner:hover {
+    background-color: #3B404B; /* 悬停时背景颜色 */
+    border: 1px solid #565C65; /* 悬停时边框颜色 */
+}
+
+/* 左上角全选按钮按下效果 */
+QTableWidget::corner:pressed {
+    background-color: #484E58; /* 按下时背景颜色 */
+    border: 1px solid #6C757D; /* 按下时边框颜色 */
+}
+
+/* 编号列样式 */
+QTableWidget::item:selected, QTableWidget::item:focus {
+    background-color: #3B404B; /* 选中时背景颜色 */
+    color: #FFFFFF; /* 选中时文字颜色 */
+}
+
+/* 交替行颜色（斑马线效果）*/
+QTableWidget::item:alternate {
+    background-color: #252931; /* 交替行背景颜色 */
+}
+
+/* styles.qss */
+.sender {
+    color: #4cc2ff;
+}
+
+.admin-sender {
+    color: #FFD700;
+}
+
