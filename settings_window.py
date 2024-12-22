@@ -7,7 +7,7 @@ import base64
 import os
 from PyQt6.QtWidgets import (
     QDialog, QPushButton, QLabel, QFileDialog, QTextBrowser, QTabWidget,
-    QTableWidgetItem, QMessageBox, QApplication, QDialogButtonBox, QPlainTextEdit
+    QTableWidgetItem, QMessageBox, QApplication, QDialogButtonBox, QPlainTextEdit, QComboBox
 )
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, QDateTime, QDate
@@ -40,7 +40,7 @@ class SettingsWindow(QDialog):
     def setup_ui(self):
         loadUi('./ui/setting.ui', self)
         self.tabWidget.currentChanged.connect(self.on_tab_changed)
-        # 连接 tabWidget_2 的 currentChanged 信号
+        self.init_theme_settings()
         self.tabWidget_2.currentChanged.connect(self.on_tab_changed_2)
         self.pushButton.clicked.connect(self.insert_row)
         self.pushButton_2.clicked.connect(self.delete_row)
@@ -67,6 +67,8 @@ class SettingsWindow(QDialog):
             self.load_location_settings()
         elif index == 6:
             self.load_names()
+        # elif index == 7:
+        #     self.init_theme_settings()
 
     def on_tab_changed_2(self, index):
         if 0 <= index <= 6:
@@ -674,6 +676,55 @@ class SettingsWindow(QDialog):
         # 写入文件
         with open(self.names_file, 'w', encoding='utf-8') as file:
             file.write(cleaned_names)
+
+#################################主题设置#########################################################
+    def init_theme_settings(self):
+        """初始化主题设置页面"""
+        self.comboBox_themes = self.findChild(QComboBox, "comboBox")
+        if self.comboBox_themes is None:
+            raise ValueError("找不到 comboBox，请检查 UI 文件")
+
+        # 动态加载 QSS 文件
+        qss_dir = './ui/qss'
+        if os.path.exists(qss_dir):
+            qss_files = [f for f in os.listdir(qss_dir) if f.endswith('.qss')]
+            self.comboBox_themes.addItems(qss_files)
+
+        # 设置默认选择
+        self.load_current_theme()
+
+        # 连接 comboBox 的 currentIndexChanged 信号
+        self.comboBox_themes.currentIndexChanged.connect(self.save_selected_theme)
+
+    def load_current_theme(self):
+        """根据 qss.txt 文件设置当前主题"""
+        qss_txt_path = './data/qss.txt'
+        default_qss = 'dark.qss'
+
+        try:
+            with open(qss_txt_path, 'r', encoding='utf-8') as f:
+                current_theme = f.read().strip()
+                if current_theme and os.path.exists(os.path.join('./ui/qss', current_theme)):
+                    index = self.comboBox_themes.findText(current_theme)
+                    if index >= 0:
+                        self.comboBox_themes.setCurrentIndex(index)
+                else:
+                    QMessageBox.warning(f"QSS file {current_theme} does not exist, using default.")
+                    self.comboBox_themes.setCurrentText(default_qss)
+        except Exception as e:
+            QMessageBox.warning(f"Error reading qss.txt: {e}, using default.")
+            self.comboBox_themes.setCurrentText(default_qss)
+
+    def save_selected_theme(self, index):
+        """保存选中的主题到 qss.txt 文件"""
+        selected_theme = self.comboBox_themes.itemText(index)
+        qss_txt_path = './data/qss.txt'
+
+        try:
+            with open(qss_txt_path, 'w', encoding='utf-8') as f:
+                f.write(selected_theme)
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"无法保存主题设置: {e}")
 
     def closeEvent(self, event):
         QMessageBox.information(self, "重启", "设置已更改，重启应用程序以应用更改。")

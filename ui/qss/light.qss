@@ -1,0 +1,235 @@
+/* 全局字体设置 */
+* {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+    color: #000000; /* 默认文字颜色为黑色 */
+}
+
+/* 主窗口背景 */
+#centralwidget {
+    background-color: #f3f3f3; /* 浅灰色背景 */
+    color: #000000; /* 文字颜色为黑色 */
+}
+
+/* 通用按钮样式 */
+QPushButton, QToolButton, QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QCheckBox, QRadioButton, QGroupBox, QTabBar::tab, QMenu, QMenuBar, QListView, QTreeView, QColumnView, QStatusBar, QSlider, QDial, QScrollBar, QProgressBar, QFrame, QAbstractItemView, QAbstractScrollArea, QPlainTextEdit, QTextEdit, QInputDialog, QMessageBox, QDialog, QFileDialog, QColorDialog, QFontDialog, QPrintDialog, QPageSetupDialog, QWizard, QDockWidget, QMdiSubWindow, QMdiArea, QSplitter, QStackedWidget, QToolBox, QTabWidget, QScrollArea, QWidget {
+    background-color: #fbfbfd; /* 按钮背景颜色 */
+    border: 1px solid #fbfbfd; /* 边框颜色 */
+    color: #000000; /* 文字颜色 */
+    padding: 5px;
+    border-radius: 4px;
+}
+
+/* 按钮按下效果 */
+QPushButton:pressed, QToolButton:pressed, QComboBox:pressed, QSpinBox:pressed, QDoubleSpinBox:pressed, QLineEdit:pressed, QCheckBox:pressed, QRadioButton:pressed, QGroupBox:pressed, QTabBar::tab:pressed, QMenu:pressed, QMenuBar:pressed, QListView:pressed, QTreeView:pressed, QColumnView:pressed, QStatusBar:pressed, QSlider:pressed, QDial:pressed, QScrollBar:pressed, QProgressBar:pressed, QFrame:pressed, QAbstractItemView:pressed, QAbstractScrollArea:pressed, QPlainTextEdit:pressed, QTextEdit:pressed, QInputDialog:pressed, QMessageBox:pressed, QDialog:pressed, QFileDialog:pressed, QColorDialog:pressed, QFontDialog:pressed, QPrintDialog:pressed, QPageSetupDialog:pressed, QWizard:pressed, QDockWidget:pressed, QMdiSubWindow:pressed, QMdiArea:pressed, QSplitter:pressed, QStackedWidget:pressed, QToolBox:pressed, QTabWidget:pressed, QScrollArea:pressed {
+    background-color: #f5f6f9; /* 按下时背景颜色 */
+    border: 1px solid #f5f6f9; /* 按下时边框颜色 */
+}
+
+
+
+/* 下拉菜单和组合框 */
+QComboBox::drop-down, QComboBox::down-arrow, QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+    border: 1px solid #CECDD3;
+    width: 20px;
+    height: 20px;
+    subcontrol-position: right;
+    subcontrol-origin: padding;
+}
+
+/* 菜单 */
+QMenu, QMenuBar, QMenu::item {
+    background-color: #FFFFFF;
+    color: #000000;
+}
+
+QMenu::item:selected, QMenuBar::item:selected {
+    background-color: #E1DFE7;
+}
+
+/* 标签 */
+QLabel {
+    color: #000000;
+}
+
+/* 特定标签样式 */
+QLabel[timetable="intime"] {
+    color: #000000;
+    font-size: 26px;
+    border: 2px solid #0067c0;
+    border-radius: 6px;
+    font-weight: bold;
+    background-color: #fbfbfd;
+    padding: 5px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+QLabel[timetable="untimely"] {
+    color: #000000;
+    font-size: 26px;
+    border: 2px solid #CECDD3;
+    border-radius: 6px;
+    background-color: #fbfbfd;
+    padding: 5px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 时间相关标签 */
+QLabel[time="time"] {
+    color: #000000;
+    border-radius: 0px;
+    padding: 0px;
+    font-weight: bold;
+    font-size: 45px;
+}
+
+QLabel[time="date"] {
+    color: #000000;
+    border-radius: 0px;
+    padding: 0px;
+    font-size: 28px;
+}
+
+QLabel[time="week"] {
+    color: #0067c0;
+    border-radius: 0px;
+    padding: 0px;
+    font-size: 28px;
+}
+
+QLabel[time="enddate"] {
+    color: #0067c0;
+    border-radius: 0px;
+    padding: 0px;
+    font-size: 28px;
+}
+
+/* 弹幕 */
+QLabel[bulletin="danmaku"] {
+    color: #000000;
+    font-size: 30px;
+    background-color: rgba(255, 255, 255, 0.3);
+    border-radius: 3px;
+    padding: 1px;
+}
+
+/* 天气相关标签 */
+QLabel[weather="now"] {
+    font-size: 18px;
+    color: #000000;
+    padding: 0px;
+    border-radius: 5px;
+}
+
+QLabel[weather="next"] {
+    font-size: 20px;
+    color: #0067c0;
+    padding: 0px;
+    border-radius: 5px;
+}
+
+#textEdit {
+    font-size: 18px;
+}
+
+#label_28, #label_29, #label_30, #label_40, #label_39 {
+    color: red;
+}
+
+#label_update {
+    color: green;
+}
+
+#name_label {
+    font-size: 100px;
+    color: #0067c0;
+    border-radius: 5px;
+}
+
+/* 表格背景 */
+QTableWidget {
+    background-color: #F3F2F1;
+    color: #000000;
+    font-size: 16px;
+    alternate-background-color: #EDEBE9;
+    gridline-color: #CECDD3;
+    border: 0px solid #CECDD3;
+}
+
+/* 表头样式 */
+QHeaderView::section {
+    background-color: #EDEBE9;
+    color: #000000;
+    border: 1px solid #CECDD3;
+    padding: 8px;
+    border-radius: 3px;
+}
+
+/* 表头悬停效果 */
+QHeaderView::section:hover {
+    background-color: #E1DFE7;
+    border: 0.1px solid #A19FA8;
+}
+
+/* 表头按下效果 */
+QHeaderView::section:pressed {
+    background-color: #D2D0D7;
+    border: 1px solid #A19FA8;
+}
+
+/* 表格单元格样式 */
+QTableWidget::item {
+    padding: 5px;
+    border: 0px solid #CECDD3;
+    border-radius: 2px;
+}
+
+/* 表格单元格悬停效果 */
+QTableWidget::item:hover {
+    background-color: #E1DFE7;
+}
+
+/* 表格单元格按下效果 */
+QTableWidget::item:pressed {
+    background-color: #D2D0D7;
+}
+
+/* 左上角全选按钮样式 */
+QTableWidget::corner,
+QTableWidget::corner:hover,
+QTableWidget::corner:pressed {
+    background-color: #EDEBE9;
+    border: 1px solid #CECDD3;
+    border-top-left-radius: 4px;
+}
+
+/* 左上角全选按钮悬停效果 */
+QTableWidget::corner:hover {
+    background-color: #E1DFE7;
+    border: 1px solid #A19FA8;
+}
+
+/* 左上角全选按钮按下效果 */
+QTableWidget::corner:pressed {
+    background-color: #D2D0D7;
+    border: 1px solid #A19FA8;
+}
+
+/* 编号列样式 */
+QTableWidget::item:selected, QTableWidget::item:focus {
+    background-color: #E1DFE7;
+    color: #000000;
+}
+
+/* 交替行颜色（斑马线效果）*/
+QTableWidget::item:alternate {
+    background-color: #EDEBE9;
+}
+
+.sender {
+    color: #0067c0;
+}
+
+.admin-sender {
+    color: #FFD700;
+}

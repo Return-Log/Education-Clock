@@ -1,0 +1,175 @@
+/* 全局字体设置 */
+* {
+    font-family: "MS Sans Serif", sans-serif; /* Windows 95 常用字体 */
+    font-size: 12px; /* 保持与原有大小一致 */
+    color: #000000; /* 默认文字颜色为黑色 */
+}
+
+/* 主窗口背景 */
+#centralwidget {
+    background-color: #C0C0C0; /* 浅灰色背景 */
+}
+
+/* 通用按钮样式 */
+QPushButton, QToolButton {
+    background-color: #DFDFDF; /* 按钮灰色背景 */
+    border: 2px solid #808080; /* 外框深灰色 */
+    border-right-color: #FFFFFF; /* 右边框为白色 */
+    border-bottom-color: #FFFFFF; /* 底边框为白色 */
+    padding: 5px;
+    color: #000000;
+}
+
+QPushButton:pressed, QToolButton:pressed {
+    border: 2px solid #808080; /* 凹陷样式：深灰色边框 */
+    border-left-color: #FFFFFF; /* 左边框为白色 */
+    border-top-color: #FFFFFF; /* 顶边框为白色 */
+    background-color: #C0C0C0; /* 按下变浅灰色 */
+}
+
+/* 标签样式 */
+QLabel {
+    color: #000000;
+}
+
+/* 输入框样式 */
+QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {
+    background-color: #FFFFFF; /* 输入框白色背景 */
+    border: 2px solid #808080; /* 深灰色外框 */
+    border-right-color: #FFFFFF; /* 右边框为白色 */
+    border-bottom-color: #FFFFFF; /* 底边框为白色 */
+    color: #000000;
+    padding: 2px;
+}
+
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {
+    border: 2px solid #000080; /* 聚焦时蓝色边框 */
+}
+
+/* 表格背景 */
+QTableWidget {
+    background-color: #FFFFFF;
+    color: #000000;
+    gridline-color: #808080; /* 表格线为深灰色 */
+    border: 2px solid #808080;
+    border-right-color: #FFFFFF;
+    border-bottom-color: #FFFFFF;
+    alternate-background-color: #DFDFDF; /* 交替行浅灰色背景 */
+}
+
+/* 表头样式 */
+QHeaderView::section {
+    background-color: #DFDFDF; /* 表头灰色背景 */
+    color: #000000; /* 表头黑色文字 */
+    border: 2px solid #808080;
+    border-right-color: #FFFFFF;
+    border-bottom-color: #FFFFFF;
+    padding: 4px;
+}
+
+/* 滚动条样式 */
+QScrollBar {
+    background: #C0C0C0; /* 灰色背景 */
+    border: 2px solid #808080;
+    border-right-color: #FFFFFF;
+    border-bottom-color: #FFFFFF;
+}
+
+QScrollBar::handle {
+    background: #DFDFDF; /* 滑块灰色背景 */
+    border: 2px solid #808080;
+    border-right-color: #FFFFFF;
+    border-bottom-color: #FFFFFF;
+}
+
+/* 提示框样式 */
+QMessageBox {
+    background-color: #C0C0C0; /* 灰色背景 */
+    color: #000000; /* 黑色文字 */
+    border: 2px solid #808080;
+    border-right-color: #FFFFFF;
+    border-bottom-color: #FFFFFF;
+}
+
+/* 特定标签样式 */
+QLabel[timetable="intime"] {
+    font-size: 26px;
+    border: 2px solid #808080; /* 凹陷样式：深灰色边框 */
+    border-left-color: #FFFFFF; /* 左边框为白色 */
+    border-top-color: #FFFFFF; /* 顶边框为白色 */
+    background-color: #C0C0C0; /* 按下变浅灰色 */
+    padding: 5px;
+}
+
+QLabel[timetable="untimely"] {
+    font-size: 26px;
+    border: 2px solid #CECDD3;
+    background-color: #DFDFDF; /* 按钮灰色背景 */
+    border: 2px solid #808080; /* 外框深灰色 */
+    border-right-color: #FFFFFF; /* 右边框为白色 */
+    border-bottom-color: #FFFFFF; /* 底边框为白色 */
+    padding: 5px;
+    color: #000000;
+}
+
+/* 时间相关标签 */
+QLabel[time="time"] {
+    font-size: 45px;
+}
+
+QLabel[time="date"] {
+    font-size: 28px;
+}
+
+QLabel[time="week"] {
+    font-size: 28px;
+}
+
+QLabel[time="enddate"] {
+    font-size: 28px;
+}
+
+/* 弹幕 */
+QLabel[bulletin="danmaku"] {
+    color: #000000;
+    font-size: 30px;
+    background-color: rgba(192, 192, 192, 0.3);
+    border-radius: 3px;
+    padding: 1px;
+}
+
+/* 天气相关标签 */
+QLabel[weather="now"] {
+    font-size: 18px;
+}
+
+QLabel[weather="next"] {
+    font-size: 20px;
+}
+
+#textEdit {
+    font-size: 18px;
+    background-color: #C0C0C0;
+}
+
+#label_28, #label_29, #label_30, #label_40, #label_39 {
+    color: red;
+}
+
+#label_update {
+    color: green;
+}
+
+#name_label {
+    font-size: 100px;
+    color: #158081;
+    border-radius: 5px;
+}
+
+.sender {
+    color: #157f81;
+}
+
+.admin-sender {
+    color: #01047c;
+}

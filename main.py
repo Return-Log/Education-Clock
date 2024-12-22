@@ -1,3 +1,4 @@
+import os
 import sys
 import requests
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget, QToolButton, QTextEdit, QLabel
@@ -243,9 +244,9 @@ class MainWindow(QMainWindow):
             tags = response.json()
             if tags:
                 latest_tag = tags[0]['name']
-                current_version = "v3.7"  # 替换为你的当前版本号
+                current_version = "v3.8"  # 替换为你的当前版本号
                 if latest_tag != current_version:
-                    self.label_update.setText(f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: yellow;">检测到新版本 {latest_tag}, 当前版本 {current_version}</a>')
+                    self.label_update.setText(f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: red;">检测到新版本 {latest_tag}, 当前版本 {current_version}</a>')
                     self.label_update.setOpenExternalLinks(True)
                 else:
                     self.label_update.setText(f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: green;">已是最新版 {latest_tag}</a>')
@@ -261,11 +262,40 @@ class MainWindow(QMainWindow):
         self.roll_call_dialog = RollCallDialog(self)
         self.roll_call_dialog.exec()
 
+    def get_qss_path(self):
+        default_qss = './ui/qss/dark.qss'
+        qss_txt_path = './data/qss.txt'
+
+        if not os.path.exists(qss_txt_path):
+            return default_qss
+
+        try:
+            with open(qss_txt_path, 'r', encoding='utf-8') as f:
+                qss_file = f.read().strip()
+                if not qss_file:
+                    return default_qss
+                qss_path = os.path.join('./ui/qss', qss_file)
+                if os.path.exists(qss_path):
+                    return qss_path
+                else:
+                    self.show_message(f"QSS file {qss_file} does not exist, using default.")
+                    return default_qss
+        except Exception as e:
+            self.show_message(f"Error reading qss.txt: {e}, using default.")
+            return default_qss
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    # 加载 QSS 文件
-    with open('ui/qss/dark.qss', 'r', encoding="utf-8") as f:
-        app.setStyleSheet(f.read())
+
+    # 使用 get_qss_path 方法获取 QSS 文件路径
+    main_window = MainWindow()
+    qss_path = main_window.get_qss_path()
+
+    try:
+        with open(qss_path, 'r', encoding="utf-8") as f:
+            app.setStyleSheet(f.read())
+    except Exception as e:
+        MainWindow.show_message(f"Failed to load QSS file: {e}")
 
     window = MainWindow()
     window.show()

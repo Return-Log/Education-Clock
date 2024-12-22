@@ -218,10 +218,10 @@ class BulletinBoardWorker(QThread):
                 if os.path.exists(qss_path):
                     return qss_path
                 else:
-                    print(f"QSS file {qss_file} does not exist, using default.")
+                    self.update_signal.emit("QSS file {qss_file} does not exist, using default.")
                     return default_qss
         except Exception as e:
-            print(f"Error reading qss.txt: {e}, using default.")
+            self.update_signal.emit(f"Error reading qss.txt: {e}, using default.")
             return default_qss
 
     def parse_qss_colors(self, qss_file):
@@ -238,7 +238,7 @@ class BulletinBoardWorker(QThread):
                 css_class, hex_color = match
                 colors[css_class] = f"#{hex_color}"
         except Exception as e:
-            print(f"Error parsing QSS file: {e}")
+            self.update_signal.emit(f"Error parsing QSS file: {e}")
         return colors
 
     def load_theme(self):

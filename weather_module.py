@@ -1,3 +1,5 @@
+import logging
+import os
 import sys
 from datetime import datetime
 import requests
@@ -23,9 +25,6 @@ class WeatherModule(QWidget):
         # 初始获取天气信息
         self.update_real_time_weather()
         self.update_forecast_weather()
-
-        # 加载 QSS 文件
-        self.load_stylesheet()
 
     def load_api_key(self):
         # 从文件中加载 API 密钥
@@ -65,13 +64,6 @@ class WeatherModule(QWidget):
         # 设置 layout 的边距为 1 像素
         layout.setContentsMargins(0, 0, 0, 0)
 
-    def load_stylesheet(self):
-        # 加载 QSS 文件
-        try:
-            with open('data/qss.qss', 'r', encoding='utf-8') as f:
-                self.setStyleSheet(f.read())
-        except FileNotFoundError:
-            self.display_error("找不到 qss.qss 文件")
 
     def display_error(self, error_message):
         self.real_time_weather_label.setText(f"错误: {error_message}")
