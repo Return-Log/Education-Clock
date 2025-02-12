@@ -189,6 +189,7 @@ class BulletinBoardWorker(QThread):
                 self.update_signal.emit(f"意外错误: {str(e)}", False)
                 return [], False
 
+
     def filter_data(self, rows):
         filtered_rows = []
         for row in rows:
@@ -218,10 +219,10 @@ class BulletinBoardWorker(QThread):
                 if os.path.exists(qss_path):
                     return qss_path
                 else:
-                    self.update_signal.emit("QSS file {qss_file} does not exist, using default.")
+                    self.update_signal.emit(f"QSS file {qss_file} does not exist, using default.", False)
                     return default_qss
         except Exception as e:
-            self.update_signal.emit(f"Error reading qss.txt: {e}, using default.")
+            self.update_signal.emit(f"Error reading qss.txt: {e}, using default.", False)
             return default_qss
 
     def parse_qss_colors(self, qss_file):
@@ -238,7 +239,7 @@ class BulletinBoardWorker(QThread):
                 css_class, hex_color = match
                 colors[css_class] = f"#{hex_color}"
         except Exception as e:
-            self.update_signal.emit(f"Error parsing QSS file: {e}")
+            self.update_signal.emit(f"Error parsing QSS file: {e}", False)
         return colors
 
     def load_theme(self):
