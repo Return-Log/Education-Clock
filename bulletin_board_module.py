@@ -44,7 +44,7 @@ class DanmakuWindow(QWidget):
 
         for message in self.messages:
             label = QLabel(self.sanitize_message(message), self)
-            label.setStyleSheet("color: #ffffff; font-size: 30px;")
+            # label.setStyleSheet("color: #ffffff; font-size: 30px;")
             label.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
             label.setProperty('bulletin', 'danmaku')  # 设置自定义属性
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)

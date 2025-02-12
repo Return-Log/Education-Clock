@@ -1,4 +1,4 @@
-# Education Clock v3.7
+# Education Clock v3.8
 
 > [!NOTE]
 >
@@ -8,9 +8,9 @@
 
 # 信息
 
-版本：v3.6
+版本：v3.8
 
-时间：2024年12月7日
+时间：2025年2月12日
 
 协议：GPLv3
 
@@ -205,5 +205,5 @@ if __name__ == '__main__':
 
 ------
 
-Copyright © 2024  Log  All rights reserved.
+Copyright © 2024-2025  Log  All rights reserved.
 

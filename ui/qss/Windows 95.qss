@@ -131,9 +131,9 @@ QLabel[time="enddate"] {
 
 /* 弹幕 */
 QLabel[bulletin="danmaku"] {
-    color: #000000;
+    color: #B4C8ED;
     font-size: 30px;
-    background-color: rgba(192, 192, 192, 0.3);
+    background-color: rgba(0, 0, 0, 0);
     border-radius: 3px;
     padding: 1px;
 }
@@ -161,7 +161,7 @@ QLabel[weather="next"] {
 }
 
 #name_label {
-    font-size: 100px;
+    font-size: 150px;
     color: #158081;
     border-radius: 5px;
 }

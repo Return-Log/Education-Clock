@@ -20,9 +20,9 @@ db_config = {  # 数据库配置
 
 # 钉钉机器人配置（多个机器人）
 robots = {  # 机器人应用凭证
-    "": {  # AppKey
-        "agent_id": "",  # AgentId
-        "app_secret": ""  # AppSecret
+    "": {  # 在""中填写AppKey
+        "agent_id": "",  # 在""中填写AgentId
+        "app_secret": ""  # 在""中填写AppSecret
     }
     # 可以继续增加更多的机器人配置
 }

@@ -108,11 +108,11 @@ QLabel[time="enddate"] {
 
 /* 弹幕 */
 QLabel[bulletin="danmaku"] {
-    color: #ffffff;
+    color: #B4C8ED;
     font-size: 30px;
-    background-color: rgba(0, 0, 0, 0.3); /* 半透明背景 */
-    border-radius: 5px;
-    padding: 2px;
+    background-color: rgba(0, 0, 0, 0);
+    border-radius: 3px;
+    padding: 1px;
 }
 
 /* 天气相关标签 */

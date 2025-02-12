@@ -779,7 +779,7 @@
        <item row="9" column="1">
         <widget class="QLabel" name="label_34">
          <property name="text">
-          <string>版权所有 © 2024 &lt;a href='https://github.com/Return-Log' style='color:green;'&gt;Log&lt;/a&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;版权所有 © 2024-2025 &lt;a href=&quot;https://github.com/Return-Log&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#008000;&quot;&gt;Log&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="openExternalLinks">
           <bool>true</bool>
@@ -841,7 +841,7 @@
        <item row="2" column="1" colspan="3">
         <widget class="QLabel" name="label_33">
          <property name="text">
-          <string>2024年12月22日 构建</string>
+          <string>2025年2月12日 构建</string>
          </property>
         </widget>
        </item>
