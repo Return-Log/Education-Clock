@@ -1,9 +1,9 @@
 import random
-import time
-from PyQt6.QtWidgets import QDialog, QLabel, QToolButton, QVBoxLayout, QPushButton, QApplication
+from PyQt6.QtWidgets import QDialog, QLabel, QPushButton, QApplication
 from PyQt6.uic import loadUi
-from PyQt6.QtCore import QTimer, Qt, QPropertyAnimation, pyqtProperty, QVariantAnimation, QEasingCurve
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QFont
+
 
 class RollCallDialog(QDialog):
     def __init__(self, parent=None):
@@ -12,9 +12,8 @@ class RollCallDialog(QDialog):
         self.setWindowTitle('随机点名')
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint)
 
-        # 读取名字列表
+        # 读取名字列表（包含标记）
         self.names = self.load_names()
-        self.last_name = None
 
         # 初始化控件
         self.name_label = self.findChild(QLabel, "name_label")
@@ -27,11 +26,9 @@ class RollCallDialog(QDialog):
         font.setPointSize(90)  # 可以根据需要调整字体大小
         self.name_label.setFont(font)
 
-        # 获取主屏幕的尺寸
+        # 将窗口居中显示
         screen = QApplication.primaryScreen()
         screen_geometry = screen.availableGeometry()
-
-        # 计算窗口在屏幕中心的位置
         window_geometry = self.geometry()
         x = (screen_geometry.width() - window_geometry.width()) // 2
         y = (screen_geometry.height() - window_geometry.height()) // 2
@@ -41,45 +38,62 @@ class RollCallDialog(QDialog):
         self.roll_button.clicked.connect(self.start_roll_call)
 
     def load_names(self):
-        """从文件中加载名字列表"""
+        """从文件中加载名字列表，返回带标记的名字"""
         try:
             with open('./data/name.txt', 'r', encoding='utf-8') as file:
                 names = [line.strip() for line in file.readlines()]
-            return names
+            return names if names else []
         except FileNotFoundError:
+            self.name_label.setText("找不到 name.txt 文件")
             return []
 
+    def save_names(self):
+        """将当前名字列表（含标记）保存到文件"""
+        try:
+            with open('./data/name.txt', 'w', encoding='utf-8') as file:
+                for name in self.names:
+                    file.write(f"{name}\n")
+        except Exception as e:
+            self.name_label.setText(f"保存名字失败: {str(e)}")
+
     def start_roll_call(self):
-        """开始点名过程"""
+        """开始点名，直接随机选择未标记的名字"""
         if not self.names:
             self.name_label.setText("没有可用的名字")
             return
 
-        # 禁用按钮
-        self.roll_button.setEnabled(False)
+        # 获取未标记的名字
+        unmarked_names = [name for name in self.names if not name.endswith('*')]
 
-        # 开始滚动
-        self.animation = QVariantAnimation(self)
-        self.animation.setDuration(1000)  # 持续时间
-        self.animation.setStartValue(0)
-        self.animation.setEndValue(len(self.names) - 1)
-        self.animation.setEasingCurve(QEasingCurve.Type.Linear)  # 线性变化
-        self.animation.valueChanged.connect(self.update_name)
-        self.animation.finished.connect(self.stop_roll_call)
-        self.animation.start()
+        # 如果没有未标记的名字，重置所有标记
+        if not unmarked_names:
+            self.names = [name.rstrip('*') for name in self.names]  # 清除所有标记
+            self.save_names()  # 保存重置后的列表
+            unmarked_names = self.names  # 重置后所有名字都可用
 
-    def update_name(self, value):
-        """更新显示的名字"""
-        index = int(value)
-        self.name_label.setText(self.names[index])
-
-    def stop_roll_call(self):
-        """停止滚动并显示最终结果"""
-        available_names = [name for name in self.names if name != self.last_name]
-        if not available_names:
-            available_names = self.names  # 如果所有名字都被点过，则重置
-
-        selected_name = random.choice(available_names)
+        # 随机选择一个名字
+        selected_name = random.choice(unmarked_names)
         self.name_label.setText(selected_name)
-        self.last_name = selected_name
-        self.roll_button.setEnabled(True)  # 重新启用按钮
+
+        # 在名字后添加标记并更新列表
+        for i, name in enumerate(self.names):
+            if name == selected_name:
+                self.names[i] = f"{name}*"
+                break
+
+        # 保存更新后的列表
+        self.save_names()
+
+    def closeEvent(self, event):
+        """窗口关闭时保存当前名字列表"""
+        self.save_names()
+        super().closeEvent(event)
+
+
+if __name__ == "__main__":
+    import sys
+
+    app = QApplication(sys.argv)
+    dialog = RollCallDialog()
+    dialog.show()
+    sys.exit(app.exec())
