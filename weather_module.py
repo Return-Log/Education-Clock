@@ -20,7 +20,7 @@ class WeatherModule(QWidget):
 
         self.forecast_weather_timer = QTimer(self)
         self.forecast_weather_timer.timeout.connect(self.update_forecast_weather)
-        self.forecast_weather_timer.start(3600000)  # 1小时
+        self.forecast_weather_timer.start(7200000)  # 1小时
 
         # 初始获取天气信息
         self.update_real_time_weather()

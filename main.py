@@ -55,7 +55,8 @@ class MainWindow(QMainWindow):
         # 连接 toolButton_3 到打开设置窗口的方法
         self.toolButton_3.clicked.connect(self.open_settings_window)
 
-        self.toolButton.clicked.connect(self.open_roll_call_window)  # 打开点名窗口的按钮
+        # 初始化悬浮球模块
+        self.init_floating_ball()
 
         # 初始化公告板模块
         self.init_bulletin_board_module()
@@ -76,6 +77,51 @@ class MainWindow(QMainWindow):
         # 将窗口置于最下层
         self.lower()
 
+    def open_roll_call_window(self):
+        """打开随机点名窗口"""
+        from roll_call_module import RollCallDialog
+        self.roll_call_dialog = RollCallDialog()  # 无父窗口
+        # 连接关闭信号
+        self.roll_call_dialog.signals.closed.connect(self.on_roll_call_closed)
+
+    def on_roll_call_closed(self):
+        """处理点名窗口关闭"""
+        if hasattr(self, 'roll_call_dialog'):
+            del self.roll_call_dialog  # 清理引用
+
+    def init_floating_ball(self):
+        """初始化悬浮球"""
+        from floating_ball import FloatingBall
+        from PyQt6.QtCore import pyqtSignal, QObject
+
+        class FloatingBallSignal(QObject):
+            roll_call_triggered = pyqtSignal()
+
+        self.floating_ball = FloatingBall()  # 无父窗口
+        self.floating_ball_signal = FloatingBallSignal()
+        self.floating_ball_signal.roll_call_triggered.connect(self.open_roll_call_window)
+
+        # 重写悬浮球的双击事件以发射信号
+        original_double_click = self.floating_ball.mouseDoubleClickEvent
+
+        def new_double_click(event):
+            original_double_click(event)
+            if event.button() == Qt.MouseButton.LeftButton:
+                self.floating_ball_signal.roll_call_triggered.emit()
+
+        self.floating_ball.mouseDoubleClickEvent = new_double_click
+
+
+    def closeEvent(self, event):
+        """在窗口关闭时清理独立窗口"""
+        settings = QSettings("Log", "EC")
+        settings.setValue("windowGeometry", self.saveGeometry())
+        settings.setValue("windowPosition", self.pos())
+        if hasattr(self, 'floating_ball'):
+            self.floating_ball.close()
+        if hasattr(self, 'roll_call_dialog'):
+            self.roll_call_dialog.close()
+        event.accept()
 
     def fix_window_position_and_size(self):
         # 获取屏幕的尺寸
@@ -244,7 +290,7 @@ class MainWindow(QMainWindow):
             tags = response.json()
             if tags:
                 latest_tag = tags[0]['name']
-                current_version = "v3.8"  # 替换为你的当前版本号
+                current_version = "v3.9"  # 替换为你的当前版本号
                 if latest_tag != current_version:
                     self.label_update.setText(f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: red;">检测到新版本 {latest_tag}, 当前版本 {current_version}</a>')
                     self.label_update.setOpenExternalLinks(True)
@@ -256,11 +302,7 @@ class MainWindow(QMainWindow):
         except requests.RequestException:
             self.label_update.setText("无法检测更新")
 
-    # 在 MainWindow 类中添加打开点名窗口的方法
-    def open_roll_call_window(self):
-        """打开随机点名窗口"""
-        self.roll_call_dialog = RollCallDialog(self)
-        self.roll_call_dialog.exec()
+
 
     def get_qss_path(self):
         default_qss = './ui/qss/dark.qss'
@@ -287,16 +329,14 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
-    # 使用 get_qss_path 方法获取 QSS 文件路径
-    main_window = MainWindow()
-    qss_path = main_window.get_qss_path()
+    window = MainWindow()  # 只创建一次
+    qss_path = window.get_qss_path()
 
     try:
         with open(qss_path, 'r', encoding="utf-8") as f:
             app.setStyleSheet(f.read())
     except Exception as e:
-        MainWindow.show_message(f"Failed to load QSS file: {e}")
+        window.show_message(f"Failed to load QSS file: {e}")
 
-    window = MainWindow()
     window.show()
     sys.exit(app.exec())
