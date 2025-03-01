@@ -12,7 +12,7 @@ class FloatingBall(QWidget):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
-        self.ball_size = 50
+        self.ball_size = 32
         self.setFixedSize(self.ball_size, self.ball_size)
 
         self.png_path = "./icon/ball.png"
@@ -34,6 +34,7 @@ class FloatingBall(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setOpacity(0.3)  # 半透明，范围 0.0 - 1.0
         if self.use_png:
             painter.drawPixmap(0, 0, self.pixmap)
         else:

@@ -41,18 +41,18 @@ class RollCallDialog(QDialog):
 
         # 名字标签（黑色文字，强制字体大小和家族）
         self.name_label = QLabel("", self)
-        font = QFont("南构邱见行书", 90)
+        font = QFont("华文行楷", 140)
         self.name_label.setFont(font)
         self.name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.name_label.setStyleSheet("""
             QLabel {
                 color: black;
-                font-size: 90pt !important;
-                font-family: 南构邱见行书 !important;
+                font-size: 140pt !important;
+                font-family: 华文行楷 !important;
             }
         """)
         self.layout.addWidget(self.name_label)
-        self.name_label.setText("Roll Call")
+        self.name_label.setText("点击开始")
 
         # 将窗口居中
         screen = QApplication.primaryScreen()

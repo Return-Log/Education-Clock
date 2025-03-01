@@ -106,9 +106,9 @@ QLabel[time="enddate"] {
 
 /* 弹幕 */
 QLabel[bulletin="danmaku"] {
-    color: #ffffff;
+    color: #B4C8ED;
     font-size: 30px;
-    background-color: rgba(0, 0, 0, 0.3); /* 半透明背景 */
+    background-color: rgba(0, 0, 0, 0);
     border-radius: 3px;
     padding: 1px;
 }
@@ -127,6 +127,8 @@ QLabel[weather="next"] {
     padding: 0px;  /* 增加内边距 */
     border-radius: 5px;  /* 圆角 */
 }
+
+
 
 #textEdit {
     font-size: 18px;
@@ -236,4 +238,3 @@ QTableWidget::item:alternate {
 .admin-sender {
     color: #FFD700;
 }
-
