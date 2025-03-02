@@ -759,7 +759,7 @@
        <item row="0" column="1" colspan="3">
         <widget class="QLabel" name="label_32">
          <property name="text">
-          <string>## Education Clock v3.9</string>
+          <string>## Education Clock v3.10</string>
          </property>
          <property name="textFormat">
           <enum>Qt::MarkdownText</enum>

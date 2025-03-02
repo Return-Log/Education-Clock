@@ -4,147 +4,199 @@ import sys
 from datetime import datetime
 import requests
 from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal, QThread
+
+class RealTimeWorker(QObject):
+    """实时天气数据获取工作线程"""
+    data_ready = pyqtSignal(dict)       # 数据就绪信号
+    error_occurred = pyqtSignal(str)    # 错误发生信号
+
+    def __init__(self, api_key, location):
+        super().__init__()
+        self.api_key = api_key
+        self.lat, self.lon = location  # 从配置加载的经纬度
+
+    def fetch(self):
+        """执行实时天气数据获取"""
+        try:
+            url = f"https://devapi.qweather.com/v7/weather/now?location={self.lon},{self.lat}&key={self.api_key}&lang=zh"
+            response = requests.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('code') == '200':
+                    self.data_ready.emit(data)
+                else:
+                    self.error_occurred.emit(f"API错误码: {data.get('code')}")
+            else:
+                # self.error_occurred.emit(f"HTTP错误: {response.status_code}")
+                self.error_occurred.emit(f"HTTP错误")
+        except Exception as e:
+            # self.error_occurred.emit(f"请求异常: {str(e)}")
+            self.error_occurred.emit(f"请求异常")
+
+class ForecastWorker(QObject):
+    """天气预报数据获取工作线程"""
+    data_ready = pyqtSignal(dict)       # 数据就绪信号
+    error_occurred = pyqtSignal(str)    # 错误发生信号
+
+    def __init__(self, api_key, location):
+        super().__init__()
+        self.api_key = api_key
+        self.lat, self.lon = location  # 从配置加载的经纬度
+
+    def fetch(self):
+        """执行天气预报数据获取"""
+        try:
+            url = f"https://devapi.qweather.com/v7/weather/3d?location={self.lon},{self.lat}&key={self.api_key}&lang=zh"
+            response = requests.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('code') == '200':
+                    self.data_ready.emit(data)
+                else:
+                    self.error_occurred.emit(f"API错误码: {data.get('code')}")
+            else:
+                # self.error_occurred.emit(f"HTTP错误: {response.status_code}")
+                self.error_occurred.emit(f"HTTP错误")
+        except Exception as e:
+            # self.error_occurred.emit(f"请求异常: {str(e)}")
+            self.error_occurred.emit(f"请求异常")
 
 class WeatherModule(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.api_key = self.load_api_key()  # 加载天气 API 密钥
-        self.location = self.load_location()  # 加载手动存储的坐标
+        self.api_key = self.load_api_key()    # 加载API密钥
+        self.location = self.load_location()  # 加载地理位置
         self.init_ui()
+        self.init_workers()  # 初始化工作线程
+        self.setup_timers()  # 设置定时器
+        self.trigger_initial_update()  # 触发初始更新
 
-        # 定时器：实时天气每16分钟更新，天气预报每1小时更新
-        self.real_time_weather_timer = QTimer(self)
-        self.real_time_weather_timer.timeout.connect(self.update_real_time_weather)
-        self.real_time_weather_timer.start(960000)  # 16分钟
+    def init_ui(self):
+        """初始化用户界面"""
+        # 实时天气标签
+        self.real_time_weather_label = QLabel(self)
+        self.real_time_weather_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.real_time_weather_label.setProperty("weather", "now")
+        self.real_time_weather_label.setContentsMargins(0, 0, 0, 0)
 
-        self.forecast_weather_timer = QTimer(self)
-        self.forecast_weather_timer.timeout.connect(self.update_forecast_weather)
-        self.forecast_weather_timer.start(7200000)  # 1小时
+        # 天气预报标签
+        self.forecast_weather_label = QLabel(self)
+        self.forecast_weather_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self.forecast_weather_label.setProperty("weather", "next")
+        self.forecast_weather_label.setContentsMargins(0, 0, 0, 0)
 
-        # 初始获取天气信息
-        self.update_real_time_weather()
-        self.update_forecast_weather()
+        # 布局设置
+        layout = QVBoxLayout()
+        layout.addWidget(self.real_time_weather_label)
+        layout.addWidget(self.forecast_weather_label)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
+
+    def init_workers(self):
+        """初始化工作线程"""
+        # 实时天气工作线程
+        self.real_time_worker = RealTimeWorker(self.api_key, self.location)
+        self.real_time_thread = QThread()
+        self.real_time_worker.moveToThread(self.real_time_thread)
+        self.real_time_worker.data_ready.connect(self.handle_real_time_data)
+        self.real_time_worker.error_occurred.connect(self.handle_real_time_error)
+        self.real_time_thread.start()
+
+        # 天气预报工作线程
+        self.forecast_worker = ForecastWorker(self.api_key, self.location)
+        self.forecast_thread = QThread()
+        self.forecast_worker.moveToThread(self.forecast_thread)
+        self.forecast_worker.data_ready.connect(self.handle_forecast_data)
+        self.forecast_worker.error_occurred.connect(self.handle_forecast_error)
+        self.forecast_thread.start()
+
+    def setup_timers(self):
+        """设置定时触发器"""
+        # 实时天气定时器（16分钟）
+        self.real_time_timer = QTimer(self)
+        self.real_time_timer.timeout.connect(self.real_time_worker.fetch)
+        self.real_time_timer.start(960000)
+
+        # 天气预报定时器（2小时）
+        self.forecast_timer = QTimer(self)
+        self.forecast_timer.timeout.connect(self.forecast_worker.fetch)
+        self.forecast_timer.start(7200000)
+
+    def trigger_initial_update(self):
+        """触发初始数据更新"""
+        QTimer.singleShot(0, self.real_time_worker.fetch)
+        QTimer.singleShot(0, self.forecast_worker.fetch)
 
     def load_api_key(self):
-        # 从文件中加载 API 密钥
+        """加载天气API密钥"""
         try:
             with open('data/weather.txt', 'r', encoding='utf-8') as f:
                 return f.read().strip()
         except FileNotFoundError:
-            self.display_error("找不到 weather.txt 文件")
+            self.display_error("缺少weather.txt文件")
             return None
 
     def load_location(self):
-        # 从文件中加载手动存储的坐标
+        """加载地理位置信息"""
         try:
             with open('data/location.txt', 'r', encoding='utf-8') as f:
-                return f.read().strip().split(',')  # 读取经纬度
+                return f.read().strip().split(',')
         except FileNotFoundError:
-            self.display_error("找不到 location.txt 文件")
+            self.display_error("缺少location.txt文件")
             return None
 
-    def init_ui(self):
-        # 实时天气和预报天气标签
-        self.real_time_weather_label = QLabel(self)
-        self.real_time_weather_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.real_time_weather_label.setProperty("weather", "now")  # 设置样式属性
-        self.real_time_weather_label.setContentsMargins(0, 0, 0, 0)  # 设置边距为1像素
-
-        self.forecast_weather_label = QLabel(self)
-        self.forecast_weather_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        self.forecast_weather_label.setProperty("weather", "next")  # 设置样式属性
-        self.forecast_weather_label.setContentsMargins(0, 0, 0, 0)  # 设置边距为1像素
-
-        layout = QVBoxLayout()
-        layout.addWidget(self.real_time_weather_label)
-        layout.addWidget(self.forecast_weather_label)
-        self.setLayout(layout)
-
-        # 设置 layout 的边距为 1 像素
-        layout.setContentsMargins(0, 0, 0, 0)
-
-
-    def display_error(self, error_message):
-        self.real_time_weather_label.setText(f"错误: {error_message}")
-        self.forecast_weather_label.setText(f"错误: {error_message}")
-
-    def update_real_time_weather(self):
-        if not self.api_key or not self.location:
-            return
-
-        lat, lon = self.location
-
+    def handle_real_time_data(self, data):
+        """处理实时天气数据"""
         try:
-            # 请求和风天气实时天气 API
-            weather_url = f"https://devapi.qweather.com/v7/weather/now?location={lon},{lat}&key={self.api_key}&lang=zh"
-            response = requests.get(weather_url)
-
-            if response.status_code == 200:
-                weather_data = response.json()
-                self.parse_real_time_weather_data(weather_data)
-            else:
-                self.display_error(f"获取实时天气信息失败")
-        except requests.RequestException as e:
-            self.display_error(f"网络请求失败")
-
-    def update_forecast_weather(self):
-        if not self.api_key or not self.location:
-            return
-
-        lat, lon = self.location
-
-        try:
-            # 请求和风天气3天预报 API
-            forecast_url = f"https://devapi.qweather.com/v7/weather/3d?location={lon},{lat}&key={self.api_key}&lang=zh"
-            response = requests.get(forecast_url)
-
-            if response.status_code == 200:
-                forecast_data = response.json()
-                self.parse_forecast_weather_data(forecast_data)
-            else:
-                self.display_error(f"获取天气预报信息失败")
-        except requests.RequestException as e:
-            self.display_error(f"网络请求失败")
-
-    def parse_real_time_weather_data(self, data):
-        try:
-            if data['code'] != '200':
-                self.display_error(f"错误代码: {data['code']}")
-                return
-
             now = data['now']
-            temp = now['temp']  # 当前温度
-            feels_like = now['feelsLike']  # 体感温度
-            wind_dir = now['windDir']  # 风向
-            wind_speed = now['windSpeed']  # 风速
-            humidity = now['humidity']  # 湿度
-            text = now['text']  # 天气描述
-
-            real_time_text = f"当前: {text}\n温度: {temp}°C 体感: {feels_like}°C\n湿度: {humidity}%\n风速: {wind_speed} km/h"
+            real_time_text = (
+                f"当前: {now['text']}\n"
+                f"温度: {now['temp']}°C 体感: {now['feelsLike']}°C\n"
+                f"湿度: {now['humidity']}%\n"
+                f"风速: {now['windSpeed']} km/h"
+            )
             self.real_time_weather_label.setText(real_time_text)
+        except KeyError as e:
+            # self.handle_real_time_error(f"数据解析失败: 缺少关键字段 {str(e)}")
+            self.handle_real_time_error(f"数据解析失败")
 
-        except KeyError:
-            self.display_error("解析实时天气数据失败")
-
-    def parse_forecast_weather_data(self, data):
+    def handle_forecast_data(self, data):
+        """处理天气预报数据"""
         try:
-            if data['code'] != '200':
-                self.display_error(f"错误代码: {data['code']}")
-                return
-
-            forecast_today = data['daily'][0]
-            forecast_tomorrow = data['daily'][1]
-
-            today_weather = f"今: {forecast_today['textDay']}, {forecast_today['tempMax']}至{forecast_today['tempMin']}°C"
-            tomorrow_weather = f"明: {forecast_tomorrow['textDay']}, {forecast_tomorrow['tempMax']}至{forecast_tomorrow['tempMin']}°C"
-
-            forecast_text = f"{today_weather}\n{tomorrow_weather}"
+            today = data['daily'][0]
+            tomorrow = data['daily'][1]
+            forecast_text = (
+                f"今: {today['textDay']}, {today['tempMax']}至{today['tempMin']}°C\n"
+                f"明: {tomorrow['textDay']}, {tomorrow['tempMax']}至{tomorrow['tempMin']}°C"
+            )
             self.forecast_weather_label.setText(forecast_text)
+        except (KeyError, IndexError) as e:
+            # self.handle_forecast_error(f"数据解析失败: {str(e)}")
+            self.handle_forecast_error(f"数据解析失败")
 
-        except KeyError:
-            self.display_error("解析天气预报数据失败")
+    def handle_real_time_error(self, error_msg):
+        """处理实时天气错误"""
+        # self.real_time_weather_label.setText(f"实时天气错误: {error_msg}")
+        self.real_time_weather_label.setText(f"实时天气错误")
 
+    def handle_forecast_error(self, error_msg):
+        """处理天气预报错误"""
+        # self.forecast_weather_label.setText(f"天气预报错误: {error_msg}")
+        self.forecast_weather_label.setText(f"天气预报错误")
+
+    def display_error(self, error_msg):
+        """显示通用错误信息"""
+        self.real_time_weather_label.setText(f"错误: {error_msg}")
+        self.forecast_weather_label.setText(f"错误: {error_msg}")
+
+    def closeEvent(self, event):
+        """窗口关闭时停止所有线程"""
+        self.real_time_thread.quit()
+        self.real_time_thread.wait()
+        self.forecast_thread.quit()
+        self.forecast_thread.wait()
+        super().closeEvent(event)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

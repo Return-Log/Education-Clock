@@ -1,4 +1,4 @@
-# Education Clock v3.9
+# Education Clock v3.10
 
 > [!NOTE]
 >
@@ -8,7 +8,7 @@
 
 # 信息
 
-版本：v3.9
+版本：v3.10
 
 时间：2025年3月2日
 
