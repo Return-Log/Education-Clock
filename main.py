@@ -1,7 +1,8 @@
 import os
 import sys
 import requests
-from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget, QToolButton, QTextEdit, QLabel
+from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget, QToolButton, QTextEdit, QLabel, \
+    QTextBrowser
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, Qt, QUrl
 from PyQt6.QtGui import QDesktopServices
@@ -276,7 +277,7 @@ class MainWindow(QMainWindow):
         settings_window.exec()
 
     def init_bulletin_board_module(self):
-        text_edit = self.findChild(QTextEdit, "textEdit")
+        text_edit = self.findChild(QTextBrowser, "textBrowser")
         if text_edit is not None:
             self.bulletin_board_module = BulletinBoardModule(self, text_edit)
         else:
