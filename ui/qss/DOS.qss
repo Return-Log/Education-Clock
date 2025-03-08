@@ -153,3 +153,8 @@ QTableWidget::item:selected, QTableWidget::item:focus {
     background-color: #005500;
     color: #FFFFFF;
 }
+
+#textBrowser {
+    font-size: 18px;
+
+}

@@ -34,7 +34,7 @@ class FloatingBall(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setOpacity(0.3)  # 半透明，范围 0.0 - 1.0
+        painter.setOpacity(0.6)  # 半透明，范围 0.0 - 1.0
         if self.use_png:
             painter.drawPixmap(0, 0, self.pixmap)
         else:

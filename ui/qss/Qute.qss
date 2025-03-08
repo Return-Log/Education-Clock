@@ -189,7 +189,7 @@ QListView {
 }
 
 /* 输入框和文本编辑框 */
-#textEdit {
+#textBrowser {
     font-size: 18px;
     background-color: rgba(255, 248, 251, 0.7); /* 半透明背景色 */
 

@@ -130,7 +130,7 @@ QLabel[weather="next"] {
 
 
 
-#textEdit {
+#textBrowser {
     font-size: 18px;
 
 }

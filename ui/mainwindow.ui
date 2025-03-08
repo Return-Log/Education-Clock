@@ -145,9 +145,9 @@
        <enum>QLayout::SetDefaultConstraint</enum>
       </property>
       <item>
-       <layout class="QVBoxLayout" name="verticalLayout" stretch="1,0">
+       <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0">
         <item>
-         <widget class="QTextEdit" name="textEdit">
+         <widget class="QTextBrowser" name="textBrowser">
           <property name="lineWrapMode">
            <enum>QTextEdit::WidgetWidth</enum>
           </property>

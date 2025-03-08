@@ -147,7 +147,7 @@ QLabel[weather="next"] {
     font-size: 20px;
 }
 
-#textEdit {
+#textBrowser {
     font-size: 18px;
     background-color: #C0C0C0;
 }
