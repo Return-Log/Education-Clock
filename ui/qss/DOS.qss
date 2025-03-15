@@ -80,9 +80,9 @@ QLabel[time="date"], QLabel[time="week"], QLabel[time="enddate"] {
 
 /* 弹幕 */
 QLabel[bulletin="danmaku"] {
-    color: #00FF00;
+    color: #FFD700;
     font-size: 30px;
-    background-color: rgba(0, 0, 0, 0.8); /* 透明黑色背景 */
+    background-color: rgba(0, 0, 0, 0); /* 透明背景 */
     border-radius: 0px;
     padding: 1px;
 }

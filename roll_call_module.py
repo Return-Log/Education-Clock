@@ -3,7 +3,7 @@ import sys
 import os
 from PyQt6.QtWidgets import QDialog, QLabel, QApplication, QVBoxLayout
 from PyQt6.QtCore import Qt, QUrl, pyqtSignal, QObject
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QFontDatabase
 from PyQt6.QtMultimedia import QMediaPlayer
 from PyQt6.QtMultimediaWidgets import QVideoWidget
 
@@ -41,16 +41,28 @@ class RollCallDialog(QDialog):
 
         # 名字标签（黑色文字，强制字体大小和家族）
         self.name_label = QLabel("", self)
-        font = QFont("华文行楷", 140)
+
+        # 使用 QFontDatabase 的静态方法检查字体
+        preferred_font = "华文行楷"
+        fallback_font = "微软雅黑"
+
+        # 检查华文行楷是否在可用字体列表中
+        if preferred_font in QFontDatabase.families():
+            font = QFont(preferred_font, 140)
+        else:
+            # 如果没有华文行楷，使用加粗的微软雅黑
+            font = QFont(fallback_font, 140)
+            font.setBold(True)
+
         self.name_label.setFont(font)
         self.name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.name_label.setStyleSheet("""
             QLabel {
                 color: black;
                 font-size: 140pt !important;
-                font-family: 华文行楷 !important;
+                font-family: %s !important;
             }
-        """)
+        """ % font.family())
         self.layout.addWidget(self.name_label)
         self.name_label.setText("点击开始")
 

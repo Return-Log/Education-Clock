@@ -70,7 +70,7 @@ class TimeModule:
                     remaining_days = (enddate - now).days
 
                     if remaining_days > 0:
-                        message = f"据{event}还剩{remaining_days}天"
+                        message = f"距{event}还剩{remaining_days}天"
                     else:
                         message = f"{event}已经过去"
 

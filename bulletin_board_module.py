@@ -349,7 +349,7 @@ class BulletinBoardWorker(QThread):
                         ext = os.path.splitext(file_path)[1].lower()
                         new_message = re.sub(r'&\[(.*?)\]&', '', message_content).strip()
                         if ext in ['.png', '.jpg', '.jpeg', '.gif']:
-                            message_content = f"{new_message}<br><a href='{file_url}'><img src='{file_path}' width='350'></a>"
+                            message_content = f"{new_message}<br><a href='{file_url}'><img src='{file_path}' style='max-width: 100%; width: auto; height: auto;'></a>"
                         else:
                             icon_path = "icon/file.png"
                             if os.path.exists(icon_path):
@@ -357,7 +357,7 @@ class BulletinBoardWorker(QThread):
                             else:
                                 message_content = f"{new_message}<br><a href='{file_url}'>{os.path.basename(file_path)} (图标丢失)</a>"
                     elif url in self.failed_urls and "403" in self.failed_urls[url]:
-                        message_content = re.sub(r'&\[(.*?)\]&', "已达请求上限，请重新发送", message_content)
+                        message_content = re.sub(r'&\[(.*?)\]&', "403 Forbidden, 资源超时, 请重新发送", message_content)
                     elif url in self.failed_urls:
                         message_content = re.sub(r'&\[(.*?)\]&', f"下载失败: {self.failed_urls[url]}", message_content)
                     else:
@@ -499,9 +499,3 @@ class BulletinBoardModule:
             self.worker.quit()
             self.worker.wait()
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    text_browser = QTextBrowser()  # 使用 QTextBrowser
-    module = BulletinBoardModule(None, text_browser)
-    text_browser.show()
-    sys.exit(app.exec())
