@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import requests
@@ -19,7 +20,17 @@ from time_module import TimeModule  # 导入时间模块
 from weather_module import WeatherModule
 from settings_window import SettingsWindow  # 导入设置窗口类
 from bulletin_board_module import BulletinBoardModule  # 导入公告板模块
+from maintain_order_module import NoiseMonitor  # 噪音检测模块
 
+# # 配置日志
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format='%(asctime)s - %(levelname)s - %(message)s',
+#     handlers=[
+#         logging.FileHandler("logging.log"),
+#         logging.StreamHandler()
+#     ]
+# )
 
 
 class MainWindow(QMainWindow):
@@ -185,9 +196,11 @@ class MainWindow(QMainWindow):
         self.timetable_module = TimetableModule(self)
         self.shutdown_module = None
         self.cctv_controller = None
+        self.noise_monitor = None
         self.load_settings()  # 确保设置已加载
         self.init_shutdown_module()  # 在设置加载后初始化关机模块
         self.init_news_module()
+        self.init_noise_monitor()
 
     def update_timetable(self):
         current_time = datetime.now().time()
@@ -200,13 +213,26 @@ class MainWindow(QMainWindow):
                 settings = json.load(file)
                 self.shutdown_status = settings.get('shutdown', '关闭')
                 self.news_status = settings.get('news', '关闭')
+                self.order = settings.get('order', '关闭')
         except (FileNotFoundError, json.JSONDecodeError):
             self.shutdown_status = '关闭'
             self.news_status = '关闭'
+            self.order = '关闭'
 
     def check_settings(self):
         """检查设置并更新状态"""
         self.load_settings()
+
+    def init_noise_monitor(self):
+        if self.order == '开启':
+            if not hasattr(self, 'noise_monitor') or self.noise_monitor is None:
+                self.noise_monitor = NoiseMonitor()
+        elif self.order == '关闭' and hasattr(self, 'noise_monitor'):
+            if self.noise_monitor is not None:
+                self.noise_monitor.stop()
+            del self.noise_monitor
+            self.noise_monitor = None
+
 
     def init_news_module(self):
         """根据设置初始化新闻联播模块"""

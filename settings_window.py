@@ -5,12 +5,14 @@ import sys
 import json
 import base64
 import os
+import numpy as np
+import pyaudio
 from PyQt6.QtWidgets import (
     QDialog, QPushButton, QLabel, QFileDialog, QTextBrowser, QTabWidget,
     QTableWidgetItem, QMessageBox, QApplication, QDialogButtonBox, QPlainTextEdit, QComboBox
 )
 from PyQt6.uic import loadUi
-from PyQt6.QtCore import QTimer, QDateTime, QDate
+from PyQt6.QtCore import QTimer, QDateTime, QDate, QThread, pyqtSignal
 
 
 class SettingsWindow(QDialog):
@@ -25,7 +27,9 @@ class SettingsWindow(QDialog):
         self.weather_file = './data/weather.txt'
         self.location_file = './data/location.txt'
         self.names_file = './data/name.txt'
+        self.maintain_order_info = './data/maintain_order_info.json'
         self.encryption_key = 0x5A  # 选择一个简单的密钥
+        self.is_calibrating = False  # 初始化校准状态
         self.timetable_data = {}  # 初始化一个空字典以保存时间表数据
         self.load_timetable()  # 加载时刻表数据
         self.load_db_config()  # 加载数据库配置
@@ -36,6 +40,8 @@ class SettingsWindow(QDialog):
         self.load_weather_settings()  # 加载天气设置
         self.load_location_settings()  # 加载位置设置
         self.load_names()  # 加载名字列表
+        self.load_maintain_order_info() # 加载维护秩序信息
+        self.load_order_settings()
 
     def setup_ui(self):
         loadUi('./ui/setting.ui', self)
@@ -47,6 +53,9 @@ class SettingsWindow(QDialog):
         self.connect_line_edit_signals()  # 连接通知栏设置文本框的信号
         self.connect_count_line_edit_signals()  # 连接倒计时设置文本框的信号
         self.connect_shutdown_signals()  # 连接自动关机设置文本框的信号
+        self.connect_maintain_order_signals() # 链接维护秩序信息信号
+        self.connect_order_signals() # 链接维护秩序信息开启关闭信号
+        self.pushButton_3.clicked.connect(self.calibrate_microphone)  # 连接校准按钮
         self.connect_news_signals()  # 连接新闻设置信号
         self.connect_weather_signals()  # 连接天气设置信号
         self.connect_location_signals()  # 连接位置设置信号
@@ -67,8 +76,11 @@ class SettingsWindow(QDialog):
             self.load_location_settings()
         elif index == 6:
             self.load_names()
-        # elif index == 7:
-        #     self.init_theme_settings()
+        elif index == 7:
+            self.init_theme_settings()
+        elif index == 8:
+            self.load_maintain_order_info()
+            self.load_order_settings()
 
     def on_tab_changed_2(self, index):
         if 0 <= index <= 6:
@@ -400,7 +412,8 @@ class SettingsWindow(QDialog):
     def create_default_launch_file(self):
         default_launch = {
             "shutdown": "关闭",
-            "news": "开启"
+            "news": "开启",
+            "order": "关闭"
         }
         try:
             json_data = json.dumps(default_launch, ensure_ascii=False, indent=4)
@@ -730,6 +743,335 @@ class SettingsWindow(QDialog):
         QMessageBox.information(self, "重启", "设置已更改，重启应用程序以应用更改。")
         python = sys.executable
         os.execl(python, python, *sys.argv)
+
+###################################秩序维护模块设置#################################################
+    def connect_maintain_order_signals(self):
+        """连接维护秩序设置的控件信号到保存函数"""
+        # 文本输入框信号
+        self.lineEdit_18.textChanged.connect(self.save_maintain_order_info)  # webhook_url
+        self.lineEdit_19.textChanged.connect(self.save_maintain_order_info)  # smms_username
+        self.lineEdit_20.textChanged.connect(self.save_maintain_order_info)  # smms_password
+        self.lineEdit_21.textChanged.connect(self.save_maintain_order_info)  # text_at
+        self.lineEdit_22.textChanged.connect(self.save_maintain_order_info)  # Monday
+        self.lineEdit_23.textChanged.connect(self.save_maintain_order_info)  # Tuesday
+        self.lineEdit_24.textChanged.connect(self.save_maintain_order_info)  # Wednesday
+        self.lineEdit_25.textChanged.connect(self.save_maintain_order_info)  # Thursday
+        self.lineEdit_26.textChanged.connect(self.save_maintain_order_info)  # Friday
+        self.lineEdit_27.textChanged.connect(self.save_maintain_order_info)  # Saturday
+        self.lineEdit_28.textChanged.connect(self.save_maintain_order_info)  # Sunday
+
+        # 数值输入框信号
+        self.spinBox_3.valueChanged.connect(self.save_maintain_order_info)  # threshold_db
+        self.spinBox.valueChanged.connect(self.save_maintain_order_info)  # mic_device_index
+        self.spinBox_2.valueChanged.connect(self.save_maintain_order_info)  # camera_device_index
+
+    def load_maintain_order_info(self):
+        """加载维护秩序信息到控件"""
+        try:
+            with open(self.maintain_order_info, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                logging.debug(f"Loaded maintain_order_info: {data}")
+
+                # 加载基本设置
+                self.lineEdit_18.setText(data.get("webhook_url", ""))
+                self.lineEdit_19.setText(data.get("smms_username", ""))
+                self.lineEdit_20.setText(data.get("smms_password", ""))
+                self.lineEdit_21.setText(",".join(data.get("text_at", [])))
+                self.spinBox_3.setValue(data.get("threshold_db", -30))
+                self.spinBox.setValue(data.get("mic_device_index", 0))
+                self.spinBox_2.setValue(data.get("camera_device_index", 0))
+
+                # 加载日程表
+                schedule = data.get("schedule", {})
+                self.lineEdit_22.setText(",".join(schedule.get("Monday", [])))
+                self.lineEdit_23.setText(",".join(schedule.get("Tuesday", [])))
+                self.lineEdit_24.setText(",".join(schedule.get("Wednesday", [])))
+                self.lineEdit_25.setText(",".join(schedule.get("Thursday", [])))
+                self.lineEdit_26.setText(",".join(schedule.get("Friday", [])))
+                self.lineEdit_27.setText(",".join(schedule.get("Saturday", [])))
+                self.lineEdit_28.setText(",".join(schedule.get("Sunday", [])))
+
+                logging.info("维护秩序信息加载成功")
+        except FileNotFoundError:
+            logging.warning(f"{self.maintain_order_info} 文件未找到，使用默认值")
+            self.create_default_maintain_order_file()
+            self.load_maintain_order_info()  # 再次加载默认值
+        except json.JSONDecodeError:
+            logging.error(f"{self.maintain_order_info} 文件格式错误")
+        except Exception as e:
+            logging.error(f"加载维护秩序信息失败: {e}")
+
+    def create_default_maintain_order_file(self):
+        """创建默认的维护秩序配置文件"""
+        default_data = {
+            "webhook_url": "",
+            "smms_username": "",
+            "smms_password": "",
+            "threshold_db": -30,
+            "mic_device_index": 0,
+            "camera_device_index": 0,
+            "text_at": [],
+            "schedule": {
+                "Monday": [],
+                "Tuesday": [],
+                "Wednesday": [],
+                "Thursday": [],
+                "Friday": [],
+                "Saturday": [],
+                "Sunday": []
+            }
+        }
+        try:
+            with open(self.maintain_order_info, 'w', encoding='utf-8') as f:
+                json.dump(default_data, f, ensure_ascii=False, indent=4)
+            logging.info("默认维护秩序文件已创建")
+        except Exception as e:
+            logging.error(f"创建默认维护秩序文件失败: {e}")
+
+    def save_maintain_order_info(self):
+        """保存维护秩序信息到文件，包含防呆措施"""
+        try:
+            # 处理时间格式，确保符合 HH:MM-HH:MM
+            def legalize_time(time_str):
+                """将时间段字符串合法化为 HH:MM-HH:MM 格式，并处理中文标点"""
+                if not time_str:
+                    return []
+                # 替换中文标点为英文标点
+                time_str = time_str.replace('，', ',').replace('：', ':')
+                time_ranges = time_str.split(',')
+                legalized_ranges = []
+
+                for time_range in time_ranges:
+                    time_range = time_range.strip()
+                    if not time_range:
+                        continue
+
+                    # 检查是否为 HH:MM-HH:MM 格式
+                    if '-' in time_range:
+                        start, end = time_range.split('-', 1)
+                        start = start.strip()
+                        end = end.strip()
+
+                        # 处理开始时间
+                        if re.match(r'^\d{2}:\d{2}$', start):
+                            s_hour, s_minute = map(int, start.split(':'))
+                            if not (0 <= s_hour < 24 and 0 <= s_minute < 60):
+                                logging.warning(f"开始时间超出范围: {start}")
+                                continue
+                            start = f"{s_hour:02d}:{s_minute:02d}"
+                        elif re.match(r'^\d{4}$', start):
+                            s_hour, s_minute = int(start[:2]), int(start[2:])
+                            if not (0 <= s_hour < 24 and 0 <= s_minute < 60):
+                                logging.warning(f"开始时间超出范围: {start}")
+                                continue
+                            start = f"{s_hour:02d}:{s_minute:02d}"
+                        else:
+                            logging.warning(f"开始时间格式错误: {start}")
+                            continue
+
+                        # 处理结束时间
+                        if re.match(r'^\d{2}:\d{2}$', end):
+                            e_hour, e_minute = map(int, end.split(':'))
+                            if not (0 <= e_hour < 24 and 0 <= e_minute < 60):
+                                logging.warning(f"结束时间超出范围: {end}")
+                                continue
+                            end = f"{e_hour:02d}:{e_minute:02d}"
+                        elif re.match(r'^\d{4}$', end):
+                            e_hour, e_minute = int(end[:2]), int(end[2:])
+                            if not (0 <= e_hour < 24 and 0 <= e_minute < 60):
+                                logging.warning(f"结束时间超出范围: {end}")
+                                continue
+                            end = f"{e_hour:02d}:{e_minute:02d}"
+                        else:
+                            logging.warning(f"结束时间格式错误: {end}")
+                            continue
+
+                        # 验证开始时间早于结束时间
+                        if start >= end:
+                            logging.warning(f"时间段无效（开始时间晚于结束时间）: {start}-{end}")
+                            continue
+
+                        legalized_ranges.append(f"{start}-{end}")
+                    else:
+                        logging.warning(f"时间段格式错误（缺少'-'）: {time_range}")
+
+                return legalized_ranges
+
+            # 构造 JSON 数据
+            data = {
+                "webhook_url": self.lineEdit_18.text().strip(),
+                "smms_username": self.lineEdit_19.text().strip(),
+                "smms_password": self.lineEdit_20.text().strip(),
+                "threshold_db": self.spinBox_3.value(),
+                "mic_device_index": self.spinBox.value(),
+                "camera_device_index": self.spinBox_2.value(),
+                "text_at": [x.strip() for x in self.lineEdit_21.text().replace('，', ',').split(',') if x.strip()],
+                "schedule": {
+                    "Monday": legalize_time(self.lineEdit_22.text()),
+                    "Tuesday": legalize_time(self.lineEdit_23.text()),
+                    "Wednesday": legalize_time(self.lineEdit_24.text()),
+                    "Thursday": legalize_time(self.lineEdit_25.text()),
+                    "Friday": legalize_time(self.lineEdit_26.text()),
+                    "Saturday": legalize_time(self.lineEdit_27.text()),
+                    "Sunday": legalize_time(self.lineEdit_28.text())
+                }
+            }
+
+            # 保存到文件
+            with open(self.maintain_order_info, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+            logging.info("维护秩序信息保存成功")
+        except Exception as e:
+            logging.error(f"保存维护秩序信息失败: {e}")
+
+    def connect_order_signals(self):
+        self.buttonBox_2.clicked.connect(self.toggle_order)
+
+    def load_order_settings(self):
+        try:
+            logging.debug("Loading order settings from files.")
+            if not os.path.exists(self.launch_file):
+                logging.warning("Launch file not found. Creating a default one.")
+                self.create_default_launch_file()
+
+            with open(self.launch_file, 'r', encoding='utf-8') as f:
+                launch_data = json.load(f)
+                order_status = launch_data.get('order', '开启')
+                self.label_43.setText(f"{order_status}")
+
+            logging.debug("News settings loaded successfully.")
+        except json.JSONDecodeError as e:
+            logging.error(f"Failed to decode JSON: {e}")
+        except Exception as e:
+            logging.error(f"Failed to load order settings: {e}")
+
+    def toggle_order(self, button):
+        try:
+            with open(self.launch_file, 'r', encoding='utf-8') as f:
+                launch_data = json.load(f)
+
+            current_status = launch_data.get('order', '关闭')
+            if button == self.buttonBox_2.button(QDialogButtonBox.StandardButton.Open):
+                new_status = "开启"
+            elif button == self.buttonBox_2.button(QDialogButtonBox.StandardButton.Close):
+                new_status = "关闭"
+            else:
+                logging.warning(f"Unknown button clicked: {button}")
+                return
+
+            if current_status != new_status:
+                launch_data['order'] = new_status
+                with open(self.launch_file, 'w', encoding='utf-8') as f:
+                    json.dump(launch_data, f, ensure_ascii=False, indent=4)
+
+                self.label_43.setText(f"{new_status}")
+                logging.info(f"order status toggled to: {new_status}")
+        except Exception as e:
+            logging.error(f"Failed to toggle order status: {e}")
+
+    def calibrate_microphone(self):
+        """校准话筒，检测5秒内平均去极值分贝值"""
+        if self.is_calibrating:
+            logging.info("正在校准中，忽略重复点击")
+            return
+
+        logging.debug("开始校准话筒")
+        self.is_calibrating = True
+        self.pushButton_3.setEnabled(False)
+        self.label_66.setText("校准中...")
+
+        # 从 maintain_order_info.json 获取 mic_device_index
+        try:
+            with open(self.maintain_order_info, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                mic_device_index = data.get("mic_device_index", 0)
+            logging.debug(f"使用 mic_device_index: {mic_device_index}")
+        except Exception as e:
+            logging.error(f"读取 mic_device_index 失败: {e}")
+            mic_device_index = 0
+
+        # 启动校准线程
+        self.calibration_thread = CalibrationThread(mic_device_index)
+        try:
+            self.calibration_thread.calibration_complete.connect(self.on_calibration_complete)
+            logging.debug("校准线程信号已连接")
+        except Exception as e:
+            logging.error(f"连接校准线程信号失败: {e}")
+            self.is_calibrating = False
+            self.pushButton_3.setEnabled(True)
+            return
+
+        self.calibration_thread.start()
+        logging.info("校准线程已启动")
+
+    def on_calibration_complete(self, db_value):
+        """处理校准完成事件"""
+        logging.debug(f"收到校准完成信号，db_value: {db_value}")
+        if db_value is not None:
+            self.label_66.setText(f"校准完成: {db_value:.1f} dB")
+            logging.info(f"话筒校准完成，结果: {db_value:.1f} dB")
+        else:
+            self.label_66.setText("校准失败")
+            logging.error("话筒校准失败")
+
+        self.is_calibrating = False
+        self.pushButton_3.setEnabled(True)
+        logging.debug("校准状态已重置")
+
+
+
+class CalibrationThread(QThread):
+    calibration_complete = pyqtSignal(float)
+
+    def __init__(self, mic_device_index):
+        super().__init__()
+        self.mic_device_index = mic_device_index
+        self.CHUNK = 1024
+        self.FORMAT = pyaudio.paInt16
+        self.CHANNELS = 1
+        self.RATE = 44100
+
+    def run(self):
+        """运行校准线程，检测5秒内平均去极值分贝值"""
+        p = None
+        stream = None
+        try:
+            p = pyaudio.PyAudio()
+            device_count = p.get_device_count()
+            logging.debug(f"可用音频设备数: {device_count}")
+            if self.mic_device_index >= device_count or self.mic_device_index < 0:
+                logging.error(f"无效的 mic_device_index: {self.mic_device_index}")
+                self.calibration_complete.emit(None)
+                return
+
+            stream = p.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True,
+                            frames_per_buffer=self.CHUNK, input_device_index=self.mic_device_index)
+            logging.info("校准线程：音频流初始化成功，开始检测5秒噪音")
+
+            db_values = []
+            for _ in range(int(self.RATE / self.CHUNK * 5)):
+                data = np.frombuffer(stream.read(self.CHUNK, exception_on_overflow=False), dtype=np.int16)
+                rms = np.sqrt(np.mean(data ** 2)) if np.any(data) else 0
+                db = 20 * np.log10(rms) if rms > 0 else -float("inf")
+                db_values.append(db)
+
+            logging.info(f"5秒原始分贝值 - 最小: {min(db_values):.1f}, 最大: {max(db_values):.1f}, 平均: {np.mean(db_values):.1f}")
+            db_array = np.array(db_values)
+            trimmed_db = np.percentile(db_array, [5, 95])
+            trimmed_mean_db = np.mean(db_array[(db_array > trimmed_db[0]) & (db_array < trimmed_db[1])])
+            logging.info(f"去极值后 - 范围: {trimmed_db[0]:.1f} 到 {trimmed_db[1]:.1f}, 平均: {trimmed_mean_db:.1f}")
+
+            self.calibration_complete.emit(trimmed_mean_db)
+        except Exception as e:
+            logging.error(f"校准线程异常: {str(e)}")
+            self.calibration_complete.emit(None)
+        finally:
+            if stream:
+                stream.stop_stream()
+                stream.close()
+            if p:
+                p.terminate()
+            logging.info("校准线程：音频流已关闭")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
