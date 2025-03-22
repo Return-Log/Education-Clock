@@ -455,7 +455,7 @@ class NoiseMonitor:
                 self.is_processing = False
                 return
 
-            image_path = "noise_photo.png"
+            image_path = "./data/noise_photo.png"
             compression_params = [cv2.IMWRITE_PNG_COMPRESSION, 9]
             cv2.imwrite(image_path, frame, compression_params)
             file_size = os.path.getsize(image_path) / 1024
