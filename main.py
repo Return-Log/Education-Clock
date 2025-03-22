@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWid
     QTextBrowser
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, Qt, QUrl
-from PyQt6.QtGui import QDesktopServices
+from PyQt6.QtGui import QDesktopServices, QIcon, QPixmap
 from PyQt6.QtWidgets import QMessageBox
 from PyQt6.QtCore import QSettings
 from datetime import datetime
@@ -88,6 +88,7 @@ class MainWindow(QMainWindow):
 
         # 将窗口置于最下层
         self.lower()
+
 
     def open_roll_call_window(self):
         """打开随机点名窗口"""
@@ -214,10 +215,38 @@ class MainWindow(QMainWindow):
                 self.shutdown_status = settings.get('shutdown', '关闭')
                 self.news_status = settings.get('news', '关闭')
                 self.order = settings.get('order', '关闭')
+                self.update_mic_icon()  # 在加载设置后更新图标
         except (FileNotFoundError, json.JSONDecodeError):
             self.shutdown_status = '关闭'
             self.news_status = '关闭'
             self.order = '关闭'
+            self.update_mic_icon()  # 在加载设置后更新图标
+
+    def update_mic_icon(self):
+        """根据 order 状态更新 toolButton 的图标"""
+        tool_button = self.findChild(QToolButton, "toolButton")  # 检查 UI 文件中的对象名称
+        if tool_button is None:
+            logging.warning("找不到名为 'toolButton' 的 QToolButton，请检查 UI 文件中的对象名称")
+            return
+
+        # 检查文件路径和加载情况
+        if self.order == "开启":
+            icon_path = "icon/mic-on.png"
+        else:  # "关闭" 或其他状态
+            icon_path = "icon/mic-off.png"
+
+        if not os.path.exists(icon_path):
+            logging.warning(f"图标文件不存在: {icon_path}")
+            return
+
+        pixmap = QPixmap(icon_path)
+        if pixmap.isNull():
+            logging.warning(f"无法加载图标文件: {icon_path}")
+            return
+
+        # 设置图标
+        tool_button.setIcon(QIcon(pixmap))
+        logging.info(f"已为 toolButton 设置图标: {icon_path}")
 
     def check_settings(self):
         """检查设置并更新状态"""
@@ -319,7 +348,7 @@ class MainWindow(QMainWindow):
                 latest_tag = tags[0]['name']
                 current_version = "v3.12"  # 替换为你的当前版本号
                 if latest_tag != current_version:
-                    self.label_update.setText(f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: red;">检测到新版本 {latest_tag}, 当前版本 {current_version}, 请尽快更新</a>')
+                    self.label_update.setText(f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: red;">检测到新版本 {latest_tag}, 当前版本 {current_version}</a>')
                     self.label_update.setOpenExternalLinks(True)
                 else:
                     self.label_update.setText(f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: green;">已是最新版 {latest_tag}</a>')

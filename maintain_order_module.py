@@ -11,15 +11,15 @@ import pyaudio
 import cv2
 import logging
 
+
 from PyQt6.QtMultimedia import QSoundEffect
 from PyQt6.QtWidgets import QApplication, QLabel
 from PyQt6.QtCore import QTimer, QThread, pyqtSignal, Qt, QUrl
 from PyQt6.QtGui import QFont
 
-
-
 # 全局变量
 CONFIG_FILE = "data/maintain_order_info.json"
+LAUNCH_FILE = "data/launch.json"
 CHUNK = 1024
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
@@ -87,7 +87,9 @@ class DecibelThread(QThread):
     def run(self):
         """运行分贝检测线程"""
         if not self.config.smms_api_key:
-            logging.error("未获取到 SM.MS API Token，线程退出")
+            logging.error("未获取到 SM.MS API Token，将关闭 order 并重启程序")
+            self.update_launch_json()
+            self.restart_program()
             return
 
         p = None
@@ -164,13 +166,36 @@ class DecibelThread(QThread):
     def set_silent_period(self, duration):
         """设置静默期，单位为秒"""
         new_silent_until = time.time() + duration
-        if new_silent_until > self.silent_until:  # 仅当新静默期更长时更新
+        if new_silent_until > self.silent_until:
             self.silent_until = new_silent_until
             logging.info(f"进入静默期 {duration} 秒，直到 {datetime.fromtimestamp(self.silent_until).strftime('%H:%M:%S')}")
 
     def stop(self):
         """停止分贝检测线程"""
         self.running = False
+
+    def update_launch_json(self):
+        """更新 launch.json 文件，将 order 改为关闭"""
+        try:
+            if not os.path.exists(LAUNCH_FILE):
+                logging.warning(f"{LAUNCH_FILE} 不存在，创建默认文件")
+                data = {"shutdown": "开启", "news": "关闭", "order": "关闭"}
+            else:
+                with open(LAUNCH_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                data["order"] = "关闭"
+
+            with open(LAUNCH_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+            logging.info(f"已更新 {LAUNCH_FILE}，order 设置为 '关闭'")
+        except Exception as e:
+            logging.error(f"更新 {LAUNCH_FILE} 失败: {str(e)}")
+
+    def restart_program(self):
+        """重启程序"""
+        logging.info("正在重启程序...")
+        python = sys.executable
+        os.execl(python, python, *sys.argv)
 
 
 class UploadThread(QThread):
@@ -233,9 +258,7 @@ class DingTalkThread(QThread):
                     "title": "监控报警",
                     "text": f"#### 噪音超标警告 {self.text_at}\n> 检测到噪音超标，已拍摄照片\n> ![noise]({self.image_url})\n> ###### {datetime.now().strftime('%H:%M:%S')} 发布\n"
                 },
-                "at": {"isAtAll": False,
-                       "atMobiles": self.text_at
-                       }
+                "at": {"isAtAll": False, "atMobiles": self.text_at}
             }
             headers = {"Content-Type": "application/json"}
             response = requests.post(self.webhook_url, json=data, headers=headers, timeout=10)
@@ -259,29 +282,112 @@ class WarningPopup(QLabel):
                 font-size: 18pt !important;
                 font: 微软雅黑 !important;
             }
-        """ )
+        """)
         self.setFont(QFont("微软雅黑", 18))
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
         self.move(0, 0)
         self.setFixedSize(380, 100)
 
+class SecondDetectionThread(QThread):
+    detection_complete = pyqtSignal(float)  # 信号传递检测结果
 
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+        self.running = True
+
+    def run(self):
+        """执行第二次15秒检测"""
+        p = None
+        stream = None
+        try:
+            p = pyaudio.PyAudio()
+            stream = p.open(
+                format=FORMAT,
+                channels=CHANNELS,
+                rate=RATE,
+                input=True,
+                frames_per_buffer=CHUNK,
+                input_device_index=self.config.mic_device_index
+            )
+            db_values = []
+            for _ in range(int(RATE / CHUNK * 15)):
+                if not self.running:
+                    break
+                data = np.frombuffer(stream.read(CHUNK, exception_on_overflow=False), dtype=np.int16)
+                rms = np.sqrt(np.mean(data ** 2)) if np.any(data) else 0
+                db = 20 * np.log10(rms) if rms > 0 else -float("inf")
+                db_values.append(db)
+
+            if db_values:
+                logging.info(
+                    f"第二次15秒原始分贝值 - 最小: {min(db_values):.1f}, 最大: {max(db_values):.1f}, 平均: {np.mean(db_values):.1f}"
+                )
+                db_array = np.array(db_values)
+                trimmed_db = np.percentile(db_array, [5, 95])
+                trimmed_mean_db = np.mean(db_array[(db_array > trimmed_db[0]) & (db_array < trimmed_db[1])])
+                logging.info(
+                    f"去极值后 - 范围: {trimmed_db[0]:.1f} 到 {trimmed_db[1]:.1f}, 平均: {trimmed_mean_db:.1f}"
+                )
+                self.detection_complete.emit(trimmed_mean_db)
+            else:
+                logging.warning("第二次检测被中断，返回 None")
+                self.detection_complete.emit(None)
+        except Exception as e:
+            logging.error(f"第二次检测出错: {str(e)}")
+            self.detection_complete.emit(None)
+        finally:
+            if stream:
+                stream.stop_stream()
+                stream.close()
+            if p:
+                p.terminate()
+
+    def stop(self):
+        """停止检测线程"""
+        self.running = False
 
 class NoiseMonitor:
     def __init__(self):
         """初始化噪音监控器"""
         self.config = Config()
         if not self.config.smms_api_key:
-            logging.error("程序启动失败：无法获取 SM.MS API Token")
-            sys.exit(1)
+            logging.error("程序启动失败：无法获取 SM.MS API Token，将关闭 order 并重启程序")
+            self.update_launch_json()
+            self.restart_program()
+            return
 
         self.app = QApplication.instance() or QApplication(sys.argv)
         self.decibel_thread = DecibelThread(self.config)
         self.decibel_thread.decibel_exceeded.connect(self.on_decibel_exceeded)
         self.decibel_thread.start()
-        self.is_processing = False  # 添加状态标志
+        self.is_processing = False
         self.sound_effect = QSoundEffect()
         self.sound_effect.setSource(QUrl.fromLocalFile("icon/warning.wav"))
+
+    def update_launch_json(self):
+        """更新 launch.json 文件，将 order 改为关闭"""
+        try:
+            if not os.path.exists(LAUNCH_FILE):
+                logging.warning(f"{LAUNCH_FILE} 不存在，创建默认文件")
+                data = {"shutdown": "开启", "news": "关闭", "order": "关闭"}
+            else:
+                with open(LAUNCH_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                data["order"] = "关闭"
+
+            with open(LAUNCH_FILE, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=4)
+            logging.info(f"已更新 {LAUNCH_FILE}，order 设置为 '关闭'")
+        except Exception as e:
+            logging.error(f"更新 {LAUNCH_FILE} 失败: {str(e)}")
+
+    def restart_program(self):
+        """重启程序"""
+        logging.info("正在重启程序...")
+        python = sys.executable
+        os.execl(python, python, *sys.argv)
+
 
     def on_decibel_exceeded(self, db):
         """处理分贝超标事件"""
@@ -291,18 +397,23 @@ class NoiseMonitor:
 
         logging.info(f"收到超标信号: {db:.1f} dB")
         self.is_processing = True
-        self.decibel_thread.set_silent_period(45)  # 30秒警告 + 15秒二次检测
+        self.decibel_thread.set_silent_period(10)
         self.sound_effect.play()
         popup = WarningPopup(f"噪音超标，15秒平均值: {db:.1f} dB\n如果噪音持续超标则会上报")
         popup.show()
-        QTimer.singleShot(30000, lambda: self.after_warning(popup))
+        QTimer.singleShot(10000, lambda: self.start_second_detection(popup))
 
-    def after_warning(self, popup):
-        """警告后的处理逻辑"""
+    def start_second_detection(self, popup):
+        """启动第二次检测线程"""
         popup.hide()
         popup.deleteLater()
         logging.info("警告窗口关闭，开始第二次15秒检测")
-        second_db = self.second_detection()
+        self.second_detection_thread = SecondDetectionThread(self.config)
+        self.second_detection_thread.detection_complete.connect(self.on_second_detection_complete)
+        self.second_detection_thread.start()
+
+    def on_second_detection_complete(self, second_db):
+        """处理第二次检测完成事件"""
         if second_db is None:
             logging.warning("第二次检测失败，返回循环检测")
             self.is_processing = False
@@ -314,39 +425,6 @@ class NoiseMonitor:
         else:
             logging.info(f"第二次检测仍超标: {second_db:.1f} > {self.config.threshold_db}，执行拍照上传")
             self.take_photo_and_upload()
-
-    def second_detection(self):
-        """第二次15秒检测"""
-        p = None
-        stream = None
-        try:
-            p = pyaudio.PyAudio()
-            stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True,
-                            frames_per_buffer=CHUNK, input_device_index=self.config.mic_device_index)
-            db_values = []
-            for _ in range(int(RATE / CHUNK * 15)):
-                data = np.frombuffer(stream.read(CHUNK, exception_on_overflow=False), dtype=np.int16)
-                rms = np.sqrt(np.mean(data ** 2)) if np.any(data) else 0
-                db = 20 * np.log10(rms) if rms > 0 else -float("inf")
-                db_values.append(db)
-
-            logging.info(
-                f"第二次15秒原始分贝值 - 最小: {min(db_values):.1f}, 最大: {max(db_values):.1f}, 平均: {np.mean(db_values):.1f}")
-            db_array = np.array(db_values)
-            trimmed_db = np.percentile(db_array, [5, 95])
-            trimmed_mean_db = np.mean(db_array[(db_array > trimmed_db[0]) & (db_array < trimmed_db[1])])
-            logging.info(
-                f"去极值后 - 范围: {trimmed_db[0]:.1f} 到 {trimmed_db[1]:.1f}, 平均: {trimmed_mean_db:.1f}")
-            return trimmed_mean_db
-        except Exception as e:
-            logging.error(f"第二次检测出错: {str(e)}")
-            return None
-        finally:
-            if stream:
-                stream.stop_stream()
-                stream.close()
-            if p:
-                p.terminate()
 
     def take_photo_and_upload(self):
         """拍摄照片并上传"""
@@ -383,7 +461,7 @@ class NoiseMonitor:
             file_size = os.path.getsize(image_path) / 1024
             logging.info(f"照片保存至 {image_path}，分辨率: {max_width}x{max_height}，大小: {file_size:.2f} KB")
 
-            self.decibel_thread.set_silent_period(240)  # 60秒 + 3分钟
+            self.decibel_thread.set_silent_period(240)
             self.upload_thread = UploadThread(image_path, self.config.smms_api_key)
             self.upload_thread.upload_complete.connect(self.on_upload_complete)
             self.upload_thread.start()
@@ -401,7 +479,7 @@ class NoiseMonitor:
             timer = QTimer(self.app)
             timer.setSingleShot(True)
             timer.timeout.connect(lambda: self.send_dingtalk_message(url))
-            timer.start(60000)  # 30秒后发送消息
+            timer.start(60000)
         else:
             logging.error("未获取到有效图片 URL，跳过钉钉消息发送")
             self.is_processing = False
@@ -416,7 +494,7 @@ class NoiseMonitor:
     def on_dingtalk_finished(self):
         """钉钉消息发送完成"""
         logging.info("钉钉消息发送完成")
-        self.is_processing = False  # 恢复检测状态
+        self.is_processing = False
 
 
 if __name__ == "__main__":

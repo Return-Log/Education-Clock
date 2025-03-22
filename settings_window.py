@@ -7,6 +7,9 @@ import base64
 import os
 import numpy as np
 import pyaudio
+import cv2      # 需要导入以扫描相机设备
+import comtypes.stream
+from pygrabber.dshow_graph import FilterGraph
 from PyQt6.QtWidgets import (
     QDialog, QPushButton, QLabel, QFileDialog, QTextBrowser, QTabWidget,
     QTableWidgetItem, QMessageBox, QApplication, QDialogButtonBox, QPlainTextEdit, QComboBox
@@ -760,13 +763,13 @@ class SettingsWindow(QDialog):
         self.lineEdit_27.textChanged.connect(self.save_maintain_order_info)  # Saturday
         self.lineEdit_28.textChanged.connect(self.save_maintain_order_info)  # Sunday
 
-        # 数值输入框信号
-        self.spinBox_3.valueChanged.connect(self.save_maintain_order_info)  # threshold_db
-        self.spinBox.valueChanged.connect(self.save_maintain_order_info)  # mic_device_index
-        self.spinBox_2.valueChanged.connect(self.save_maintain_order_info)  # camera_device_index
+        # 下拉框信号（替换原来的 spinBox）
+        self.comboBox_2.currentIndexChanged.connect(self.save_maintain_order_info)  # mic_device_index
+        self.comboBox_3.currentIndexChanged.connect(self.save_maintain_order_info)  # camera_device_index
+        self.spinBox_3.valueChanged.connect(self.save_maintain_order_info)  # threshold_db（保持不变）
 
     def load_maintain_order_info(self):
-        """加载维护秩序信息到控件"""
+        """加载维护秩序信息到控件，并扫描设备填充 ComboBox"""
         try:
             with open(self.maintain_order_info, 'r', encoding='utf-8') as f:
                 data = json.load(f)
@@ -778,8 +781,81 @@ class SettingsWindow(QDialog):
                 self.lineEdit_20.setText(data.get("smms_password", ""))
                 self.lineEdit_21.setText(",".join(data.get("text_at", [])))
                 self.spinBox_3.setValue(data.get("threshold_db", -30))
-                self.spinBox.setValue(data.get("mic_device_index", 0))
-                self.spinBox_2.setValue(data.get("camera_device_index", 0))
+
+                # 扫描话筒设备并填充 comboBox_2
+                p = pyaudio.PyAudio()
+                mic_devices = []
+                for i in range(p.get_device_count()):
+                    device_info = p.get_device_info_by_index(i)
+                    # 条件1：必须是输入设备
+                    if device_info['maxInputChannels'] <= 0:
+                        continue
+                    # 条件2：排除常见虚拟设备（可选，根据实际情况调整）
+                    device_name = device_info['name'].lower()
+                    if "virtual" in device_name or "default" in device_name or "output" in device_name:
+                        logging.debug(f"跳过可能不可用的设备: {device_info['name']}")
+                        continue
+                    # 条件3：尝试打开设备以验证可用性
+                    try:
+                        stream = p.open(
+                            format=pyaudio.paInt16,
+                            channels=1,
+                            rate=int(device_info['defaultSampleRate']),
+                            input=True,
+                            input_device_index=i,
+                            frames_per_buffer=1024
+                        )
+                        stream.close()
+                        mic_devices.append((device_info['name'], i))
+                        logging.debug(f"可用麦克风设备: {device_info['name']} (index: {i})")
+                    except Exception as e:
+                        logging.debug(f"设备 {device_info['name']} (index: {i}) 不可用: {e}")
+                        continue
+                p.terminate()
+
+                self.comboBox_2.clear()
+                if mic_devices:
+                    for name, _ in mic_devices:
+                        self.comboBox_2.addItem(name)
+                else:
+                    self.comboBox_2.addItem("未检测到可用麦克风")
+                    logging.warning("未找到任何可用的麦克风设备")
+
+                # 设置当前话筒索引
+                mic_index = data.get("mic_device_index", 0)
+                if mic_devices and 0 <= mic_index < len(mic_devices):
+                    self.comboBox_2.setCurrentIndex(mic_index)
+                else:
+                    self.comboBox_2.setCurrentIndex(0)  # 默认选择第一个设备或提示
+                    logging.warning(f"话筒索引 {mic_index} 超出范围或无可用设备，使用默认值 0")
+
+                # 扫描相机设备并填充 comboBox_3
+                if sys.platform == "win32":
+                    graph = FilterGraph()
+                    camera_names = graph.get_input_devices()
+                    camera_devices = [(name, i) for i, name in enumerate(camera_names)]
+                else:
+                    camera_devices = []
+                    index = 0
+                    while True:
+                        cap = cv2.VideoCapture(index)
+                        if not cap.isOpened():
+                            break
+                        camera_devices.append((f"Camera {index}", index))
+                        cap.release()
+                        index += 1
+
+                self.comboBox_3.clear()
+                for name, _ in camera_devices:
+                    self.comboBox_3.addItem(name)
+
+                # 设置当前相机索引
+                camera_index = data.get("camera_device_index", 0)
+                if 0 <= camera_index < len(camera_devices):
+                    self.comboBox_3.setCurrentIndex(camera_index)
+                else:
+                    self.comboBox_3.setCurrentIndex(0)  # 默认选择第一个设备
+                    logging.warning(f"相机索引 {camera_index} 超出范围，使用默认值 0")
 
                 # 加载日程表
                 schedule = data.get("schedule", {})
@@ -903,8 +979,8 @@ class SettingsWindow(QDialog):
                 "smms_username": self.lineEdit_19.text().strip(),
                 "smms_password": self.lineEdit_20.text().strip(),
                 "threshold_db": self.spinBox_3.value(),
-                "mic_device_index": self.spinBox.value(),
-                "camera_device_index": self.spinBox_2.value(),
+                "mic_device_index": self.comboBox_2.currentIndex(),  # 从 comboBox_2 获取索引
+                "camera_device_index": self.comboBox_3.currentIndex(),  # 从 comboBox_3 获取索引
                 "text_at": [x.strip() for x in self.lineEdit_21.text().replace('，', ',').split(',') if x.strip()],
                 "schedule": {
                     "Monday": legalize_time(self.lineEdit_22.text()),

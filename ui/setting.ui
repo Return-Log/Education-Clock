@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>621</width>
+    <width>652</width>
     <height>629</height>
    </rect>
   </property>
@@ -48,6 +48,12 @@
       <size>
        <width>0</width>
        <height>0</height>
+      </size>
+     </property>
+     <property name="maximumSize">
+      <size>
+       <width>1677</width>
+       <height>16777215</height>
       </size>
      </property>
      <property name="tabPosition">
@@ -840,14 +846,14 @@
           <item row="1" column="0">
            <widget class="QLabel" name="label_51">
             <property name="text">
-             <string>话筒索引：</string>
+             <string>话筒：</string>
             </property>
            </widget>
           </item>
           <item row="2" column="0">
            <widget class="QLabel" name="label_52">
             <property name="text">
-             <string>相机索引：</string>
+             <string>相机：</string>
             </property>
            </widget>
           </item>
@@ -865,20 +871,6 @@
             </property>
            </widget>
           </item>
-          <item row="2" column="1" colspan="2">
-           <widget class="QSpinBox" name="spinBox_2">
-            <property name="maximum">
-             <number>10</number>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1" colspan="2">
-           <widget class="QSpinBox" name="spinBox">
-            <property name="maximum">
-             <number>10</number>
-            </property>
-           </widget>
-          </item>
           <item row="0" column="1" colspan="2">
            <widget class="QSpinBox" name="spinBox_3">
             <property name="minimum">
@@ -891,6 +883,12 @@
              <number>3</number>
             </property>
            </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QComboBox" name="comboBox_2"/>
+          </item>
+          <item row="2" column="1">
+           <widget class="QComboBox" name="comboBox_3"/>
           </item>
          </layout>
         </widget>
@@ -1149,7 +1147,7 @@
        <item row="2" column="1" colspan="3">
         <widget class="QLabel" name="label_33">
          <property name="text">
-          <string>2025年3月16日 构建</string>
+          <string>2025年3月22日 构建</string>
          </property>
         </widget>
        </item>
