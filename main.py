@@ -21,6 +21,7 @@ from weather_module import WeatherModule
 from settings_window import SettingsWindow  # 导入设置窗口类
 from bulletin_board_module import BulletinBoardModule  # 导入公告板模块
 from maintain_order_module import NoiseMonitor  # 噪音检测模块
+from ranking_module import RankingModule  # 导入排行榜模块
 
 # # 配置日志
 # logging.basicConfig(
@@ -61,6 +62,9 @@ class MainWindow(QMainWindow):
         # 初始化时间模块
         self.time_module = TimeModule(self)
 
+        # 初始化排行榜模块
+        self.init_ranking_module()
+
         # 保存和恢复窗口大小和位置
         self.restore_window_geometry()
 
@@ -89,6 +93,9 @@ class MainWindow(QMainWindow):
         # 将窗口置于最下层
         self.lower()
 
+    def init_ranking_module(self):
+        """初始化排行榜模块"""
+        self.ranking_module = RankingModule(self)
 
     def open_roll_call_window(self):
         """打开随机点名窗口"""
@@ -319,11 +326,16 @@ class MainWindow(QMainWindow):
             self.move(default_x, default_y)
 
     def closeEvent(self, event):
-        """在窗口关闭时保存窗口大小和位置，并恢复嵌入的窗口到桌面或终止其进程"""
+        """在窗口关闭时清理独立窗口"""
         settings = QSettings("Log", "EC")
         settings.setValue("windowGeometry", self.saveGeometry())
         settings.setValue("windowPosition", self.pos())
-
+        if hasattr(self, 'floating_ball'):
+            self.floating_ball.close()
+        if hasattr(self, 'roll_call_dialog'):
+            self.roll_call_dialog.close()
+        if hasattr(self, 'ranking_module'):  # 添加这部分
+            self.ranking_module.stop()
         event.accept()
 
     def open_settings_window(self):

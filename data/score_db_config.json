@@ -1,0 +1,8 @@
+{
+    "host": "your_host",
+    "user": "your_username",
+    "password": "your_password",
+    "database": "your_database",
+    "port": 3306,
+    "table_name": "score-2"
+}
