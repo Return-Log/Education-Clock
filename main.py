@@ -157,8 +157,8 @@ class MainWindow(QMainWindow):
             taskbar_height = 25  # 使用默认任务栏高度
 
         # 计算窗口的宽度和高度
-        window_width = screen_width // 3
-        window_height = screen_height - taskbar_height
+        window_width = min(screen_width // 3, screen_width)  # 确保不超过屏幕宽度
+        window_height = min(screen_height - taskbar_height, screen_height)  # 确保不超过屏幕高度
 
         # 确保窗口高度不为负数
         if window_height <= 0:

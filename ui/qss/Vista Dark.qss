@@ -1,0 +1,265 @@
+/* 全局字体设置 */
+* {
+    font-family: "Segoe UI", "Microsoft YaHei", sans-serif; /* Vista常用Segoe UI */
+    font-size: 14px;
+    color: #FFFFFF; /* 默认文字颜色为白色 */
+}
+
+/* 主窗口背景 - 仿Vista玻璃效果 */
+#centralwidget {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                     stop:0 rgba(31, 36, 42, 200),
+                                     stop:1 rgba(15, 18, 22, 200)); /* 渐变深灰色半透明 */
+    border: 1px solid rgba(255, 255, 255, 50); /* 微弱白色边框增加玻璃感 */
+    color: #FFFFFF;
+}
+
+/* 通用控件样式 - 立体效果 */
+QPushButton, QToolButton, QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit, QCheckBox, QRadioButton, QGroupBox, QTabBar::tab, QMenu, QMenuBar, QListView, QTreeView, QColumnView, QStatusBar, QSlider, QDial, QScrollBar, QProgressBar, QFrame, QAbstractItemView, QAbstractScrollArea, QPlainTextEdit, QTextEdit, QInputDialog, QMessageBox, QDialog, QFileDialog, QColorDialog, QFontDialog, QPrintDialog, QPageSetupDialog, QWizard, QDockWidget, QMdiSubWindow, QMdiArea, QSplitter, QStackedWidget, QToolBox, QTabWidget, QScrollArea, QWidget {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                     stop:0 #3A404A,
+                                     stop:1 #252931); /* 渐变背景 */
+    border: 1px solid #32373E;
+    border-top-color: #5A626B; /* 上边框高光 */
+    border-left-color: #5A626B; /* 左边框高光 */
+    color: #FFFFFF;
+    padding: 2px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); /* 立体阴影 */
+}
+
+/* 控件按下效果 */
+QPushButton:pressed, QToolButton:pressed, QComboBox:pressed, QSpinBox:pressed, QDoubleSpinBox:pressed, QLineEdit:pressed, QCheckBox:pressed, QRadioButton:pressed, QGroupBox:pressed, QTabBar::tab:pressed, QMenu:pressed, QMenuBar:pressed, QListView:pressed, QTreeView:pressed, QColumnView:pressed, QStatusBar:pressed, QSlider:pressed, QDial:pressed, QScrollBar:pressed, QProgressBar:pressed, QFrame:pressed, QAbstractItemView:pressed, QAbstractScrollArea:pressed, QPlainTextEdit:pressed, QTextEdit:pressed, QInputDialog:pressed, QMessageBox:pressed, QDialog:pressed, QFileDialog:pressed, QColorDialog:pressed, QFontDialog:pressed, QPrintDialog:pressed, QPageSetupDialog:pressed, QWizard:pressed, QDockWidget:pressed, QMdiSubWindow:pressed, QMdiArea:pressed, QSplitter:pressed, QStackedWidget:pressed, QToolBox:pressed, QTabWidget:pressed, QScrollArea:pressed {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                     stop:0 #484E58,
+                                     stop:1 #3A404A); /* 按下时深色渐变 */
+    border: 1px solid #6C757D;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5); /* 内凹效果 */
+}
+
+/* 下拉菜单和组合框 - 立体按钮 */
+QComboBox::drop
+
+-down, QComboBox::down-arrow, QSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
+    background-color: #3A404A;
+    border: 1px solid #32373E;
+    border-top-color: #5A626B; /* 高光 */
+    width: 20px;
+    height: 20px;
+    subcontrol-position: right;
+    subcontrol-origin: padding;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* 菜单 - 仿Vista菜单效果 */
+QMenu, QMenuBar {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                     stop:0 #3A404A,
+                                     stop:1 #252931);
+    border: 1px solid rgba(255, 255, 255, 50);
+    color: #FFFFFF;
+}
+
+QMenu::item {
+    background-color: transparent;
+    padding: 5px 20px;
+}
+
+QMenu::item:selected, QMenuBar::item:selected {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                     stop:0 #4A505A,
+                                     stop:1 #3B404B);
+    border: 1px solid #6C757D;
+}
+
+/* 标签 - 基本样式 */
+QLabel {
+    color: #FFFFFF;
+    background-color: transparent;
+}
+
+/* 特定标签样式 - 立体效果 */
+QLabel[timetable="intime"] {
+    color: #FFFFFF;
+    font-size: 26px;
+    border: 2px solid #4CC2FF;
+    border-top-color: #7AD5FF; /* 高光 */
+    border-left-color: #7AD5FF;
+    border-radius: 6px;
+    font-weight: bold;
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                     stop:0 #1F242A,
+                                     stop:1 #15191E);
+    padding: 2px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+QLabel[timetable="untimely"] {
+    color: #FFFFFF;
+    font-size: 26px;
+    border: 2px solid #32373E;
+    border-top-color: #5A626B; /* 高光 */
+    border-left-color: #5A626B;
+    border-radius: 6px;
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                     stop:0 #1F242A,
+                                     stop:1 #15191E);
+    padding: 2px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* 时间相关标签 */
+QLabel[time="time"] {
+    color: #FFFFFF;
+    font-weight: bold;
+    font-size: 45px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); /* 文字阴影增加立体感 */
+}
+
+QLabel[time="date"] {
+    color: #FFFFFF;
+    font-size: 28px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+QLabel[time="week"], QLabel[time="enddate"] {
+    color: #4CC2FF;
+    font-size: 28px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 弹幕 */
+QLabel[bulletin="danmaku"] {
+    color: #FFD700;
+    font-size: 30px;
+    background-color: rgba(0, 0, 0, 0);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7); /* 增强立体感 */
+}
+
+/* 天气相关标签 */
+QLabel[weather="now"] {
+    font-size: 18px;
+    color: #FFFFFF;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+QLabel[weather="next"] {
+    font-size: 20px;
+    color: #4CC2FF;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+/* 表格背景 - 仿Vista立体表格 */
+QTableWidget {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                     stop:0 #1F242A,
+                                     stop:1 #15191E);
+    color: #FFFFFF;
+    font-size: 16px;
+    alternate-background-color: #252931;
+    gridline-color: #32373E;
+    border: 1px solid rgba(255, 255, 255, 50);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 表头样式 */
+QHeaderView::section {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                     stop:0 #3A404A,
+                                     stop:1 #252931);
+    color: #FFFFFF;
+    border: 1px solid #32373E;
+    border-top-color: #5A626B; /* 高光 */
+    padding: 8px;
+    border-radius: 3px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* 表头悬停效果 */
+QHeaderView::section:hover {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                     stop:0 #4A505A,
+                                     stop:1 #3B404B);
+    border: 1px solid #565C65;
+}
+
+/* 表头按下效果 */
+QHeaderView::section:pressed {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                     stop:0 #484E58,
+                                     stop:1 #3A404A);
+    border: 1px solid #6C757D;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 表格单元格样式 */
+QTableWidget::item {
+    padding: 5px;
+    border: 0px solid #32373E;
+    background-color: transparent;
+}
+
+/* 表格单元格悬停效果 */
+QTableWidget::item:hover {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                     stop:0 #4A505A,
+                                     stop:1 #3B404B);
+}
+
+/* 表格单元格选中效果 */
+QTableWidget::item:selected {
+    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                     stop:0 #4A505A,
+                                     stop:1 #3B404B);
+    color: #FFFFFF;
+}
+
+/* 左上角全选按钮 */
+QTableWidget::corner {
+    background-color: #252931;
+    border: 1px solid #32373E;
+    border-top-left-radius: 4px;
+}
+
+QTableWidget::corner:hover {
+    background-color: #3B404B;
+    border: 1px solid #565C65;
+}
+
+QTableWidget::corner:pressed {
+    background-color: #484E58;
+    border: 1px solid #6C757D;
+}
+
+/* 特定标签颜色 */
+#label_28, #label_29, #label_30, #label_40, #label_39 {
+    color: #FF5555; /* 红色 */
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+#label_update {
+    color: #55FF55; /* 绿色 */
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+#name_label {
+    font-size: 100px;
+    color: #4CC2FF;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+#textBrowser {
+    font-size: 18px;
+
+}
+
+/* 自定义类样式 */
+.sender {
+    color: #4CC2FF;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+.admin-sender {
+    color: #FFD700;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+}

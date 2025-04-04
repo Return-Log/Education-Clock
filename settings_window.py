@@ -31,6 +31,7 @@ class SettingsWindow(QDialog):
         self.location_file = './data/location.txt'
         self.names_file = './data/name.txt'
         self.maintain_order_info = './data/maintain_order_info.json'
+        self.score_db = './data/score_db_config.json'
         self.encryption_key = 0x5A  # 选择一个简单的密钥
         self.is_calibrating = False  # 初始化校准状态
         self.timetable_data = {}  # 初始化一个空字典以保存时间表数据
@@ -42,6 +43,7 @@ class SettingsWindow(QDialog):
         self.load_news_settings()  # 加载新闻设置
         self.load_weather_settings()  # 加载天气设置
         self.load_location_settings()  # 加载位置设置
+        self.load_score_settings()  # 加载积分设置
         self.load_names()  # 加载名字列表
         self.load_maintain_order_info() # 加载维护秩序信息
         self.load_order_settings()
@@ -61,6 +63,7 @@ class SettingsWindow(QDialog):
         self.pushButton_3.clicked.connect(self.calibrate_microphone)  # 连接校准按钮
         self.connect_news_signals()  # 连接新闻设置信号
         self.connect_weather_signals()  # 连接天气设置信号
+        self.connect_score_signals()
         self.connect_location_signals()  # 连接位置设置信号
         self.plainTextEdit_names = self.findChild(QPlainTextEdit, "plainTextEdit")  # 获取名字编辑器
         self.plainTextEdit_names.textChanged.connect(self.save_names)  # 连接 textChanged 信号
@@ -84,6 +87,8 @@ class SettingsWindow(QDialog):
         elif index == 8:
             self.load_maintain_order_info()
             self.load_order_settings()
+        elif index == 9:
+            self.load_score_settings()
 
     def on_tab_changed_2(self, index):
         if 0 <= index <= 6:
@@ -746,6 +751,52 @@ class SettingsWindow(QDialog):
         QMessageBox.information(self, "重启", "设置已更改，重启应用程序以应用更改。")
         python = sys.executable
         os.execl(python, python, *sys.argv)
+
+#####################################排行榜####################################################
+    def load_score_settings(self):
+        """加载排行榜数据库配置"""
+        try:
+            with open(self.score_db, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                self.lineEdit_29.setText(data["host"])
+                self.lineEdit_30.setText(str(data["port"]))
+                self.lineEdit_31.setText(data["user"])
+                self.lineEdit_32.setText(data["password"])
+                self.lineEdit_33.setText(data["database"])
+                self.lineEdit_34.setText(data["table_name"])
+
+                logging.debug("已加载数据库配置.")
+        except Exception as e:
+            logging.error(f"无法加载数据库配置: {e}")
+
+    def connect_score_signals(self):
+        line_edits = [self.lineEdit_29, self.lineEdit_30, self.lineEdit_31, self.lineEdit_32, self.lineEdit_33,
+                      self.lineEdit_34]
+        for line_edit in line_edits:
+            line_edit.textChanged.connect(self.save_score_db_config)
+
+    def save_score_db_config(self):
+        config = {
+            "host": self.lineEdit_29.text(),
+            "port": self.lineEdit_30.text(),  # 不再强制转换为整数
+            "user": self.lineEdit_31.text(),
+            "password": self.lineEdit_32.text(),
+            "database": self.lineEdit_33.text(),
+            "table_name": self.lineEdit_34.text()
+            }
+
+        try:
+            # 生成 JSON 字符串
+            json_data = json.dumps(config, ensure_ascii=False, indent=4)
+            logging.debug(f"Generated JSON data: {json_data}")
+
+            # 保存到文件
+            with open(self.score_db, 'w', encoding='utf-8') as f:
+                f.write(json_data)
+                logging.info("Database configuration saved.")
+        except Exception as e:
+            logging.error(f"Failed to save database configuration: {e}")
+
 
 ###################################秩序维护模块设置#################################################
     def connect_maintain_order_signals(self):

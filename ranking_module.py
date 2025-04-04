@@ -1,27 +1,19 @@
-import threading
+import pymysql
 import time
 from datetime import datetime, timedelta
-from PyQt6.QtCore import pyqtSignal, QObject, QPoint
-import mysql.connector
+from PyQt6.QtCore import pyqtSignal, QObject, QTimer
 from PyQt6.QtWidgets import QTableWidgetItem, QTableWidget, QLabel, QToolTip
 import json
 import os
 import logging
 
-# 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
-)
-
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler()])
 
 class RankingSignals(QObject):
     data_updated = pyqtSignal(list)
     club_ranking_updated = pyqtSignal(list)
     individual_ranking_updated = pyqtSignal(list)
     error_occurred = pyqtSignal(str)
-
 
 class RankingModule:
     def __init__(self, parent):
@@ -30,7 +22,6 @@ class RankingModule:
         self.signals = RankingSignals()
         self.running = False
 
-        # 连接信号到槽
         self.signals.data_updated.connect(self.update_table)
         self.signals.club_ranking_updated.connect(self.update_club_labels)
         self.signals.individual_ranking_updated.connect(self.update_individual_labels)
@@ -39,9 +30,9 @@ class RankingModule:
         if self.config:
             try:
                 self.fetch_and_process_data()
+                self.start_fetching()
             except Exception as e:
-                self.signals.error_occurred.emit(f"初次数据获取错误: {str(e)}")
-            self.start_fetching()
+                self.signals.error_occurred.emit(f"初始化失败: {str(e)}")
         else:
             self.signals.error_occurred.emit("无法加载配置文件")
 
@@ -67,23 +58,14 @@ class RankingModule:
 
     def start_fetching(self):
         self.running = True
-        self.fetch_thread = threading.Thread(target=self.fetch_data_loop)
-        self.fetch_thread.daemon = True
-        self.fetch_thread.start()
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.fetch_and_process_data)
+        self.timer.start(600000)
 
     def stop(self):
         self.running = False
-        if hasattr(self, 'fetch_thread'):
-            self.fetch_thread.join()
-
-    def fetch_data_loop(self):
-        time.sleep(600)
-        while self.running:
-            try:
-                self.fetch_and_process_data()
-            except Exception as e:
-                self.signals.error_occurred.emit(f"数据获取错误: {str(e)}")
-            time.sleep(600)
+        if hasattr(self, 'timer'):
+            self.timer.stop()
 
     def get_week_range(self):
         today = datetime.now()
@@ -100,39 +82,49 @@ class RankingModule:
                 'database': self.config['database'],
                 'port': int(self.config['port'])
             }
-            conn = mysql.connector.connect(**db_config)
-            cursor = conn.cursor(dictionary=True)
+            logging.info(f"尝试连接数据库: {db_config}")
+            with pymysql.connect(
+                **db_config,
+                cursorclass=pymysql.cursors.DictCursor
+            ) as conn:
+                with conn.cursor() as cursor:
+                    start_date, end_date = self.get_week_range()
+                    logging.info(f"查询时间范围: {start_date} - {end_date}")
+                    query = f"""
+                        SELECT * FROM `{self.config['table_name']}` 
+                        WHERE `record-time` BETWEEN %s AND %s
+                        ORDER BY `record-time` DESC
+                    """
+                    cursor.execute(query, (start_date, end_date))
+                    data = cursor.fetchall()
+                    logging.info(f"查询到 {len(data)} 条记录")
 
-            start_date, end_date = self.get_week_range()
-            query = f"""
-                SELECT * FROM `{self.config['table_name']}` 
-                WHERE `record-time` BETWEEN %s AND %s
-                ORDER BY `record-time` DESC
-            """
-            cursor.execute(query, (start_date, end_date))
-            data = cursor.fetchall()
+                    self.signals.data_updated.emit(data)
 
-            self.signals.data_updated.emit(data)
+                    club_scores = {}
+                    for row in data:
+                        club = row['club']
+                        mark = row['mark']
+                        if mark is not None:
+                            club_scores[club] = club_scores.get(club, 0) + float(mark)
+                        else:
+                            logging.warning(f"记录 {row['id']} 的 mark 为空，跳过俱乐部排名计算")
+                    club_ranking = sorted(club_scores.items(), key=lambda x: x[1], reverse=True)
+                    self.signals.club_ranking_updated.emit(club_ranking)
 
-            club_scores = {}
-            for row in data:
-                club = row['club']
-                mark = float(row['mark'])
-                club_scores[club] = club_scores.get(club, 0) + mark
-            club_ranking = sorted(club_scores.items(), key=lambda x: x[1], reverse=True)
-            self.signals.club_ranking_updated.emit(club_ranking)
+                    individual_scores = {}
+                    for row in data:
+                        name = row['name']
+                        mark = row['mark']
+                        if mark is not None:
+                            individual_scores[name] = individual_scores.get(name, 0) + float(mark)
+                        else:
+                            logging.warning(f"记录 {row['id']} 的 mark 为空，跳过个人排名计算")
+                    individual_ranking = sorted(individual_scores.items(), key=lambda x: x[1], reverse=True)
+                    self.signals.individual_ranking_updated.emit(individual_ranking)
 
-            individual_scores = {}
-            for row in data:
-                name = row['name']
-                mark = float(row['mark'])
-                individual_scores[name] = individual_scores.get(name, 0) + mark
-            individual_ranking = sorted(individual_scores.items(), key=lambda x: x[1], reverse=True)
-            self.signals.individual_ranking_updated.emit(individual_ranking)
-
-            cursor.close()
-            conn.close()
-
+        except pymysql.MySQLError as e:
+            self.signals.error_occurred.emit(f"数据库错误: {str(e)}")
         except Exception as e:
             self.signals.error_occurred.emit(f"数据处理错误: {str(e)}")
 
@@ -148,7 +140,10 @@ class RankingModule:
         table.setColumnCount(8)
         table.setHorizontalHeaderLabels(['ID', '上传时间', '记录时间', '俱乐部', '姓名', '分数', '备注', '操作员'])
 
-        # 连接 cellClicked 信号到显示工具提示的槽函数
+        try:
+            table.cellClicked.disconnect()
+        except Exception:
+            pass
         table.cellClicked.connect(self.show_tooltip_on_click)
 
         for row_idx, row_data in enumerate(data):
@@ -164,21 +159,18 @@ class RankingModule:
             ]
             for col_idx, item in enumerate(items):
                 table_item = QTableWidgetItem(item)
-                table_item.setToolTip(item)  # 设置悬停时的工具提示
+                table_item.setToolTip(item)
                 table.setItem(row_idx, col_idx, table_item)
 
     def show_tooltip_on_click(self, row, column):
-        """点击单元格时显示工具提示"""
         table = self.parent.findChild(QTableWidget, "tableWidget")
         if table:
             item = table.item(row, column)
             if item:
-                text = item.toolTip()  # 获取单元格的工具提示文本
+                text = item.toolTip()
                 if text:
-                    # 获取单元格的全局位置
                     cell_rect = table.visualItemRect(item)
                     pos = table.viewport().mapToGlobal(cell_rect.topLeft())
-                    # 在单元格位置显示工具提示
                     QToolTip.showText(pos, text, table)
                     logging.info(f"点击显示工具提示: {text}")
 
@@ -222,10 +214,13 @@ class RankingModule:
             table.setRowCount(1)
             table.setColumnCount(1)
             table.setHorizontalHeaderLabels(["错误信息"])
-            table_item = QTableWidgetItem(message)
-            table_item.setToolTip(message)  # 设置悬停时的工具提示
-            table.setItem(0, 0, table_item)
-            # 连接 cellClicked 信号到显示工具提示的槽函数
+            try:
+                table.cellClicked.disconnect()
+            except Exception:
+                pass
             table.cellClicked.connect(self.show_tooltip_on_click)
+            table_item = QTableWidgetItem(message)
+            table_item.setToolTip(message)
+            table.setItem(0, 0, table_item)
         else:
             logging.error("无法显示错误，因为 tableWidget 未找到")

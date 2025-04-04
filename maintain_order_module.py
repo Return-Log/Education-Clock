@@ -347,9 +347,100 @@ class SecondDetectionThread(QThread):
         """停止检测线程"""
         self.running = False
 
+
+class PhotoUploadThread(QThread):
+    """拍照和上传的专用线程"""
+    upload_complete = pyqtSignal(str)  # 信号传递上传完成的URL
+
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+
+    def run(self):
+        """执行拍照和上传"""
+        cap = None
+        try:
+            cap = cv2.VideoCapture(self.config.camera_device_index)
+            if not cap.isOpened():
+                logging.error(f"无法打开摄像头 {self.config.camera_device_index}")
+                self.upload_complete.emit("")
+                return
+
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+
+            logging.info("摄像头预热中...")
+            time.sleep(2)  # 等待2秒让摄像头稳定
+
+            max_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            max_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+            if max_width == 0 or max_height == 0:
+                logging.warning("无法获取有效分辨率，使用默认值")
+                max_width, max_height = 640, 480
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, max_width)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, max_height)
+            else:
+                logging.info(f"使用摄像头分辨率: {max_width}x{max_height}")
+
+            ret, frame = cap.read()
+            if not ret:
+                logging.error("无法读取摄像头图像")
+                self.upload_complete.emit("")
+                return
+
+            image_path = "./data/noise_photo.png"
+            compression_params = [cv2.IMWRITE_PNG_COMPRESSION, 9]
+            cv2.imwrite(image_path, frame, compression_params)
+            file_size = os.path.getsize(image_path) / 1024
+            logging.info(f"照片保存至 {image_path}，分辨率: {max_width}x{max_height}，大小: {file_size:.2f} KB")
+
+            # 上传照片
+            url = self.upload_image(image_path)
+            self.upload_complete.emit(url)
+
+        except Exception as e:
+            logging.error(f"拍照或上传出错: {str(e)}")
+            self.upload_complete.emit("")
+        finally:
+            if cap:
+                cap.release()
+
+    def upload_image(self, image_path):
+        """上传图片到SM.MS"""
+        try:
+            url = "https://sm.ms/api/v2/upload"
+            headers = {"Authorization": self.config.smms_api_key}
+            with open(image_path, "rb") as f:
+                files = {"smfile": f}
+                response = requests.post(url, headers=headers, files=files, timeout=10)
+                response.raise_for_status()
+                data = response.json()
+                logging.info(f"SM.MS 上传响应: {json.dumps(data, indent=2)}")
+
+                if data.get("success"):
+                    image_url = data["data"]["url"]
+                    logging.info(f"上传成功，图片 URL: {image_url}")
+                    return image_url
+                elif data.get("code") == "image_repeated":
+                    image_url = data.get("images") or data.get("message", "").split("exists at: ")[-1].strip()
+                    logging.info(f"图片重复，使用已有 URL: {image_url}")
+                    return image_url
+                else:
+                    logging.error(f"上传失败: {data.get('message')}")
+                    return ""
+        except requests.RequestException as e:
+            logging.error(f"图片上传网络请求出错: {str(e)}")
+            return ""
+        except Exception as e:
+            logging.error(f"图片上传出错: {str(e)}")
+            return ""
+
+
 class NoiseMonitor:
     def __init__(self):
         """初始化噪音监控器"""
+
         self.config = Config()
         if not self.config.smms_api_key:
             logging.error("程序启动失败：无法获取 SM.MS API Token，将关闭 order 并重启程序")
@@ -388,7 +479,6 @@ class NoiseMonitor:
         python = sys.executable
         os.execl(python, python, *sys.argv)
 
-
     def on_decibel_exceeded(self, db):
         """处理分贝超标事件"""
         if self.is_processing:
@@ -424,53 +514,14 @@ class NoiseMonitor:
             self.is_processing = False
         else:
             logging.info(f"第二次检测仍超标: {second_db:.1f} > {self.config.threshold_db}，执行拍照上传")
-            self.take_photo_and_upload()
+            self.start_photo_upload()
 
-    def take_photo_and_upload(self):
-        """拍摄照片并上传"""
-        cap = None
-        try:
-            cap = cv2.VideoCapture(self.config.camera_device_index)
-            if not cap.isOpened():
-                logging.error(f"无法打开摄像头 {self.config.camera_device_index}")
-                self.is_processing = False
-                return
-
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-            max_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            max_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-            if max_width == 0 or max_height == 0:
-                logging.warning("无法获取有效分辨率，使用默认值")
-                max_width, max_height = 640, 480
-                cap.set(cv2.CAP_PROP_FRAME_WIDTH, max_width)
-                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, max_height)
-            else:
-                logging.info(f"使用摄像头分辨率: {max_width}x{max_height}")
-
-            ret, frame = cap.read()
-            if not ret:
-                logging.error("无法读取摄像头图像")
-                self.is_processing = False
-                return
-
-            image_path = "./data/noise_photo.png"
-            compression_params = [cv2.IMWRITE_PNG_COMPRESSION, 9]
-            cv2.imwrite(image_path, frame, compression_params)
-            file_size = os.path.getsize(image_path) / 1024
-            logging.info(f"照片保存至 {image_path}，分辨率: {max_width}x{max_height}，大小: {file_size:.2f} KB")
-
-            self.decibel_thread.set_silent_period(240)
-            self.upload_thread = UploadThread(image_path, self.config.smms_api_key)
-            self.upload_thread.upload_complete.connect(self.on_upload_complete)
-            self.upload_thread.start()
-        except Exception as e:
-            logging.error(f"拍照或上传出错: {str(e)}")
-            self.is_processing = False
-        finally:
-            if cap:
-                cap.release()
+    def start_photo_upload(self):
+        """启动拍照和上传线程"""
+        self.decibel_thread.set_silent_period(240)  # 设置4分钟静默期
+        self.photo_upload_thread = PhotoUploadThread(self.config)
+        self.photo_upload_thread.upload_complete.connect(self.on_upload_complete)
+        self.photo_upload_thread.start()
 
     def on_upload_complete(self, url):
         """处理上传完成事件"""
@@ -479,7 +530,7 @@ class NoiseMonitor:
             timer = QTimer(self.app)
             timer.setSingleShot(True)
             timer.timeout.connect(lambda: self.send_dingtalk_message(url))
-            timer.start(60000)
+            timer.start(60000)  # 延迟1分钟发送钉钉消息
         else:
             logging.error("未获取到有效图片 URL，跳过钉钉消息发送")
             self.is_processing = False
