@@ -228,6 +228,7 @@ class SettingsWindow(QDialog):
         return None
 
 #####################################通知栏设置################################################################
+    """此部分加密解密下方排行榜复用"""
     def xor_encrypt_decrypt(self, data, key):
         """XOR 加密/解密函数"""
         return bytes([b ^ key for b in data])
@@ -240,9 +241,13 @@ class SettingsWindow(QDialog):
 
     def decrypt_data(self, encrypted_data, key):
         """解密数据"""
-        decoded_data = base64.b64decode(encrypted_data.encode('utf-8'))
-        decrypted_data = self.xor_encrypt_decrypt(decoded_data, key)
-        return json.loads(decrypted_data.decode('utf-8'))
+        try:
+            decoded_data = base64.b64decode(encrypted_data.encode('utf-8'))
+            decrypted_data = self.xor_encrypt_decrypt(decoded_data, key)
+            return json.loads(decrypted_data.decode('utf-8'))
+        except Exception as e:
+            logging.error(f"解密失败: {str(e)}")
+            return None
 
     def load_db_config(self):
         try:
@@ -756,16 +761,45 @@ class SettingsWindow(QDialog):
     def load_score_settings(self):
         """加载排行榜数据库配置"""
         try:
-            with open(self.score_db, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                self.lineEdit_29.setText(data["host"])
-                self.lineEdit_30.setText(str(data["port"]))
-                self.lineEdit_31.setText(data["user"])
-                self.lineEdit_32.setText(data["password"])
-                self.lineEdit_33.setText(data["database"])
-                self.lineEdit_34.setText(data["table_name"])
+            if not os.path.exists(self.score_db):
+                logging.error(f"配置文件 {self.score_db} 不存在")
+                return
 
-                logging.debug("已加载数据库配置.")
+            with open(self.score_db, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+
+            # 尝试解密
+            config = self.decrypt_data(content, self.encryption_key)
+            if config is not None:
+                # 解密成功，加载到 UI
+                self.lineEdit_29.setText(config.get("host", ""))
+                self.lineEdit_30.setText(str(config.get("port", "")))
+                self.lineEdit_31.setText(config.get("user", ""))
+                self.lineEdit_32.setText(config.get("password", ""))
+                self.lineEdit_33.setText(config.get("database", ""))
+                self.lineEdit_34.setText(config.get("table_name", ""))
+                logging.debug("已加载加密的数据库配置.")
+                return
+
+            # 如果解密失败，尝试直接加载未加密的 JSON
+            logging.info("尝试加载未加密的 JSON 文件")
+            config = json.loads(content)
+            self.lineEdit_29.setText(config.get("host", ""))
+            self.lineEdit_30.setText(str(config.get("port", "")))
+            self.lineEdit_31.setText(config.get("user", ""))
+            self.lineEdit_32.setText(config.get("password", ""))
+            self.lineEdit_33.setText(config.get("database", ""))
+            self.lineEdit_34.setText(config.get("table_name", ""))
+            logging.debug("已加载未加密的数据库配置.")
+
+            # 自动加密并保存
+            encrypted_content = self.encrypt_data(config, self.encryption_key)
+            with open(self.score_db, 'w', encoding='utf-8') as f:
+                f.write(encrypted_content)
+            logging.info(f"配置文件未加密，已自动加密并保存到 {self.score_db}")
+
+        except json.JSONDecodeError:
+            logging.error("配置文件格式错误或解密失败")
         except Exception as e:
             logging.error(f"无法加载数据库配置: {e}")
 
@@ -776,26 +810,27 @@ class SettingsWindow(QDialog):
             line_edit.textChanged.connect(self.save_score_db_config)
 
     def save_score_db_config(self):
+        """保存排行榜数据库配置（加密）"""
         config = {
             "host": self.lineEdit_29.text(),
-            "port": self.lineEdit_30.text(),  # 不再强制转换为整数
+            "port": self.lineEdit_30.text(),  # 保持字符串形式
             "user": self.lineEdit_31.text(),
             "password": self.lineEdit_32.text(),
             "database": self.lineEdit_33.text(),
             "table_name": self.lineEdit_34.text()
-            }
+        }
 
         try:
-            # 生成 JSON 字符串
-            json_data = json.dumps(config, ensure_ascii=False, indent=4)
-            logging.debug(f"Generated JSON data: {json_data}")
+            # 加密数据
+            encrypted_data = self.encrypt_data(config, self.encryption_key)
+            logging.debug(f"Encrypted data: {encrypted_data}")
 
             # 保存到文件
             with open(self.score_db, 'w', encoding='utf-8') as f:
-                f.write(json_data)
-                logging.info("Database configuration saved.")
+                f.write(encrypted_data)
+            logging.info("Encrypted database configuration saved.")
         except Exception as e:
-            logging.error(f"Failed to save database configuration: {e}")
+            logging.error(f"Failed to save encrypted database configuration: {e}")
 
 
 ###################################秩序维护模块设置#################################################

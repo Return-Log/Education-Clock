@@ -1,3 +1,5 @@
+import base64
+
 import pymysql
 import time
 from datetime import datetime, timedelta
@@ -18,6 +20,7 @@ class RankingSignals(QObject):
 class RankingModule:
     def __init__(self, parent):
         self.parent = parent
+        self.encryption_key = 0x5A  # 设置加密键值为 0x5A
         self.config = self.load_config()
         self.signals = RankingSignals()
         self.running = False
@@ -36,22 +39,67 @@ class RankingModule:
         else:
             self.signals.error_occurred.emit("无法加载配置文件")
 
+    def xor_encrypt_decrypt(self, data, key):
+        """XOR 加密/解密函数"""
+        return bytes([b ^ key for b in data])
+
+    def encrypt_data(self, data, key):
+        """加密数据"""
+        json_data = json.dumps(data).encode('utf-8')
+        encrypted_data = self.xor_encrypt_decrypt(json_data, key)
+        return base64.b64encode(encrypted_data).decode('utf-8')
+
+    def decrypt_data(self, encrypted_data, key):
+        """解密数据"""
+        try:
+            decoded_data = base64.b64decode(encrypted_data.encode('utf-8'))
+            decrypted_data = self.xor_encrypt_decrypt(decoded_data, key)
+            return json.loads(decrypted_data.decode('utf-8'))
+        except Exception as e:
+            logging.error(f"解密失败: {str(e)}")
+            return None
+
     def load_config(self):
         config_path = './data/score_db_config.json'
         try:
-            if os.path.exists(config_path):
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-                    required_fields = ['host', 'user', 'password', 'database', 'port', 'table_name']
-                    if all(field in config for field in required_fields):
-                        return config
-                    else:
-                        missing = [f for f in required_fields if f not in config]
-                        self.signals.error_occurred.emit(f"配置文件缺少字段: {', '.join(missing)}")
-                        return None
-            else:
+            if not os.path.exists(config_path):
                 self.signals.error_occurred.emit("配置文件不存在")
                 return None
+
+            with open(config_path, 'r', encoding='utf-8') as f:
+                content = f.read().strip()
+
+            # 尝试解密
+            config = self.decrypt_data(content, self.encryption_key)
+            if config is not None:
+                # 如果解密成功，验证字段
+                required_fields = ['host', 'user', 'password', 'database', 'port', 'table_name']
+                if all(field in config for field in required_fields):
+                    return config
+                else:
+                    missing = [f for f in required_fields if f not in config]
+                    self.signals.error_occurred.emit(f"配置文件缺少字段: {', '.join(missing)}")
+                    return None
+
+            # 如果解密失败，假设文件未加密，尝试直接加载 JSON
+            logging.info("尝试直接加载未加密的 JSON 文件")
+            config = json.loads(content)
+            required_fields = ['host', 'user', 'password', 'database', 'port', 'table_name']
+            if all(field in config for field in required_fields):
+                # 文件未加密，自动加密并保存
+                encrypted_content = self.encrypt_data(config, self.encryption_key)
+                with open(config_path, 'w', encoding='utf-8') as f:
+                    f.write(encrypted_content)
+                logging.info(f"配置文件未加密，已自动加密并保存到 {config_path}")
+                return config
+            else:
+                missing = [f for f in required_fields if f not in config]
+                self.signals.error_occurred.emit(f"未加密配置文件缺少字段: {', '.join(missing)}")
+                return None
+
+        except json.JSONDecodeError:
+            self.signals.error_occurred.emit("配置文件格式错误或解密失败")
+            return None
         except Exception as e:
             self.signals.error_occurred.emit(f"加载配置文件失败: {str(e)}")
             return None

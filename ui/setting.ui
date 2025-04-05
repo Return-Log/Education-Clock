@@ -63,7 +63,7 @@
       <enum>QTabWidget::Rounded</enum>
      </property>
      <property name="currentIndex">
-      <number>9</number>
+      <number>10</number>
      </property>
      <property name="elideMode">
       <enum>Qt::ElideNone</enum>
@@ -1098,16 +1098,28 @@
         <widget class="QLineEdit" name="lineEdit_30"/>
        </item>
        <item row="1" column="1">
-        <widget class="QLineEdit" name="lineEdit_29"/>
+        <widget class="QLineEdit" name="lineEdit_29">
+         <property name="echoMode">
+          <enum>QLineEdit::Password</enum>
+         </property>
+        </widget>
        </item>
        <item row="6" column="1">
         <widget class="QLineEdit" name="lineEdit_34"/>
        </item>
        <item row="3" column="1">
-        <widget class="QLineEdit" name="lineEdit_31"/>
+        <widget class="QLineEdit" name="lineEdit_31">
+         <property name="echoMode">
+          <enum>QLineEdit::Password</enum>
+         </property>
+        </widget>
        </item>
        <item row="4" column="1">
-        <widget class="QLineEdit" name="lineEdit_32"/>
+        <widget class="QLineEdit" name="lineEdit_32">
+         <property name="echoMode">
+          <enum>QLineEdit::Password</enum>
+         </property>
+        </widget>
        </item>
        <item row="6" column="0">
         <widget class="QLabel" name="label_73">
@@ -1117,7 +1129,11 @@
         </widget>
        </item>
        <item row="5" column="1">
-        <widget class="QLineEdit" name="lineEdit_33"/>
+        <widget class="QLineEdit" name="lineEdit_33">
+         <property name="echoMode">
+          <enum>QLineEdit::Password</enum>
+         </property>
+        </widget>
        </item>
        <item row="2" column="0">
         <widget class="QLabel" name="label_72">
