@@ -2,9 +2,9 @@
     "webhook_url": "",
     "smms_username": "",
     "smms_password": "",
-    "threshold_db": -12,
+    "threshold_db": 5,
     "mic_device_index": 2,
-    "camera_device_index": 0,
+    "camera_device_index": 1,
     "text_at": [],
     "schedule": {
         "Monday": [
@@ -20,11 +20,10 @@
         "Thursday": [
             "13:00-14:00"
         ],
-        "Friday": [
-            "15:00-16:00"
-        ],
+        "Friday": [],
         "Saturday": [
-            "15:00-23:59"
+            "18:45-18:47",
+            "18:50-22:52"
         ],
         "Sunday": [
             "00:00-16:00"

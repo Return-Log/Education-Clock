@@ -4,12 +4,11 @@ import json
 import base64
 import logging
 from datetime import datetime
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QTableWidgetItem, QFileDialog, QHeaderView)
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QTableWidgetItem, QHeaderView)
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt6 import uic
 import pymysql
 import re
-from pathlib import Path
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s', handlers=[logging.StreamHandler()])
@@ -66,19 +65,19 @@ class MainWindow(QMainWindow):
         self.device_name = os.environ.get("COMPUTERNAME", "Unknown")
         self.db_config = None
         self.table_name = "messages"
-        self.main_path_file = "main_path.txt"
+        self.config_path = "./data/db_config.json"
 
         try:
             # 加载 UI 文件
-            if not os.path.exists("mainwindow.ui"):
-                logging.error("mainwindow.ui 文件不存在")
-                raise FileNotFoundError("mainwindow.ui 文件不存在")
-            uic.loadUi("mainwindow.ui", self)
-            logging.info("成功加载 mainwindow.ui")
+            if not os.path.exists("./ui/db_manager.ui"):
+                logging.error("db_manager.ui 文件不存在")
+                raise FileNotFoundError("db_manager.ui 文件不存在")
+            uic.loadUi("./ui/db_manager.ui", self)
+            logging.info("成功加载 db_manager.ui")
 
             # 检查关键控件
-            required_widgets = ["label_4", "lineEdit", "pushButton", "pushButton_2", "pushButton_3",
-                               "pushButton_4", "pushButton_5", "tableWidget", "plainTextEdit", "lineEdit_2", "plainTextEdit_2"]
+            required_widgets = ["label_4", "pushButton_3", "pushButton_4", "pushButton_5",
+                               "tableWidget", "plainTextEdit", "lineEdit_2", "plainTextEdit_2"]
             for widget in required_widgets:
                 if not hasattr(self, widget):
                     logging.error(f"UI 中缺少控件: {widget}")
@@ -87,9 +86,6 @@ class MainWindow(QMainWindow):
             # 设置初始 UI
             self.label_4.setText(f"设备名称: {self.device_name}")
             self.setup_ui_connections()
-
-            # 加载路径到 lineEdit
-            self.load_main_path()
 
             # 使用 QTimer 延迟加载数据库，避免初始化冲突
             QTimer.singleShot(100, self.update_db_config_and_fetch)
@@ -102,12 +98,9 @@ class MainWindow(QMainWindow):
     def setup_ui_connections(self):
         """设置 UI 信号连接"""
         try:
-            self.pushButton.clicked.connect(self.find_education_clock_path)
-            self.pushButton_2.clicked.connect(self.select_data_directory)
             self.pushButton_3.clicked.connect(self.delete_selected_message)
             self.pushButton_4.clicked.connect(self.send_message)
             self.pushButton_5.clicked.connect(self.add_device_to_filter)
-            self.lineEdit.textChanged.connect(self.update_main_path)
             self.tableWidget.setColumnCount(5)
             self.tableWidget.setHorizontalHeaderLabels(["Robot Name", "Sender Name", "Message Content", "Timestamp", "Conversation Title"])
             self.tableWidget.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -139,90 +132,17 @@ class MainWindow(QMainWindow):
         encrypted_data = self.xor_encrypt_decrypt(json_data, key)
         return base64.b64encode(encrypted_data).decode('utf-8')
 
-    def load_main_path(self):
-        """读取 main_path.txt 并更新 lineEdit"""
-        try:
-            if os.path.exists(self.main_path_file):
-                with open(self.main_path_file, 'r', encoding='utf-8') as f:
-                    path = f.read().strip()
-                    if path:
-                        self.lineEdit.setText(path)
-                        self.log(f"从 main_path.txt 加载路径: {path}")
-                    else:
-                        self.log("main_path.txt 为空")
-            else:
-                self.log("main_path.txt 不存在，使用默认值")
-        except Exception as e:
-            self.log(f"读取 main_path.txt 失败: {str(e)}", True)
-
-    def update_main_path(self):
-        """当 lineEdit 更新时，写入 main_path.txt 并更新数据库配置"""
-        path = self.lineEdit.text().strip()
-        try:
-            with open(self.main_path_file, 'w', encoding='utf-8') as f:
-                f.write(path)
-            self.log(f"更新 main_path.txt: {path}")
-            self.update_db_config_and_fetch()
-        except Exception as e:
-            self.log(f"写入 main_path.txt 失败: {str(e)}", True)
-
-    def find_education_clock_path(self):
-        """尝试找到 Education Clock 的 data 路径"""
-        possible_paths = [
-            Path("C:/Program Files/Education Clock/data"),
-            Path("C:/Program Files (x86)/Education Clock/data"),
-        ]
-        for p in possible_paths:
-            if p.exists() and p.is_dir():
-                self.lineEdit.setText(str(p))
-                self.log(f"找到 Education Clock 数据路径: {p}")
-                return
-        self.log("未找到 Education Clock 的 data 路径", True)
-
-    def select_data_directory(self):
-        """手动选择 data 目录"""
-        try:
-            # 创建 QFileDialog 实例
-            dialog = QFileDialog(self)
-            dialog.setFileMode(QFileDialog.FileMode.Directory)  # 设置为选择目录模式
-            dialog.setOption(QFileDialog.Option.ShowDirsOnly, True)  # 只显示目录
-
-            # 显示对话框并等待用户选择
-            if dialog.exec():
-                selected = dialog.selectedFiles()  # 获取用户选择的路径列表
-                if not selected:  # 检查是否选择了路径
-                    self.log("未选择任何目录")
-                    return
-
-                selected_path = Path(selected[0])  # 转换为 Path 对象
-                if selected_path.name != "data":  # 检查目录名是否为 "data"
-                    self.log("只能选择名为 'data' 的目录", True)
-                    return
-
-                self.lineEdit.setText(str(selected_path))  # 更新 lineEdit
-                self.log(f"手动选择 data 目录: {selected_path}")
-            else:
-                self.log("用户取消了目录选择")
-        except Exception as e:
-            self.log(f"选择目录时发生错误: {str(e)}", True)
-
     def update_db_config_and_fetch(self):
         """更新数据库配置并获取数据"""
-        path = self.lineEdit.text().strip()
-        if not path:
-            self.log("路径为空，跳过数据库配置加载")
-            return
-
-        config_path = os.path.join(path, "db_config.json")
-        if not os.path.exists(config_path):
-            self.log(f"数据库配置文件不存在: {config_path}", True)
+        if not os.path.exists(self.config_path):
+            self.log(f"数据库配置文件不存在: {self.config_path}", True)
             return
 
         try:
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
                 encrypted_data = f.read().strip()
             if not encrypted_data:
-                self.log(f"配置文件 {config_path} 为空", True)
+                self.log(f"配置文件 {self.config_path} 为空", True)
                 return
 
             config_data = self.decrypt_data(encrypted_data, self.encryption_key)
@@ -270,7 +190,6 @@ class MainWindow(QMainWindow):
             self.log(f"准备加载 {len(data)} 条消息到 tableWidget")
             self.tableWidget.setRowCount(len(data))
             for row, item in enumerate(data):
-                # 确保每个字段安全转换为字符串
                 fields = [
                     str(item.get("robot_name", "") or ""),
                     str(item.get("sender_name", "") or ""),
@@ -284,25 +203,22 @@ class MainWindow(QMainWindow):
             self.log(f"成功加载 {len(data)} 条消息")
         except Exception as e:
             self.log(f"更新 tableWidget 失败: {str(e)}", True)
-            self.tableWidget.setRowCount(0)  # 清空表格以避免残留数据
+            self.tableWidget.setRowCount(0)
 
     def add_device_to_filter(self):
         """将设备名称追加到 filter_conditions 的 robot_names 列表"""
-        config_path = os.path.join(self.lineEdit.text(), "db_config.json")
-        if not os.path.exists(config_path):
-            self.log(f"配置文件不存在: {config_path}", True)
+        if not os.path.exists(self.config_path):
+            self.log(f"配置文件不存在: {self.config_path}", True)
             return
 
         try:
-            # 读取并解密现有文件
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
                 encrypted_data = f.read().strip()
             config_data = self.decrypt_data(encrypted_data, self.encryption_key)
             if not config_data:
                 self.log("无法解密配置文件", True)
                 return
 
-            # 更新 filter_conditions
             if "filter_conditions" not in config_data:
                 config_data["filter_conditions"] = {}
             if "robot_names" not in config_data["filter_conditions"] or not isinstance(
@@ -310,15 +226,14 @@ class MainWindow(QMainWindow):
                 config_data["filter_conditions"]["robot_names"] = []
 
             robot_names = config_data["filter_conditions"]["robot_names"]
-            if self.device_name not in robot_names:  # 避免重复添加
+            if self.device_name not in robot_names:
                 robot_names.append(self.device_name)
                 self.log(f"已将设备名称 {self.device_name} 添加到 robot_names")
 
-                # 加密并写回文件
                 encrypted_content = self.encrypt_data(config_data, self.encryption_key)
-                with open(config_path, 'w', encoding='utf-8') as f:
+                with open(self.config_path, 'w', encoding='utf-8') as f:
                     f.write(encrypted_content)
-                self.log(f"配置文件已更新: {config_path}")
+                self.log(f"配置文件已更新: {self.config_path}")
             else:
                 self.log(f"设备名称 {self.device_name} 已存在于 robot_names，无需重复添加")
 
@@ -352,7 +267,6 @@ class MainWindow(QMainWindow):
         content = self.plainTextEdit.toPlainText().strip()
         sender = self.lineEdit_2.text().strip()
 
-        # 检查 URL 并拼接
         if sender:
             if re.match(r'^https?://[^\s]+$', sender):
                 content = f"&[{sender}]& {content}"

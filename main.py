@@ -11,8 +11,6 @@ from PyQt6.QtWidgets import QMessageBox
 from PyQt6.QtCore import QSettings
 from datetime import datetime
 import json
-
-from roll_call_module import RollCallDialog
 from timetable_module import TimetableModule
 from auto_cctv_controller import AutoCCTVController  # 导入自动新闻联播模块
 from shutdown_module import ShutdownModule  # 导入关机模块
@@ -97,39 +95,10 @@ class MainWindow(QMainWindow):
         """初始化排行榜模块"""
         self.ranking_module = RankingModule(self)
 
-    def open_roll_call_window(self):
-        """打开随机点名窗口"""
-        from roll_call_module import RollCallDialog
-        self.roll_call_dialog = RollCallDialog()  # 无父窗口
-        # 连接关闭信号
-        self.roll_call_dialog.signals.closed.connect(self.on_roll_call_closed)
-
-    def on_roll_call_closed(self):
-        """处理点名窗口关闭"""
-        if hasattr(self, 'roll_call_dialog'):
-            del self.roll_call_dialog  # 清理引用
-
     def init_floating_ball(self):
         """初始化悬浮球"""
         from floating_ball import FloatingBall
-        from PyQt6.QtCore import pyqtSignal, QObject
-
-        class FloatingBallSignal(QObject):
-            roll_call_triggered = pyqtSignal()
-
         self.floating_ball = FloatingBall()  # 无父窗口
-        self.floating_ball_signal = FloatingBallSignal()
-        self.floating_ball_signal.roll_call_triggered.connect(self.open_roll_call_window)
-
-        # 重写悬浮球的双击事件以发射信号
-        original_double_click = self.floating_ball.mouseDoubleClickEvent
-
-        def new_double_click(event):
-            original_double_click(event)
-            if event.button() == Qt.MouseButton.LeftButton:
-                self.floating_ball_signal.roll_call_triggered.emit()
-
-        self.floating_ball.mouseDoubleClickEvent = new_double_click
 
 
     def closeEvent(self, event):

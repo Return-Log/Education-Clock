@@ -1,77 +1,67 @@
 import random
 import sys
 import os
+import logging
 from PyQt6.QtWidgets import QDialog, QLabel, QApplication, QVBoxLayout
 from PyQt6.QtCore import Qt, QUrl, pyqtSignal, QObject
 from PyQt6.QtGui import QFont, QFontDatabase
 from PyQt6.QtMultimedia import QMediaPlayer
 from PyQt6.QtMultimediaWidgets import QVideoWidget
 
+# # 配置日志
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format='%(asctime)s - %(levelname)s - %(message)s',
+#     handlers=[
+#         logging.FileHandler("roll_call.log"),
+#         logging.StreamHandler()
+#     ]
+# )
 
 class RollCallDialog(QDialog):
-    # 定义信号类，用于外部通信
     class RollCallSignals(QObject):
-        closed = pyqtSignal()  # 窗口关闭信号
+        closed = pyqtSignal()
 
     def __init__(self):
-        super().__init__()  # 不接受 parent 参数
-
+        super().__init__()
         self.setWindowTitle('随机点名')
-        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)  # 独立窗口，保持顶层
-        # 可选：无边框
-        # self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
-
-        # 设置窗口背景为白色，固定16:9比例
+        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
         self.setStyleSheet("background-color: white;")
         self.setFixedSize(800, 450)
 
         # 读取名字列表
         self.names = self.load_names()
+        if not self.names:
+            logging.error("No names loaded, dialog may not function correctly")
 
-        # 初始化布局和控件，去除边距
+        # 初始化布局和控件
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
 
-        # 视频控件（最下层）
+        # 视频控件
         self.video_widget = QVideoWidget(self)
         self.video_widget.hide()
         self.layout.addWidget(self.video_widget)
-        self.video_widget.setGeometry(0, 0, self.width(), self.height())
-        self.video_widget.lower()
 
-        # 名字标签（黑色文字，强制字体大小和家族）
-        self.name_label = QLabel("", self)
-
-        # 使用 QFontDatabase 的静态方法检查字体
+        # 名字标签
+        self.name_label = QLabel("点击开始", self)
         preferred_font = "华文行楷"
         fallback_font = "微软雅黑"
-
-        # 检查华文行楷是否在可用字体列表中
-        if preferred_font in QFontDatabase.families():
-            font = QFont(preferred_font, 140)
-        else:
-            # 如果没有华文行楷，使用加粗的微软雅黑
-            font = QFont(fallback_font, 140)
-            font.setBold(True)
-
+        font = QFont(preferred_font, 140) if preferred_font in QFontDatabase.families() else QFont(fallback_font, 140, QFont.Weight.Bold)
         self.name_label.setFont(font)
         self.name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.name_label.setStyleSheet("""
-            QLabel {
+        self.name_label.setStyleSheet(f"""
+            QLabel {{
                 color: black;
-                font-size: 140pt !important;
-                font-family: %s !important;
-            }
-        """ % font.family())
+                font-size: 140pt;
+                font-family: {font.family()};
+            }}
+        """)
         self.layout.addWidget(self.name_label)
-        self.name_label.setText("点击开始")
 
-        # 将窗口居中
-        screen = QApplication.primaryScreen()
-        screen_geometry = screen.availableGeometry()
-        x = (screen_geometry.width() - self.width()) // 2
-        y = (screen_geometry.height() - self.height()) // 2
-        self.move(x, y)
+        # 居中窗口
+        screen = QApplication.primaryScreen().availableGeometry()
+        self.move((screen.width() - self.width()) // 2, (screen.height() - self.height()) // 2)
 
         # 初始化视频播放器
         self.media_player = QMediaPlayer()
@@ -79,45 +69,42 @@ class RollCallDialog(QDialog):
         self.media_player.mediaStatusChanged.connect(self.on_media_status_changed)
         self.media_player.errorOccurred.connect(self.on_media_error)
 
-        # 启用鼠标事件跟踪
         self.setMouseTracking(True)
         self.is_rolling = False
-
-        # 初始化信号
         self.signals = self.RollCallSignals()
 
-        self.show()
-
+        logging.info("RollCallDialog initialized")
 
     def load_names(self):
-        """从文件中加载名字列表，返回带标记的名字"""
         try:
             with open('./data/name.txt', 'r', encoding='utf-8') as file:
-                names = [line.strip() for line in file.readlines()]
-            return names if names else []
+                names = [line.strip() for line in file.readlines() if line.strip()]
+            logging.info(f"Loaded {len(names)} names from name.txt")
+            return names
         except FileNotFoundError:
-            self.name_label.setText("找不到 name.txt 文件")
+            logging.error("name.txt not found")
+            return []
+        except Exception as e:
+            logging.error(f"Error loading names: {e}")
             return []
 
     def save_names(self):
-        """将当前名字列表（含标记）保存到文件"""
         try:
             with open('./data/name.txt', 'w', encoding='utf-8') as file:
                 for name in self.names:
                     file.write(f"{name}\n")
+            logging.info("Names saved successfully")
         except Exception as e:
-            self.name_label.setText(f"保存名字失败: {str(e)}")
+            logging.error(f"Error saving names: {e}")
 
     def mousePressEvent(self, event):
-        """处理鼠标点击事件，开始点名"""
-        if self.is_rolling:
-            return
-        self.start_roll_call()
+        if event.button() == Qt.MouseButton.LeftButton and not self.is_rolling:
+            self.start_roll_call()
 
     def start_roll_call(self):
-        """开始点名，先尝试播放视频，结束后显示名字"""
         if not self.names:
             self.name_label.setText("没有可用的名字")
+            logging.warning("No names available for roll call")
             return
 
         self.is_rolling = True
@@ -131,37 +118,40 @@ class RollCallDialog(QDialog):
                 self.video_widget.lower()
                 self.media_player.setSource(QUrl.fromLocalFile(video_path))
                 self.media_player.play()
+                logging.info("Playing roll call video")
             except Exception as e:
+                logging.error(f"Video playback error: {e}")
                 self.cleanup_media()
                 self.display_name()
         else:
+            logging.warning(f"Video file not found: {video_path}")
             self.display_name()
 
     def on_media_status_changed(self, status):
-        """处理视频播放状态变化"""
         if status == QMediaPlayer.MediaStatus.EndOfMedia:
+            logging.info("Video playback finished")
             self.cleanup_media()
             self.display_name()
-        elif status == QMediaPlayer.MediaStatus.NoMedia or status == QMediaPlayer.MediaStatus.InvalidMedia:
+        elif status in (QMediaPlayer.MediaStatus.NoMedia, QMediaPlayer.MediaStatus.InvalidMedia):
+            logging.warning("No or invalid media detected")
             self.cleanup_media()
             self.display_name()
 
     def on_media_error(self, error):
-        """处理视频播放错误"""
+        logging.error(f"Media error: {error}")
         self.cleanup_media()
         self.display_name()
 
     def cleanup_media(self):
-        """清理视频播放资源"""
         try:
             self.media_player.stop()
             self.media_player.setSource(QUrl())
             self.video_widget.hide()
+            logging.info("Media resources cleaned up")
         except Exception as e:
-            pass
+            logging.error(f"Error cleaning up media: {e}")
 
     def display_name(self):
-        """显示随机选择的一个名字并仅标记该名字"""
         if not self.is_rolling:
             return
 
@@ -170,6 +160,7 @@ class RollCallDialog(QDialog):
             self.names = [name.rstrip('*') for name in self.names]
             self.save_names()
             unmarked_names = self.names
+            logging.info("All names were marked, resetting marks")
 
         selected_name = random.choice(unmarked_names)
         self.name_label.setText(selected_name)
@@ -182,11 +173,11 @@ class RollCallDialog(QDialog):
                 marked = True
                 break
         self.save_names()
+        logging.info(f"Selected and marked name: {selected_name}")
 
         self.is_rolling = False
 
     def resizeEvent(self, event):
-        """保持16:9比例并调整视频大小"""
         super().resizeEvent(event)
         new_width = self.width()
         new_height = int(new_width * 9 / 16)
@@ -196,11 +187,11 @@ class RollCallDialog(QDialog):
             self.video_widget.lower()
 
     def closeEvent(self, event):
-        """窗口关闭时保存名字并释放资源"""
         self.save_names()
         self.cleanup_media()
-        self.signals.closed.emit()  # 发射关闭信号
+        self.signals.closed.emit()
         super().closeEvent(event)
+        logging.info("RollCallDialog closed")
 
 
 if __name__ == "__main__":
