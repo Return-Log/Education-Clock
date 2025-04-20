@@ -714,6 +714,7 @@ class SettingsWindow(QDialog):
         qss_dir = './ui/qss'
         if os.path.exists(qss_dir):
             qss_files = [f for f in os.listdir(qss_dir) if f.endswith('.qss')]
+            self.comboBox_themes.clear()
             self.comboBox_themes.addItems(qss_files)
 
         # 设置默认选择
