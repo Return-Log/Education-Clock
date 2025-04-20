@@ -1171,7 +1171,7 @@
        <item row="0" column="1" colspan="3">
         <widget class="QLabel" name="label_32">
          <property name="text">
-          <string>## Education Clock v3.13</string>
+          <string>## Education Clock v3.14</string>
          </property>
          <property name="textFormat">
           <enum>Qt::MarkdownText</enum>
@@ -1253,7 +1253,7 @@
        <item row="2" column="1" colspan="3">
         <widget class="QLabel" name="label_33">
          <property name="text">
-          <string>2025年4月6日 构建</string>
+          <string>2025年4月20日 构建</string>
          </property>
         </widget>
        </item>

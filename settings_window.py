@@ -726,7 +726,7 @@ class SettingsWindow(QDialog):
     def load_current_theme(self):
         """根据 qss.txt 文件设置当前主题"""
         qss_txt_path = './data/qss.txt'
-        default_qss = 'dark.qss'
+        default_qss = 'Vista Blue.qss'
 
         try:
             with open(qss_txt_path, 'r', encoding='utf-8') as f:
