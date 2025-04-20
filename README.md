@@ -136,11 +136,11 @@ INSERT INTO `messages` (`robot_name`, `sender_name`, `message_content`, `timesta
 
 > 需自建一个组织，机器人每月有3000次调用限制
 
-开放平台传送门: https://open-dev.dingtalk.com/fe/app?hash=%23%2Fcorp%2Frobot#/corp/robot
+开放平台: https://open-dev.dingtalk.com/fe/app?hash=%23%2Fcorp%2Frobot#/corp/robot
 
 在自建组织中创建一个机器人应用，将应用凭证中三个项记下来
 
-对应机器人开发管理中添加服务器出口IP(调用钉钉服务端API时的合法IP列表)和消息接收地址(用于接收POST过来的消息)
+对应机器人开发管理中添加服务器出口IP，和消息接收地址
 
 ###### 服务器配置
 
@@ -163,7 +163,7 @@ db_config = {  # 数据库配置
 
 # 钉钉机器人配置（多个机器人）
 robots = {  # 机器人应用凭证
-    "": {  # AppKey
+    "": {  # ""中填写AppKey
         "agent_id": "",  # AgentId
         "app_secret": ""  # AppSecret
     }
@@ -173,15 +173,31 @@ robots = {  # 机器人应用凭证
 """中间部分已省略"""
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10240, debug=True)  # 改为自己的端口
+    app.run(host='0.0.0.0', port=20000, debug=True)  # 改为自己的端口
 ```
 
-宝塔面板项目管理：
+宝塔面板网站管理：
 
-- 启动方式uwsgi
-- 通讯协议wsgi
-- 这里添加可外网访问的端口(提示冲突就更换一个)
-- 添加可外网访问的域名
+添加一个python项目
+
+![PixPin_2025-04-20_10-25-45.png](https://s2.loli.net/2025/04/20/3dPy5cEkjXCWBZD.png)
+
+![PixPin_2025-04-20_10-27-26.png](https://s2.loli.net/2025/04/20/iDwXfLAESkouZtv.png)
+
+![PixPin_2025-04-20_10-28-39.png](https://s2.loli.net/2025/04/20/7duRjbvg84sPqSY.png)
+
+![PixPin_2025-04-20_10-30-40.png](https://s2.loli.net/2025/04/20/X8vfqKjzDPacN65.png)
+
+```
+所需的库，装最新版即可
+flask  # 用于创建 Web 应用程序
+pymysql  # 用于连接和操作 MySQL 数据库
+alibabacloud-dingtalk  # 用于调用钉钉的 API
+alibabacloud-tea-openapi  # 钉钉 SDK 依赖的 Alibaba Cloud TEA OpenAPI 库
+alibabacloud-tea-util  # 钉钉 SDK 依赖的 TEA 工具库
+```
+
+最后重启项目
 
 ###### 使用机器人
 
