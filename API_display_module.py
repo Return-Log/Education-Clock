@@ -1,122 +1,210 @@
-import sys
 import json
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout,
-                            QWidget, QTextEdit, QTextBrowser, QLineEdit,
-                            QPushButton, QLabel)
-from PyQt6.QtCore import Qt
+import requests
+import base64
+import re
+from PyQt6.QtWidgets import QTextBrowser, QWidget, QVBoxLayout
+from PyQt6.QtCore import QTimer, QThread, pyqtSignal, QObject
+from PyQt6.QtGui import QTextDocument
+from datetime import datetime
 
-class NewsDisplayApp(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("News Display")
-        self.setGeometry(100, 100, 800, 600)
+class APIWorker(QObject):
+    """Worker class to handle API requests in a separate thread"""
+    data_fetched = pyqtSignal(str, str)  # Signal for successful data fetch (name, markdown_output)
+    error_occurred = pyqtSignal(str, str)  # Signal for errors (name, error_message)
 
-        # Sample JSON data
-        self.data = [
-            {
-                "title": "约旦专栏作家：中国外交坚持和平、理性，具有战略定力",
-                "time": "2025-02-23 16:49:37",
-                "url": "https://news.cctv.com/2025/02/23/ARTISpTAxMypj7oEmVym2Mkf250223.shtml",
-                "poster": "https://p2.img.cctvpic.com/photoworkspace/2025/02/23/2025022316162255921.jpg",
-                "description": "约旦专栏作家法里斯·哈巴什奈近日在当地主流媒体《宪章报》发表文章，强调中国外交坚持和平、理性，具有战略定力。",
-                "keywords": "约旦 定力 专栏作家 宪章报 外交政策 联合国"
-            },
-            {
-                "title": "俄副外长：俄美代表第二轮会谈将在利雅得举行",
-                "time": "2025-02-23 16:07:57",
-                "url": "https://news.cctv.com/2025/02/23/ARTIT58svDwybTe1mXiPTxls250223.shtml",
-                "poster": "https://p2.img.cctvpic.com/photoworkspace/2025/02/23/2025022316072814743.jpg",
-                "description": "总台记者获悉，俄罗斯外交部副部长里亚布科夫当地时间23日向俄罗斯《消息报》透露，俄罗斯和美国将在沙特首都利雅得举行下一次关于乌克兰问题的会谈，将由各部门司局长级官员出席，而非副部长级别官员出席。",
-                "keywords": "会谈 利雅得 俄美"
-            },
-            {
-                "title": "中国驻旧金山总领馆提醒：中国公民谨防换汇诈骗",
-                "time": "2025-02-22 07:25:07",
-                "url": "https://news.cctv.com/2025/02/22/ARTImuA66iAXhQAFw2XsDOvS250222.shtml",
-                "poster": "https://p5.img.cctvpic.com/photoworkspace/2025/02/22/2025022211021193492.png",
-                "description": "近期，中国驻旧金山总领事馆接到多名中国公民求助，反映遭遇换汇诈骗。",
-                "keywords": "换汇 中国公民 诈骗分子"
-            }
-        ]
+    def fetch_data(self, name, url, template):
+        """Fetch data from the API and process it"""
+        try:
+            # Perform GET request
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            data = response.json()
 
-        # Initialize UI
-        self.init_ui()
+            # Extract the 'data' field from the response
+            filtered_data = data.get('data', [])
+            if not isinstance(filtered_data, list):
+                filtered_data = [filtered_data] if filtered_data else []
 
-    def init_ui(self):
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        layout = QVBoxLayout(central_widget)
+            if not filtered_data:
+                self.error_occurred.emit(name, "**错误**: API 返回的数据为空\n\n将会在下次刷新时重试。")
+                return
 
-        # Filter input
-        filter_layout = QHBoxLayout()
-        filter_label = QLabel("Filter (keywords):")
-        self.filter_input = QLineEdit()
-        self.filter_input.setPlaceholderText("Enter keywords to filter title or description")
-        filter_layout.addWidget(filter_label)
-        filter_layout.addWidget(self.filter_input)
-        layout.addLayout(filter_layout)
+            # Process data and generate Markdown output
+            markdown_output = ""
+            for item in filtered_data:
+                item_output = template
+                for key in item:
+                    placeholder = "{" + key + "}"
+                    value = str(item[key]).replace("\n", " ")  # Prevent Markdown breaking
+                    item_output = item_output.replace(placeholder, value)
 
-        # Template input
-        template_label = QLabel("Markdown Template:")
-        layout.addWidget(template_label)
-        self.template_input = QTextEdit()
-        self.template_input.setPlaceholderText(
-            "Enter Markdown template, e.g:\n# {title}\n![Poster]({poster})\n[Read More]({url})\nAvailable fields: {title}, {time}, {url}, {poster}, {description}, {keywords}"
-        )
-        self.template_input.setText(
-            "# {title}\n*Posted on {time}*\n\n![Poster]({poster})\n\n{description}\n\n[Read More]({url})\n\n**Keywords**: {keywords}\n\n---"
-        )
-        layout.addWidget(self.template_input)
+                # Handle images in the template
+                item_output = self.process_images(item_output)
+                markdown_output += item_output + "\n"
 
-        # Buttons
-        button_layout = QHBoxLayout()
-        apply_button = QPushButton("Apply Template")
-        apply_button.clicked.connect(self.apply_template)
-        clear_button = QPushButton("Clear Output")
-        clear_button.clicked.connect(self.clear_output)
-        button_layout.addWidget(apply_button)
-        button_layout.addWidget(clear_button)
-        layout.addLayout(button_layout)
+            # Emit successful data
+            self.data_fetched.emit(name, markdown_output)
 
-        # Output display
-        output_label = QLabel("Output:")
-        layout.addWidget(output_label)
-        self.output_browser = QTextBrowser()
-        self.output_browser.setOpenExternalLinks(True)
-        layout.addWidget(self.output_browser)
+        except requests.RequestException as e:
+            # Emit error
+            self.error_occurred.emit(name, f"**错误**: 无法获取数据 - {str(e)}\n\n将会在下次刷新时重试。")
+        except (ValueError, KeyError) as e:
+            # Handle JSON parsing or key errors
+            self.error_occurred.emit(name, f"**错误**: 数据解析失败 - {str(e)}\n\n将会在下次刷新时重试。")
 
-    def apply_template(self):
-        template = self.template_input.toPlainText()
-        filter_text = self.filter_input.text().strip().lower()
+    def process_images(self, text):
+        """Process Markdown image links and embed as base64"""
+        # Find all Markdown image links: ![alt](url)
+        image_pattern = r'!\[(.*?)\]\((.*?)\)'
+        matches = re.findall(image_pattern, text)
 
-        # Filter data
-        filtered_data = self.data
-        if filter_text:
-            filtered_data = [
-                item for item in self.data
-                if (filter_text in item["title"].lower() or
-                    filter_text in item["description"].lower())
-            ]
+        for alt, url in matches:
+            try:
+                # Download the image
+                response = requests.get(url, timeout=5)
+                response.raise_for_status()
+                image_data = response.content
 
-        # Generate Markdown output
-        markdown_output = ""
-        for item in filtered_data:
-            # Replace placeholders with actual values
-            item_output = template
-            for key in item:
-                placeholder = "{" + key + "}"
-                value = str(item[key]).replace("\n", " ")  # Prevent Markdown breaking
-                item_output = item_output.replace(placeholder, value)
-            markdown_output += item_output + "\n"
+                # Convert to base64
+                base64_image = base64.b64encode(image_data).decode('utf-8')
+                mime_type = response.headers.get('content-type', 'image/jpeg')
+                base64_string = f"data:{mime_type};base64,{base64_image}"
 
-        # Display in browser
-        self.output_browser.setMarkdown(markdown_output)
+                # Replace original image link with base64 data
+                original_image = f"![{alt}]({url})"
+                new_image = f"![{alt}]({base64_string})"
+                text = text.replace(original_image, new_image)
 
-    def clear_output(self):
-        self.output_browser.clear()
+            except requests.RequestException as e:
+                # If image download fails, replace with error message
+                text = text.replace(f"![{alt}]({url})", f"[无法加载图片: {url} - {str(e)}]")
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = NewsDisplayApp()
-    window.show()
-    sys.exit(app.exec())
+        return text
+
+class APIDisplayModule:
+    def __init__(self, main_window):
+        self.main_window = main_window
+        self.tab_widget = main_window.findChild(QWidget, "tabWidget")
+        if self.tab_widget is None:
+            # Create a fallback tab to display the error
+            self.create_error_tab("找不到 tabWidget，请检查 UI 文件")
+            return
+
+        self.api_configs = self.load_api_config()
+        self.tabs = {}
+        self.threads = {}  # Store threads and workers
+
+        # Initialize tabs for each API configuration
+        for config in self.api_configs:
+            self.create_tab(config)
+
+    def load_api_config(self):
+        """Load API configurations from data/api_config.data"""
+        try:
+            with open('data/api_config.json', 'r', encoding='utf-8') as file:
+                return json.load(file)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            # Create a fallback tab to display the error
+            self.create_error_tab(f"无法加载 API 配置文件: {str(e)}")
+            return []
+
+    def create_error_tab(self, error_message):
+        """Create a tab to display an error message"""
+        tab = QWidget()
+        layout = QVBoxLayout()
+        output_browser = QTextBrowser()
+        output_browser.setMarkdown(f"**错误**: {error_message}")
+        layout.addWidget(output_browser)
+        tab.setLayout(layout)
+        self.tab_widget.addTab(tab, "错误")
+
+    def create_tab(self, config):
+        """Create a tab for the given API configuration"""
+        name = config.get('name', 'Unnamed API')
+        url = config.get('url', '')
+        template = config.get('template', '')
+        refresh_time = int(config.get('refresh_time', '60')) * 1000  # Convert to milliseconds
+
+        if not url or not template:
+            # Create a tab to display the configuration error
+            tab = QWidget()
+            layout = QVBoxLayout()
+            output_browser = QTextBrowser()
+            output_browser.setMarkdown(f"**错误**: API 配置错误 - {name}: URL 或模板缺失")
+            layout.addWidget(output_browser)
+            tab.setLayout(layout)
+            self.tab_widget.addTab(tab, name)
+            return
+
+        # Create a new tab widget
+        tab = QWidget()
+        layout = QVBoxLayout()
+        output_browser = QTextBrowser()
+        output_browser.setOpenExternalLinks(True)  # Allow clicking links
+        layout.addWidget(output_browser)
+        tab.setLayout(layout)
+
+        # Add tab to tabWidget
+        tab_index = self.tab_widget.addTab(tab, name)
+        self.tabs[name] = {
+            'browser': output_browser,
+            'url': url,
+            'template': template,
+            'timer': QTimer(),
+            'last_error': None
+        }
+
+        # Set up worker and thread
+        thread = QThread()
+        worker = APIWorker()
+        worker.moveToThread(thread)
+        self.threads[name] = {'thread': thread, 'worker': worker}
+
+        # Connect signals
+        worker.data_fetched.connect(self.on_data_fetched)
+        worker.error_occurred.connect(self.on_error_occurred)
+        self.tabs[name]['timer'].timeout.connect(lambda: self.refresh_data(name))
+
+        # Start the thread
+        thread.start()
+
+        # Set up timer for refreshing data
+        self.tabs[name]['timer'].start(refresh_time)
+
+        # Initial data fetch
+        self.refresh_data(name)
+
+    def refresh_data(self, name):
+        """Trigger data fetch in the worker thread"""
+        config = self.tabs.get(name)
+        if not config:
+            return
+
+        worker = self.threads[name]['worker']
+        url = config['url']
+        template = config['template']
+
+        # Call fetch_data in the worker thread
+        worker.fetch_data(name, url, template)
+
+    def on_data_fetched(self, name, markdown_output):
+        """Handle successful data fetch"""
+        config = self.tabs.get(name)
+        if config:
+            config['browser'].setMarkdown(markdown_output)
+            config['last_error'] = None
+
+    def on_error_occurred(self, name, error_message):
+        """Handle error during data fetch"""
+        config = self.tabs.get(name)
+        if config:
+            config['browser'].setMarkdown(error_message)
+            config['last_error'] = error_message
+
+    def __del__(self):
+        """Clean up threads on destruction"""
+        for name, thread_data in self.threads.items():
+            thread = thread_data['thread']
+            if thread.isRunning():
+                thread.quit()
+                thread.wait()

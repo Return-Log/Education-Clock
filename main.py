@@ -18,6 +18,7 @@ from time_module import TimeModule  # 导入时间模块
 from weather_module import WeatherModule
 from settings_window import SettingsWindow  # 导入设置窗口类
 from bulletin_board_module import BulletinBoardModule  # 导入公告板模块
+from API_display_module import APIDisplayModule
 
 # # 配置日志
 # logging.basicConfig(
@@ -57,6 +58,8 @@ class MainWindow(QMainWindow):
 
         # 初始化时间模块
         self.time_module = TimeModule(self)
+
+        self.api_display_module = APIDisplayModule(self)
 
 
         # 保存和恢复窗口大小和位置
