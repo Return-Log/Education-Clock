@@ -4,18 +4,196 @@ import re
 import sys
 import json
 import base64
+import requests
 import os
-import numpy as np
-import pyaudio
-import cv2      # 需要导入以扫描相机设备
-import comtypes.stream
-from pygrabber.dshow_graph import FilterGraph
 from PyQt6.QtWidgets import (
     QDialog, QPushButton, QLabel, QFileDialog, QTextBrowser, QTabWidget,
-    QTableWidgetItem, QMessageBox, QApplication, QDialogButtonBox, QPlainTextEdit, QComboBox
+    QTableWidgetItem, QMessageBox, QApplication, QDialogButtonBox, QPlainTextEdit, QComboBox, QGroupBox, QWidget,
+    QVBoxLayout, QScrollArea, QHBoxLayout, QGridLayout, QLineEdit, QSizePolicy, QTextEdit
 )
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, QDateTime, QDate, QThread, pyqtSignal
+
+
+class GroupBoxWidget(QGroupBox):
+    def __init__(self, config=None, parent=None, settings_window=None):
+        super().__init__(parent)
+        self.setTitle("API Configuration")
+        self.config = config or {"name": "", "url": "", "template": "", "refresh_time": ""}
+        self.settings_window = settings_window
+        self.last_data = None
+        logging.debug(f"Initializing GroupBoxWidget with config: {self.config}")
+        self.setup_ui()
+
+        # Initialize with config
+        self.name_input.setText(self.config.get("name", ""))
+        self.url_input.setText(self.config.get("url", ""))
+        self.template_input.setPlainText(self.config.get("template", ""))
+        self.refresh_time_input.setText(str(self.config.get("refresh_time", "")))
+        logging.debug(f"Loaded refresh_time: {self.config.get('refresh_time', '')}")
+
+        # Connect signals
+        logging.debug("Connecting GroupBoxWidget signals")
+        self.request_button.clicked.connect(self.fetch_and_display)
+        self.parse_button.clicked.connect(self.parse_and_display)
+        self.name_input.textChanged.connect(self.on_config_changed)
+        self.url_input.textChanged.connect(self.on_config_changed)
+        self.template_input.textChanged.connect(self.on_config_changed)
+        self.refresh_time_input.textChanged.connect(self.on_config_changed)
+        logging.debug("GroupBoxWidget initialization complete")
+
+    def setup_ui(self):
+        layout = QGridLayout(self)
+
+        # Row 0: Name
+        name_label = QLabel("标签名：")
+        self.name_input = QLineEdit()
+        layout.addWidget(name_label, 0, 0)
+        layout.addWidget(self.name_input, 0, 1, 1, 2)
+
+        # Row 1: URL
+        url_label = QLabel("Get URL：")
+        self.url_input = QLineEdit()
+        layout.addWidget(url_label, 1, 0)
+        layout.addWidget(self.url_input, 1, 1, 1, 2)
+
+        # Row 2: Refresh Time
+        refresh_time_label = QLabel("刷新时间（秒）：")
+        self.refresh_time_input = QLineEdit()
+        self.refresh_time_input.setPlaceholderText("请输入正整数（秒）")
+        layout.addWidget(refresh_time_label, 2, 0)
+        layout.addWidget(self.refresh_time_input, 2, 1, 1, 2)
+
+        # Row 3: Request and Parse Buttons
+        self.request_button = QPushButton("请求")
+        self.parse_button = QPushButton("解析")
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.request_button)
+        button_layout.addWidget(self.parse_button)
+        layout.addLayout(button_layout, 3, 0, 1, 1)
+
+        # Row 4: Raw Output and Template
+        self.raw_output = QTextBrowser()
+        self.raw_output.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.template_input = QTextEdit()
+        self.template_input.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.template_input.setPlaceholderText(
+            "Enter Markdown template, e.g:\n# {title}\n![Poster]({poster})\n[Read More]({url})"
+        )
+        layout.addWidget(self.raw_output, 4, 0, 1, 2)
+        layout.addWidget(self.template_input, 4, 2)
+
+        # Row 5: Formatted Output
+        self.formatted_output = QTextBrowser()
+        self.formatted_output.setOpenExternalLinks(True)
+        layout.addWidget(self.formatted_output, 5, 0, 1, 3)
+
+        layout.setColumnStretch(1, 1)
+        layout.setColumnMinimumWidth(1, 200)
+
+    def fetch_and_display(self):
+        url = self.url_input.text().strip()
+        template = self.template_input.toPlainText()
+        logging.debug(f"Fetching data from URL: {url}")
+
+        if not url:
+            logging.warning("Empty URL provided")
+            QMessageBox.warning(self, "Error", "Please enter a valid URL")
+            return
+
+        try:
+            logging.debug("Sending GET request")
+            response = requests.get(url, timeout=5)
+            response.raise_for_status()
+            self.last_data = response.json()
+            logging.debug("Received API response")
+
+            # Display raw JSON
+            self.raw_output.setPlainText(json.dumps(self.last_data, indent=2, ensure_ascii=False))
+            logging.debug("Displayed raw JSON")
+
+            # Process and display formatted output
+            if isinstance(self.last_data.get("data"), list):
+                logging.debug("Processing data list for Markdown")
+                markdown_output = ""
+                for item in self.last_data["data"]:
+                    item_output = template
+                    for key, value in item.items():
+                        placeholder = "{" + key + "}"
+                        value = str(value).replace("\n", " ")
+                        item_output = item_output.replace(placeholder, value)
+                    markdown_output += item_output + "\n"
+                self.formatted_output.setMarkdown(markdown_output)
+                logging.debug("Displayed formatted Markdown")
+            else:
+                logging.warning("No valid 'data' list in response")
+                self.formatted_output.setPlainText("No valid 'data' list found in response")
+
+        except requests.RequestException as e:
+            logging.error(f"Failed to fetch data: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to fetch data: {str(e)}")
+            self.raw_output.clear()
+            self.formatted_output.clear()
+            self.last_data = None
+
+    def parse_and_display(self):
+        logging.debug("Parse button clicked")
+        template = self.template_input.toPlainText()
+
+        if not self.last_data:
+            logging.warning("No data available for parsing")
+            QMessageBox.warning(self, "警告", "请先请求数据以进行解析")
+            return
+
+        try:
+            logging.debug("Processing last data with current template")
+            if isinstance(self.last_data.get("data"), list):
+                markdown_output = ""
+                for item in self.last_data["data"]:
+                    item_output = template
+                    for key, value in item.items():
+                        placeholder = "{" + key + "}"
+                        value = str(value).replace("\n", " ")
+                        item_output = item_output.replace(placeholder, value)
+                    markdown_output += item_output + "\n"
+                self.formatted_output.setMarkdown(markdown_output)
+                logging.debug("Displayed parsed Markdown")
+            else:
+                logging.warning("No valid 'data' list in last data")
+                self.formatted_output.setPlainText("No valid 'data' list found in last response")
+        except Exception as e:
+            logging.error(f"Failed to parse data: {str(e)}")
+            QMessageBox.critical(self, "错误", f"解析数据失败: {str(e)}")
+
+    def get_config(self):
+        refresh_time = self.refresh_time_input.text().strip()
+        # Validate refresh_time as a positive integer or empty
+        if refresh_time and not refresh_time.isdigit():
+            logging.warning(f"Invalid refresh_time: {refresh_time}, must be a positive integer")
+            QMessageBox.warning(self, "警告", "刷新时间必须为正整数")
+            self.refresh_time_input.clear()
+            refresh_time = ""
+        elif refresh_time and int(refresh_time) <= 0:
+            logging.warning(f"Invalid refresh_time: {refresh_time}, must be positive")
+            QMessageBox.warning(self, "警告", "刷新时间必须为正整数")
+            self.refresh_time_input.clear()
+            refresh_time = ""
+
+        return {
+            "name": self.name_input.text().strip(),
+            "url": self.url_input.text().strip(),
+            "template": self.template_input.toPlainText(),
+            "refresh_time": refresh_time
+        }
+
+    def on_config_changed(self):
+        config = self.get_config()
+        logging.debug(f"Text changed in GroupBox: {config}")
+        if self.settings_window:
+            logging.debug("Calling save_api_configs from GroupBoxWidget")
+            self.settings_window.save_api_configs()
+        else:
+            logging.warning("SettingsWindow reference not available")
 
 
 class SettingsWindow(QDialog):
@@ -30,23 +208,21 @@ class SettingsWindow(QDialog):
         self.weather_file = './data/weather.txt'
         self.location_file = './data/location.txt'
         self.names_file = './data/name.txt'
-        self.maintain_order_info = './data/maintain_order_info.json'
-        self.score_db = './data/score_db_config.json'
+        self.api_config_file = './data/api_config.json'
         self.encryption_key = 0x5A  # 选择一个简单的密钥
         self.is_calibrating = False  # 初始化校准状态
         self.timetable_data = {}  # 初始化一个空字典以保存时间表数据
+        self.settings_changed = False
+        self.groupboxes = []
         self.load_timetable()  # 加载时刻表数据
         self.load_db_config()  # 加载数据库配置
-        self.load_countdown()  # 加载倒计时数据
         self.load_countdown()  # 加载倒计时数据
         self.load_shutdown_settings()  # 加载自动关机设置
         self.load_news_settings()  # 加载新闻设置
         self.load_weather_settings()  # 加载天气设置
         self.load_location_settings()  # 加载位置设置
-        self.load_score_settings()  # 加载积分设置
         self.load_names()  # 加载名字列表
-        self.load_maintain_order_info() # 加载维护秩序信息
-        self.load_order_settings()
+        self.setup_api_tab()
 
     def setup_ui(self):
         loadUi('./ui/setting.ui', self)
@@ -58,15 +234,12 @@ class SettingsWindow(QDialog):
         self.connect_line_edit_signals()  # 连接通知栏设置文本框的信号
         self.connect_count_line_edit_signals()  # 连接倒计时设置文本框的信号
         self.connect_shutdown_signals()  # 连接自动关机设置文本框的信号
-        self.connect_maintain_order_signals() # 链接维护秩序信息信号
-        self.connect_order_signals() # 链接维护秩序信息开启关闭信号
-        self.pushButton_3.clicked.connect(self.calibrate_microphone)  # 连接校准按钮
         self.connect_news_signals()  # 连接新闻设置信号
         self.connect_weather_signals()  # 连接天气设置信号
-        self.connect_score_signals()
         self.connect_location_signals()  # 连接位置设置信号
         self.plainTextEdit_names = self.findChild(QPlainTextEdit, "plainTextEdit")  # 获取名字编辑器
         self.plainTextEdit_names.textChanged.connect(self.save_names)  # 连接 textChanged 信号
+        self.setup_api_tab()
 
     def on_tab_changed(self, index):
         if index == 3:
@@ -85,10 +258,8 @@ class SettingsWindow(QDialog):
         elif index == 7:
             self.init_theme_settings()
         elif index == 8:
-            self.load_maintain_order_info()
-            self.load_order_settings()
-        elif index == 9:
-            self.load_score_settings()
+            self.load_api_configs()
+
 
     def on_tab_changed_2(self, index):
         if 0 <= index <= 6:
@@ -96,6 +267,119 @@ class SettingsWindow(QDialog):
             self.load_timetable_day(index)
         else:
             logging.warning(f"Unexpected tab index: {index}")
+
+    def setup_api_tab(self):
+        try:
+            self.add_api_button = self.findChild(QPushButton, "pushButton_3")
+            self.remove_api_button = self.findChild(QPushButton, "pushButton_4")
+            self.scroll_area = self.findChild(QScrollArea, "scrollArea")
+
+            if not all([self.add_api_button, self.remove_api_button, self.scroll_area]):
+                logging.error("Missing UI elements in tab 8")
+                QMessageBox.critical(self, "Error", "Missing UI elements in API Settings tab")
+                return
+
+            # Prevent duplicate connections
+            try:
+                self.add_api_button.clicked.disconnect()
+            except TypeError:
+                pass
+            try:
+                self.remove_api_button.clicked.disconnect()
+            except TypeError:
+                pass
+
+            self.add_api_button.clicked.connect(self.add_groupbox)
+            self.remove_api_button.clicked.connect(self.remove_groupbox)
+
+            # Setup scroll area
+            self.scroll_content = QWidget()
+            self.scroll_layout = QVBoxLayout(self.scroll_content)
+            self.scroll_layout.addStretch()
+            self.scroll_area.setWidgetResizable(True)
+            self.scroll_area.setWidget(self.scroll_content)
+
+        except Exception as e:
+            logging.error(f"Failed to setup API tab: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to setup API tab: {str(e)}")
+
+    def add_groupbox(self, config=None):
+        logging.debug(f"Adding GroupBox with config: {config}")
+        groupbox = GroupBoxWidget(config, self.scroll_content, self)  # Pass self as settings_window
+        delete_button = QPushButton("删除")
+        delete_button.clicked.connect(lambda: self.delete_specific_groupbox(groupbox, delete_button))
+        checkbox_layout = QHBoxLayout()
+        checkbox_layout.addWidget(delete_button)
+        checkbox_layout.addWidget(groupbox)
+
+        logging.debug("Inserting GroupBox layout into scroll area")
+        self.scroll_layout.insertLayout(self.scroll_layout.count() - 1, checkbox_layout)
+        self.groupboxes.append((groupbox, delete_button))
+        self.settings_changed = True
+        logging.debug(f"GroupBox added, total: {len(self.groupboxes)}")
+        self.save_api_configs()
+
+    def delete_specific_groupbox(self, groupbox, delete_button):
+        self.scroll_layout.removeWidget(groupbox)
+        self.scroll_layout.removeWidget(delete_button)
+        groupbox.deleteLater()
+        delete_button.deleteLater()
+        self.groupboxes.remove((groupbox, delete_button))
+        self.settings_changed = True
+        self.save_api_configs()
+
+    def remove_groupbox(self):
+        removed = False
+        for groupbox, delete_button in self.groupboxes[:]:
+            if delete_button.isDown():  # Optional: keep for pushButton_4 compatibility
+                self.scroll_layout.removeWidget(groupbox)
+                self.scroll_layout.removeWidget(delete_button)
+                groupbox.deleteLater()
+                delete_button.deleteLater()
+                self.groupboxes.remove((groupbox, delete_button))
+                removed = True
+
+        if removed:
+            self.settings_changed = True
+            self.save_api_configs()
+        else:
+            QMessageBox.warning(self, "警告", "请先选择一个API配置进行删除")
+
+    def load_api_configs(self):
+        logging.debug("Loading API configurations")
+        try:
+            with open(self.api_config_file, "r", encoding="utf-8") as f:
+                configs = json.load(f)
+                logging.debug(f"Loaded {len(configs)} API configurations")
+                # Clear existing GroupBoxes
+                for groupbox, delete_button in self.groupboxes[:]:
+                    logging.debug(f"Removing GroupBox: {groupbox.get_config()['name']}")
+                    self.scroll_layout.removeWidget(groupbox)
+                    self.scroll_layout.removeWidget(delete_button)
+                    groupbox.deleteLater()
+                    delete_button.deleteLater()
+                self.groupboxes.clear()
+                logging.debug("GroupBoxes cleared")
+                # Add GroupBoxes for each config
+                for config in configs:
+                    logging.debug(f"Adding GroupBox for config: {config}")
+                    self.add_groupbox(config)
+                logging.debug("API configurations loaded successfully")
+        except (FileNotFoundError, json.JSONDecodeError):
+            logging.debug("No API configs found or invalid JSON, skipping")
+
+    def save_api_configs(self):
+        logging.debug("Saving API configurations")
+        configs = [groupbox.get_config() for groupbox, _ in self.groupboxes]
+        try:
+            with open(self.api_config_file, "w", encoding="utf-8") as f:
+                json.dump(configs, f, indent=2, ensure_ascii=False)
+            logging.debug(f"Saved {len(configs)} API configurations")
+            self.settings_changed = True
+        except OSError as e:
+            logging.error(f"Failed to save API configs: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to save API configs: {str(e)}")
+
 
 ######################课程表设置##########################################################################################
 
@@ -758,483 +1042,7 @@ class SettingsWindow(QDialog):
         python = sys.executable
         os.execl(python, python, *sys.argv)
 
-#####################################排行榜####################################################
-    def load_score_settings(self):
-        """加载排行榜数据库配置"""
-        try:
-            if not os.path.exists(self.score_db):
-                logging.error(f"配置文件 {self.score_db} 不存在")
-                return
 
-            with open(self.score_db, 'r', encoding='utf-8') as f:
-                content = f.read().strip()
-
-            # 尝试解密
-            config = self.decrypt_data(content, self.encryption_key)
-            if config is not None:
-                # 解密成功，加载到 UI
-                self.lineEdit_29.setText(config.get("host", ""))
-                self.lineEdit_30.setText(str(config.get("port", "")))
-                self.lineEdit_31.setText(config.get("user", ""))
-                self.lineEdit_32.setText(config.get("password", ""))
-                self.lineEdit_33.setText(config.get("database", ""))
-                self.lineEdit_34.setText(config.get("table_name", ""))
-                logging.debug("已加载加密的数据库配置.")
-                return
-
-            # 如果解密失败，尝试直接加载未加密的 JSON
-            logging.info("尝试加载未加密的 JSON 文件")
-            config = json.loads(content)
-            self.lineEdit_29.setText(config.get("host", ""))
-            self.lineEdit_30.setText(str(config.get("port", "")))
-            self.lineEdit_31.setText(config.get("user", ""))
-            self.lineEdit_32.setText(config.get("password", ""))
-            self.lineEdit_33.setText(config.get("database", ""))
-            self.lineEdit_34.setText(config.get("table_name", ""))
-            logging.debug("已加载未加密的数据库配置.")
-
-            # 自动加密并保存
-            encrypted_content = self.encrypt_data(config, self.encryption_key)
-            with open(self.score_db, 'w', encoding='utf-8') as f:
-                f.write(encrypted_content)
-            logging.info(f"配置文件未加密，已自动加密并保存到 {self.score_db}")
-
-        except json.JSONDecodeError:
-            logging.error("配置文件格式错误或解密失败")
-        except Exception as e:
-            logging.error(f"无法加载数据库配置: {e}")
-
-    def connect_score_signals(self):
-        line_edits = [self.lineEdit_29, self.lineEdit_30, self.lineEdit_31, self.lineEdit_32, self.lineEdit_33,
-                      self.lineEdit_34]
-        for line_edit in line_edits:
-            line_edit.textChanged.connect(self.save_score_db_config)
-
-    def save_score_db_config(self):
-        """保存排行榜数据库配置（加密）"""
-        config = {
-            "host": self.lineEdit_29.text(),
-            "port": self.lineEdit_30.text(),  # 保持字符串形式
-            "user": self.lineEdit_31.text(),
-            "password": self.lineEdit_32.text(),
-            "database": self.lineEdit_33.text(),
-            "table_name": self.lineEdit_34.text()
-        }
-
-        try:
-            # 加密数据
-            encrypted_data = self.encrypt_data(config, self.encryption_key)
-            logging.debug(f"Encrypted data: {encrypted_data}")
-
-            # 保存到文件
-            with open(self.score_db, 'w', encoding='utf-8') as f:
-                f.write(encrypted_data)
-            logging.info("Encrypted database configuration saved.")
-        except Exception as e:
-            logging.error(f"Failed to save encrypted database configuration: {e}")
-
-
-###################################秩序维护模块设置#################################################
-    def connect_maintain_order_signals(self):
-        """连接维护秩序设置的控件信号到保存函数"""
-        # 文本输入框信号
-        self.lineEdit_18.textChanged.connect(self.save_maintain_order_info)  # webhook_url
-        self.lineEdit_19.textChanged.connect(self.save_maintain_order_info)  # smms_username
-        self.lineEdit_20.textChanged.connect(self.save_maintain_order_info)  # smms_password
-        self.lineEdit_21.textChanged.connect(self.save_maintain_order_info)  # text_at
-        self.lineEdit_22.textChanged.connect(self.save_maintain_order_info)  # Monday
-        self.lineEdit_23.textChanged.connect(self.save_maintain_order_info)  # Tuesday
-        self.lineEdit_24.textChanged.connect(self.save_maintain_order_info)  # Wednesday
-        self.lineEdit_25.textChanged.connect(self.save_maintain_order_info)  # Thursday
-        self.lineEdit_26.textChanged.connect(self.save_maintain_order_info)  # Friday
-        self.lineEdit_27.textChanged.connect(self.save_maintain_order_info)  # Saturday
-        self.lineEdit_28.textChanged.connect(self.save_maintain_order_info)  # Sunday
-
-        # 下拉框信号（替换原来的 spinBox）
-        self.comboBox_2.currentIndexChanged.connect(self.save_maintain_order_info)  # mic_device_index
-        self.comboBox_3.currentIndexChanged.connect(self.save_maintain_order_info)  # camera_device_index
-        self.spinBox_3.valueChanged.connect(self.save_maintain_order_info)  # threshold_db（保持不变）
-
-    def load_maintain_order_info(self):
-        """加载维护秩序信息到控件，并扫描设备填充 ComboBox"""
-        try:
-            with open(self.maintain_order_info, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                logging.debug(f"Loaded maintain_order_info: {data}")
-
-                # 加载基本设置
-                self.lineEdit_18.setText(data.get("webhook_url", ""))
-                self.lineEdit_19.setText(data.get("smms_username", ""))
-                self.lineEdit_20.setText(data.get("smms_password", ""))
-                self.lineEdit_21.setText(",".join(data.get("text_at", [])))
-                self.spinBox_3.setValue(data.get("threshold_db", -30))
-
-                # 扫描话筒设备并填充 comboBox_2
-                p = pyaudio.PyAudio()
-                mic_devices = []
-                for i in range(p.get_device_count()):
-                    device_info = p.get_device_info_by_index(i)
-                    # 条件1：必须是输入设备
-                    if device_info['maxInputChannels'] <= 0:
-                        continue
-                    # 条件2：排除常见虚拟设备（可选，根据实际情况调整）
-                    device_name = device_info['name'].lower()
-                    if "virtual" in device_name or "default" in device_name or "output" in device_name:
-                        logging.debug(f"跳过可能不可用的设备: {device_info['name']}")
-                        continue
-                    # 条件3：尝试打开设备以验证可用性
-                    try:
-                        stream = p.open(
-                            format=pyaudio.paInt16,
-                            channels=1,
-                            rate=int(device_info['defaultSampleRate']),
-                            input=True,
-                            input_device_index=i,
-                            frames_per_buffer=1024
-                        )
-                        stream.close()
-                        mic_devices.append((device_info['name'], i))
-                        logging.debug(f"可用麦克风设备: {device_info['name']} (index: {i})")
-                    except Exception as e:
-                        logging.debug(f"设备 {device_info['name']} (index: {i}) 不可用: {e}")
-                        continue
-                p.terminate()
-
-                self.comboBox_2.clear()
-                if mic_devices:
-                    for name, _ in mic_devices:
-                        self.comboBox_2.addItem(name)
-                else:
-                    self.comboBox_2.addItem("未检测到可用麦克风")
-                    logging.warning("未找到任何可用的麦克风设备")
-
-                # 设置当前话筒索引
-                mic_index = data.get("mic_device_index", 0)
-                if mic_devices and 0 <= mic_index < len(mic_devices):
-                    self.comboBox_2.setCurrentIndex(mic_index)
-                else:
-                    self.comboBox_2.setCurrentIndex(0)  # 默认选择第一个设备或提示
-                    logging.warning(f"话筒索引 {mic_index} 超出范围或无可用设备，使用默认值 0")
-
-                # 扫描相机设备并填充 comboBox_3
-                if sys.platform == "win32":
-                    graph = FilterGraph()
-                    camera_names = graph.get_input_devices()
-                    camera_devices = [(name, i) for i, name in enumerate(camera_names)]
-                else:
-                    camera_devices = []
-                    index = 0
-                    while True:
-                        cap = cv2.VideoCapture(index)
-                        if not cap.isOpened():
-                            break
-                        camera_devices.append((f"Camera {index}", index))
-                        cap.release()
-                        index += 1
-
-                self.comboBox_3.clear()
-                for name, _ in camera_devices:
-                    self.comboBox_3.addItem(name)
-
-                # 设置当前相机索引
-                camera_index = data.get("camera_device_index", 0)
-                if 0 <= camera_index < len(camera_devices):
-                    self.comboBox_3.setCurrentIndex(camera_index)
-                else:
-                    self.comboBox_3.setCurrentIndex(0)  # 默认选择第一个设备
-                    logging.warning(f"相机索引 {camera_index} 超出范围，使用默认值 0")
-
-                # 加载日程表
-                schedule = data.get("schedule", {})
-                self.lineEdit_22.setText(",".join(schedule.get("Monday", [])))
-                self.lineEdit_23.setText(",".join(schedule.get("Tuesday", [])))
-                self.lineEdit_24.setText(",".join(schedule.get("Wednesday", [])))
-                self.lineEdit_25.setText(",".join(schedule.get("Thursday", [])))
-                self.lineEdit_26.setText(",".join(schedule.get("Friday", [])))
-                self.lineEdit_27.setText(",".join(schedule.get("Saturday", [])))
-                self.lineEdit_28.setText(",".join(schedule.get("Sunday", [])))
-
-                logging.info("维护秩序信息加载成功")
-        except FileNotFoundError:
-            logging.warning(f"{self.maintain_order_info} 文件未找到，使用默认值")
-            self.create_default_maintain_order_file()
-            self.load_maintain_order_info()  # 再次加载默认值
-        except json.JSONDecodeError:
-            logging.error(f"{self.maintain_order_info} 文件格式错误")
-        except Exception as e:
-            logging.error(f"加载维护秩序信息失败: {e}")
-
-    def create_default_maintain_order_file(self):
-        """创建默认的维护秩序配置文件"""
-        default_data = {
-            "webhook_url": "",
-            "smms_username": "",
-            "smms_password": "",
-            "threshold_db": -30,
-            "mic_device_index": 0,
-            "camera_device_index": 0,
-            "text_at": [],
-            "schedule": {
-                "Monday": [],
-                "Tuesday": [],
-                "Wednesday": [],
-                "Thursday": [],
-                "Friday": [],
-                "Saturday": [],
-                "Sunday": []
-            }
-        }
-        try:
-            with open(self.maintain_order_info, 'w', encoding='utf-8') as f:
-                json.dump(default_data, f, ensure_ascii=False, indent=4)
-            logging.info("默认维护秩序文件已创建")
-        except Exception as e:
-            logging.error(f"创建默认维护秩序文件失败: {e}")
-
-    def save_maintain_order_info(self):
-        """保存维护秩序信息到文件，包含防呆措施"""
-        try:
-            # 处理时间格式，确保符合 HH:MM-HH:MM
-            def legalize_time(time_str):
-                """将时间段字符串合法化为 HH:MM-HH:MM 格式，并处理中文标点"""
-                if not time_str:
-                    return []
-                # 替换中文标点为英文标点
-                time_str = time_str.replace('，', ',').replace('：', ':')
-                time_ranges = time_str.split(',')
-                legalized_ranges = []
-
-                for time_range in time_ranges:
-                    time_range = time_range.strip()
-                    if not time_range:
-                        continue
-
-                    # 检查是否为 HH:MM-HH:MM 格式
-                    if '-' in time_range:
-                        start, end = time_range.split('-', 1)
-                        start = start.strip()
-                        end = end.strip()
-
-                        # 处理开始时间
-                        if re.match(r'^\d{2}:\d{2}$', start):
-                            s_hour, s_minute = map(int, start.split(':'))
-                            if not (0 <= s_hour < 24 and 0 <= s_minute < 60):
-                                logging.warning(f"开始时间超出范围: {start}")
-                                continue
-                            start = f"{s_hour:02d}:{s_minute:02d}"
-                        elif re.match(r'^\d{4}$', start):
-                            s_hour, s_minute = int(start[:2]), int(start[2:])
-                            if not (0 <= s_hour < 24 and 0 <= s_minute < 60):
-                                logging.warning(f"开始时间超出范围: {start}")
-                                continue
-                            start = f"{s_hour:02d}:{s_minute:02d}"
-                        else:
-                            logging.warning(f"开始时间格式错误: {start}")
-                            continue
-
-                        # 处理结束时间
-                        if re.match(r'^\d{2}:\d{2}$', end):
-                            e_hour, e_minute = map(int, end.split(':'))
-                            if not (0 <= e_hour < 24 and 0 <= e_minute < 60):
-                                logging.warning(f"结束时间超出范围: {end}")
-                                continue
-                            end = f"{e_hour:02d}:{e_minute:02d}"
-                        elif re.match(r'^\d{4}$', end):
-                            e_hour, e_minute = int(end[:2]), int(end[2:])
-                            if not (0 <= e_hour < 24 and 0 <= e_minute < 60):
-                                logging.warning(f"结束时间超出范围: {end}")
-                                continue
-                            end = f"{e_hour:02d}:{e_minute:02d}"
-                        else:
-                            logging.warning(f"结束时间格式错误: {end}")
-                            continue
-
-                        # 验证开始时间早于结束时间
-                        if start >= end:
-                            logging.warning(f"时间段无效（开始时间晚于结束时间）: {start}-{end}")
-                            continue
-
-                        legalized_ranges.append(f"{start}-{end}")
-                    else:
-                        logging.warning(f"时间段格式错误（缺少'-'）: {time_range}")
-
-                return legalized_ranges
-
-            # 构造 JSON 数据
-            data = {
-                "webhook_url": self.lineEdit_18.text().strip(),
-                "smms_username": self.lineEdit_19.text().strip(),
-                "smms_password": self.lineEdit_20.text().strip(),
-                "threshold_db": self.spinBox_3.value(),
-                "mic_device_index": self.comboBox_2.currentIndex(),  # 从 comboBox_2 获取索引
-                "camera_device_index": self.comboBox_3.currentIndex(),  # 从 comboBox_3 获取索引
-                "text_at": [x.strip() for x in self.lineEdit_21.text().replace('，', ',').split(',') if x.strip()],
-                "schedule": {
-                    "Monday": legalize_time(self.lineEdit_22.text()),
-                    "Tuesday": legalize_time(self.lineEdit_23.text()),
-                    "Wednesday": legalize_time(self.lineEdit_24.text()),
-                    "Thursday": legalize_time(self.lineEdit_25.text()),
-                    "Friday": legalize_time(self.lineEdit_26.text()),
-                    "Saturday": legalize_time(self.lineEdit_27.text()),
-                    "Sunday": legalize_time(self.lineEdit_28.text())
-                }
-            }
-
-            # 保存到文件
-            with open(self.maintain_order_info, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=4)
-            logging.info("维护秩序信息保存成功")
-        except Exception as e:
-            logging.error(f"保存维护秩序信息失败: {e}")
-
-    def connect_order_signals(self):
-        self.buttonBox_2.clicked.connect(self.toggle_order)
-
-    def load_order_settings(self):
-        try:
-            logging.debug("Loading order settings from files.")
-            if not os.path.exists(self.launch_file):
-                logging.warning("Launch file not found. Creating a default one.")
-                self.create_default_launch_file()
-
-            with open(self.launch_file, 'r', encoding='utf-8') as f:
-                launch_data = json.load(f)
-                order_status = launch_data.get('order', '开启')
-                self.label_43.setText(f"{order_status}")
-
-            logging.debug("News settings loaded successfully.")
-        except json.JSONDecodeError as e:
-            logging.error(f"Failed to decode JSON: {e}")
-        except Exception as e:
-            logging.error(f"Failed to load order settings: {e}")
-
-    def toggle_order(self, button):
-        try:
-            with open(self.launch_file, 'r', encoding='utf-8') as f:
-                launch_data = json.load(f)
-
-            current_status = launch_data.get('order', '关闭')
-            if button == self.buttonBox_2.button(QDialogButtonBox.StandardButton.Open):
-                new_status = "开启"
-            elif button == self.buttonBox_2.button(QDialogButtonBox.StandardButton.Close):
-                new_status = "关闭"
-            else:
-                logging.warning(f"Unknown button clicked: {button}")
-                return
-
-            if current_status != new_status:
-                launch_data['order'] = new_status
-                with open(self.launch_file, 'w', encoding='utf-8') as f:
-                    json.dump(launch_data, f, ensure_ascii=False, indent=4)
-
-                self.label_43.setText(f"{new_status}")
-                logging.info(f"order status toggled to: {new_status}")
-        except Exception as e:
-            logging.error(f"Failed to toggle order status: {e}")
-
-    def calibrate_microphone(self):
-        """校准话筒，检测5秒内平均去极值分贝值"""
-        if self.is_calibrating:
-            logging.info("正在校准中，忽略重复点击")
-            return
-
-        logging.debug("开始校准话筒")
-        self.is_calibrating = True
-        self.pushButton_3.setEnabled(False)
-        self.label_66.setText("校准中...")
-
-        # 从 maintain_order_info.json 获取 mic_device_index
-        try:
-            with open(self.maintain_order_info, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                mic_device_index = data.get("mic_device_index", 0)
-            logging.debug(f"使用 mic_device_index: {mic_device_index}")
-        except Exception as e:
-            logging.error(f"读取 mic_device_index 失败: {e}")
-            mic_device_index = 0
-
-        # 启动校准线程
-        self.calibration_thread = CalibrationThread(mic_device_index)
-        try:
-            self.calibration_thread.calibration_complete.connect(self.on_calibration_complete)
-            logging.debug("校准线程信号已连接")
-        except Exception as e:
-            logging.error(f"连接校准线程信号失败: {e}")
-            self.is_calibrating = False
-            self.pushButton_3.setEnabled(True)
-            return
-
-        self.calibration_thread.start()
-        logging.info("校准线程已启动")
-
-    def on_calibration_complete(self, db_value):
-        """处理校准完成事件"""
-        logging.debug(f"收到校准完成信号，db_value: {db_value}")
-        if db_value is not None:
-            self.label_66.setText(f"校准完成: {db_value:.1f} dB")
-            logging.info(f"话筒校准完成，结果: {db_value:.1f} dB")
-        else:
-            self.label_66.setText("校准失败")
-            logging.error("话筒校准失败")
-
-        self.is_calibrating = False
-        self.pushButton_3.setEnabled(True)
-        logging.debug("校准状态已重置")
-
-
-
-class CalibrationThread(QThread):
-    calibration_complete = pyqtSignal(float)
-
-    def __init__(self, mic_device_index):
-        super().__init__()
-        self.mic_device_index = mic_device_index
-        self.CHUNK = 1024
-        self.FORMAT = pyaudio.paInt16
-        self.CHANNELS = 1
-        self.RATE = 44100
-
-    def run(self):
-        """运行校准线程，检测5秒内平均去极值分贝值"""
-        p = None
-        stream = None
-        try:
-            p = pyaudio.PyAudio()
-            device_count = p.get_device_count()
-            logging.debug(f"可用音频设备数: {device_count}")
-            if self.mic_device_index >= device_count or self.mic_device_index < 0:
-                logging.error(f"无效的 mic_device_index: {self.mic_device_index}")
-                self.calibration_complete.emit(None)
-                return
-
-            stream = p.open(format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE, input=True,
-                            frames_per_buffer=self.CHUNK, input_device_index=self.mic_device_index)
-            logging.info("校准线程：音频流初始化成功，开始检测5秒噪音")
-
-            db_values = []
-            for _ in range(int(self.RATE / self.CHUNK * 5)):
-                data = np.frombuffer(stream.read(self.CHUNK, exception_on_overflow=False), dtype=np.int16)
-                rms = np.sqrt(np.mean(data ** 2)) if np.any(data) else 0
-                db = 20 * np.log10(rms) if rms > 0 else -float("inf")
-                db_values.append(db)
-
-            logging.info(f"5秒原始分贝值 - 最小: {min(db_values):.1f}, 最大: {max(db_values):.1f}, 平均: {np.mean(db_values):.1f}")
-            db_array = np.array(db_values)
-            trimmed_db = np.percentile(db_array, [5, 95])
-            trimmed_mean_db = np.mean(db_array[(db_array > trimmed_db[0]) & (db_array < trimmed_db[1])])
-            logging.info(f"去极值后 - 范围: {trimmed_db[0]:.1f} 到 {trimmed_db[1]:.1f}, 平均: {trimmed_mean_db:.1f}")
-
-            self.calibration_complete.emit(trimmed_mean_db)
-        except Exception as e:
-            logging.error(f"校准线程异常: {str(e)}")
-            self.calibration_complete.emit(None)
-        finally:
-            if stream:
-                stream.stop_stream()
-                stream.close()
-            if p:
-                p.terminate()
-            logging.info("校准线程：音频流已关闭")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

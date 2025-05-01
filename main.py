@@ -18,8 +18,6 @@ from time_module import TimeModule  # 导入时间模块
 from weather_module import WeatherModule
 from settings_window import SettingsWindow  # 导入设置窗口类
 from bulletin_board_module import BulletinBoardModule  # 导入公告板模块
-from maintain_order_module import NoiseMonitor  # 噪音检测模块
-from ranking_module import RankingModule  # 导入排行榜模块
 
 # # 配置日志
 # logging.basicConfig(
@@ -60,8 +58,6 @@ class MainWindow(QMainWindow):
         # 初始化时间模块
         self.time_module = TimeModule(self)
 
-        # 初始化排行榜模块
-        self.init_ranking_module()
 
         # 保存和恢复窗口大小和位置
         self.restore_window_geometry()
@@ -91,9 +87,6 @@ class MainWindow(QMainWindow):
         # 将窗口置于最下层
         self.lower()
 
-    def init_ranking_module(self):
-        """初始化排行榜模块"""
-        self.ranking_module = RankingModule(self)
 
     def init_floating_ball(self):
         """初始化悬浮球"""
@@ -173,11 +166,9 @@ class MainWindow(QMainWindow):
         self.timetable_module = TimetableModule(self)
         self.shutdown_module = None
         self.cctv_controller = None
-        self.noise_monitor = None
         self.load_settings()  # 确保设置已加载
         self.init_shutdown_module()  # 在设置加载后初始化关机模块
         self.init_news_module()
-        self.init_noise_monitor()
 
     def update_timetable(self):
         current_time = datetime.now().time()
@@ -190,54 +181,13 @@ class MainWindow(QMainWindow):
                 settings = json.load(file)
                 self.shutdown_status = settings.get('shutdown', '关闭')
                 self.news_status = settings.get('news', '关闭')
-                self.order = settings.get('order', '关闭')
-                self.update_mic_icon()  # 在加载设置后更新图标
         except (FileNotFoundError, json.JSONDecodeError):
             self.shutdown_status = '关闭'
             self.news_status = '关闭'
-            self.order = '关闭'
-            self.update_mic_icon()  # 在加载设置后更新图标
-
-    def update_mic_icon(self):
-        """根据 order 状态更新 toolButton 的图标"""
-        tool_button = self.findChild(QToolButton, "toolButton")  # 检查 UI 文件中的对象名称
-        if tool_button is None:
-            logging.warning("找不到名为 'toolButton' 的 QToolButton，请检查 UI 文件中的对象名称")
-            return
-
-        # 检查文件路径和加载情况
-        if self.order == "开启":
-            icon_path = "icon/mic-on.png"
-        else:  # "关闭" 或其他状态
-            icon_path = "icon/mic-off.png"
-
-        if not os.path.exists(icon_path):
-            logging.warning(f"图标文件不存在: {icon_path}")
-            return
-
-        pixmap = QPixmap(icon_path)
-        if pixmap.isNull():
-            logging.warning(f"无法加载图标文件: {icon_path}")
-            return
-
-        # 设置图标
-        tool_button.setIcon(QIcon(pixmap))
-        logging.info(f"已为 toolButton 设置图标: {icon_path}")
 
     def check_settings(self):
         """检查设置并更新状态"""
         self.load_settings()
-
-    def init_noise_monitor(self):
-        if self.order == '开启':
-            if not hasattr(self, 'noise_monitor') or self.noise_monitor is None:
-                self.noise_monitor = NoiseMonitor()
-        elif self.order == '关闭' and hasattr(self, 'noise_monitor'):
-            if self.noise_monitor is not None:
-                self.noise_monitor.stop()
-            del self.noise_monitor
-            self.noise_monitor = None
-
 
     def init_news_module(self):
         """根据设置初始化新闻联播模块"""
@@ -327,7 +277,7 @@ class MainWindow(QMainWindow):
             tags = response.json()
             if tags:
                 latest_tag = tags[0]['name']
-                current_version = "v3.14"  # 替换为你的当前版本号
+                current_version = "v4.0"  # 替换为你的当前版本号
                 if latest_tag != current_version:
                     self.label_update.setText(f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: red;">检测到新版本 {latest_tag}, 当前版本 {current_version}</a>')
                     self.label_update.setOpenExternalLinks(True)

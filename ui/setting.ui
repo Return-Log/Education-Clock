@@ -63,7 +63,7 @@
       <enum>QTabWidget::Rounded</enum>
      </property>
      <property name="currentIndex">
-      <number>10</number>
+      <number>9</number>
      </property>
      <property name="elideMode">
       <enum>Qt::ElideNone</enum>
@@ -753,407 +753,39 @@
      </widget>
      <widget class="QWidget" name="tab_10">
       <attribute name="title">
-       <string>噪声监测</string>
+       <string>API调用</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout_11">
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_42">
-         <property name="text">
-          <string>模块状态: </string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="2" colspan="2">
-        <widget class="QDialogButtonBox" name="buttonBox_2">
-         <property name="standardButtons">
-          <set>QDialogButtonBox::Close|QDialogButtonBox::Open</set>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLabel" name="label_43">
-         <property name="text">
-          <string>未知</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="3">
-        <widget class="QGroupBox" name="groupBox_2">
-         <property name="title">
-          <string>SM.MS图床API</string>
-         </property>
-         <layout class="QGridLayout" name="gridLayout_13">
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_47">
-            <property name="text">
-             <string>密码: </string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0" colspan="2">
-           <widget class="QLabel" name="label_48">
-            <property name="text">
-             <string>需要提前有一个SM.MS图床账户：&lt;a href='https://smms.app/login' style='color:green;'&gt;SM.MS图床&lt;/a&gt;</string>
-            </property>
-            <property name="openExternalLinks">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_46">
-            <property name="text">
-             <string>用户名: </string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="1">
-           <widget class="QLineEdit" name="lineEdit_20"/>
-          </item>
-          <item row="2" column="1">
-           <widget class="QLineEdit" name="lineEdit_19"/>
-          </item>
-          <item row="1" column="0" colspan="2">
-           <widget class="QLabel" name="label_49">
-            <property name="text">
-             <string>注：现在图床无法邮箱注册，可使用GitHub或Google登录</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item row="4" column="0" colspan="3">
-        <widget class="QGroupBox" name="groupBox_3">
-         <property name="title">
-          <string>检测参数</string>
-         </property>
-         <layout class="QGridLayout" name="gridLayout_14">
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_50">
-            <property name="text">
-             <string>噪声阈值：</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="1">
-           <widget class="QLabel" name="label_66">
-            <property name="text">
-             <string>db</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_51">
-            <property name="text">
-             <string>话筒：</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_52">
-            <property name="text">
-             <string>相机：</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_65">
-            <property name="text">
-             <string>话筒校准：</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="2">
-           <widget class="QPushButton" name="pushButton_3">
-            <property name="text">
-             <string>开始</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1" colspan="2">
-           <widget class="QSpinBox" name="spinBox_3">
-            <property name="minimum">
-             <number>-30</number>
-            </property>
-            <property name="maximum">
-             <number>200</number>
-            </property>
-            <property name="singleStep">
-             <number>3</number>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QComboBox" name="comboBox_2"/>
-          </item>
-          <item row="2" column="1">
-           <widget class="QComboBox" name="comboBox_3"/>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item row="2" column="0" colspan="3">
-        <widget class="QGroupBox" name="groupBox">
-         <property name="title">
-          <string>钉钉机器人Webhook地址</string>
-         </property>
-         <layout class="QGridLayout" name="gridLayout_12">
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_53">
-            <property name="text">
-             <string>@群组中用户：</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="0" colspan="2">
-           <widget class="QLabel" name="label_64">
-            <property name="text">
-             <string>不同用户间使用逗号隔开</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0" colspan="2">
-           <widget class="QLabel" name="label_44">
-            <property name="text">
-             <string>机器人安全模式要设为关键词模式：监控报警</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_45">
-            <property name="text">
-             <string>Webhook: </string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0" colspan="2">
-           <widget class="QLabel" name="label_54">
-            <property name="text">
-             <string>@用户需要在@后加对应用户电话号</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QLineEdit" name="lineEdit_18"/>
-          </item>
-          <item row="2" column="1">
-           <widget class="QLineEdit" name="lineEdit_21"/>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item row="4" column="3">
-        <widget class="QGroupBox" name="groupBox_4">
-         <property name="title">
-          <string>检测时间段</string>
-         </property>
-         <layout class="QGridLayout" name="gridLayout_15">
-          <item row="7" column="1">
-           <widget class="QLineEdit" name="lineEdit_28"/>
-          </item>
-          <item row="6" column="1">
-           <widget class="QLineEdit" name="lineEdit_27"/>
-          </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_57">
-            <property name="text">
-             <string>周三：</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_56">
-            <property name="text">
-             <string>周二：</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="1">
-           <widget class="QLineEdit" name="lineEdit_24"/>
-          </item>
-          <item row="4" column="1">
-           <widget class="QLineEdit" name="lineEdit_25"/>
-          </item>
-          <item row="8" column="0" colspan="2">
-           <widget class="QLabel" name="label_62">
-            <property name="text">
-             <string>示例：08:00-09:00</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="0">
-           <widget class="QLabel" name="label_58">
-            <property name="text">
-             <string>周四：</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QLineEdit" name="lineEdit_22"/>
-          </item>
-          <item row="5" column="1">
-           <widget class="QLineEdit" name="lineEdit_26"/>
-          </item>
-          <item row="7" column="0">
-           <widget class="QLabel" name="label_61">
-            <property name="text">
-             <string>周日：</string>
-            </property>
-           </widget>
-          </item>
-          <item row="6" column="0">
-           <widget class="QLabel" name="label_60">
-            <property name="text">
-             <string>周六：</string>
-            </property>
-           </widget>
-          </item>
-          <item row="5" column="0">
-           <widget class="QLabel" name="label_59">
-            <property name="text">
-             <string>周五：</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_55">
-            <property name="text">
-             <string>周一：</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="1">
-           <widget class="QLineEdit" name="lineEdit_23"/>
-          </item>
-          <item row="9" column="0" colspan="2">
-           <widget class="QLabel" name="label_63">
-            <property name="text">
-             <string>一天中不同时间段之间用逗号隔开</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-       <item row="1" column="2">
-        <spacer name="verticalSpacer_10">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>40</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-      </layout>
-     </widget>
-     <widget class="QWidget" name="tab_18">
-      <attribute name="title">
-       <string>排行榜</string>
-      </attribute>
-      <layout class="QGridLayout" name="gridLayout_16">
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_67">
-         <property name="text">
-          <string>## 数据库信息</string>
-         </property>
-         <property name="textFormat">
-          <enum>Qt::MarkdownText</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_69">
-         <property name="text">
-          <string>user</string>
-         </property>
-        </widget>
-       </item>
        <item row="1" column="0">
-        <widget class="QLabel" name="label_68">
+        <widget class="QPushButton" name="pushButton_3">
          <property name="text">
-          <string>host</string>
+          <string>新建</string>
          </property>
         </widget>
-       </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="label_70">
-         <property name="text">
-          <string>password</string>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="0">
-        <widget class="QLabel" name="label_71">
-         <property name="text">
-          <string>database</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QLineEdit" name="lineEdit_30"/>
        </item>
        <item row="1" column="1">
-        <widget class="QLineEdit" name="lineEdit_29">
-         <property name="echoMode">
-          <enum>QLineEdit::Password</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="1">
-        <widget class="QLineEdit" name="lineEdit_34"/>
-       </item>
-       <item row="3" column="1">
-        <widget class="QLineEdit" name="lineEdit_31">
-         <property name="echoMode">
-          <enum>QLineEdit::Password</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <widget class="QLineEdit" name="lineEdit_32">
-         <property name="echoMode">
-          <enum>QLineEdit::Password</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="6" column="0">
-        <widget class="QLabel" name="label_73">
+        <widget class="QPushButton" name="pushButton_4">
          <property name="text">
-          <string>table_name</string>
+          <string>删除</string>
          </property>
         </widget>
        </item>
-       <item row="5" column="1">
-        <widget class="QLineEdit" name="lineEdit_33">
-         <property name="echoMode">
-          <enum>QLineEdit::Password</enum>
+       <item row="0" column="0" colspan="2">
+        <widget class="QScrollArea" name="scrollArea">
+         <property name="widgetResizable">
+          <bool>true</bool>
          </property>
+         <widget class="QWidget" name="scrollAreaWidgetContents">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>698</width>
+            <height>551</height>
+           </rect>
+          </property>
+         </widget>
         </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_72">
-         <property name="text">
-          <string>port</string>
-         </property>
-        </widget>
-       </item>
-       <item row="7" column="0">
-        <spacer name="verticalSpacer_11">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>40</height>
-          </size>
-         </property>
-        </spacer>
        </item>
       </layout>
      </widget>
@@ -1171,7 +803,7 @@
        <item row="0" column="1" colspan="3">
         <widget class="QLabel" name="label_32">
          <property name="text">
-          <string>## Education Clock v3.14</string>
+          <string>## Education Clock v4.0</string>
          </property>
          <property name="textFormat">
           <enum>Qt::MarkdownText</enum>
@@ -1253,7 +885,7 @@
        <item row="2" column="1" colspan="3">
         <widget class="QLabel" name="label_33">
          <property name="text">
-          <string>2025年4月20日 构建</string>
+          <string>2025年5月5日 构建</string>
          </property>
         </widget>
        </item>
