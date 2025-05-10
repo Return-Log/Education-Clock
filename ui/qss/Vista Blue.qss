@@ -274,8 +274,8 @@ QTableWidget::corner:pressed {
     text-shadow: 0 3px 6px rgba(0, 0, 0, 0.8);
 }
 
-#textBrowser {
-    font-size: 20px;
+QTextBrowser {
+    font-size: 18px;
     border: 0px solid rgba(100, 150, 200, 150);
 }
 

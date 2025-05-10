@@ -227,7 +227,6 @@ class SettingsWindow(QDialog):
     def setup_ui(self):
         loadUi('./ui/setting.ui', self)
         self.tabWidget.currentChanged.connect(self.on_tab_changed)
-        self.init_theme_settings()
         self.tabWidget_2.currentChanged.connect(self.on_tab_changed_2)
         self.pushButton.clicked.connect(self.insert_row)
         self.pushButton_2.clicked.connect(self.delete_row)
@@ -1000,11 +999,13 @@ class SettingsWindow(QDialog):
             qss_files = [f for f in os.listdir(qss_dir) if f.endswith('.qss')]
             self.comboBox_themes.clear()
             self.comboBox_themes.addItems(qss_files)
+        else:
+            logging.warning(f"QSS 目录不存在: {qss_dir}")
+            self.comboBox_themes.clear()
 
-        # 设置默认选择
         self.load_current_theme()
 
-        # 连接 comboBox 的 currentIndexChanged 信号
+        # 连接信号
         self.comboBox_themes.currentIndexChanged.connect(self.save_selected_theme)
 
     def load_current_theme(self):

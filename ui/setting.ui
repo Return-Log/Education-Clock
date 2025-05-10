@@ -885,7 +885,7 @@
        <item row="2" column="1" colspan="3">
         <widget class="QLabel" name="label_33">
          <property name="text">
-          <string>2025年5月5日 构建</string>
+          <string>2025年5月10日 构建</string>
          </property>
         </widget>
        </item>
