@@ -1,22 +1,20 @@
-# Education Clock v3.13
+# Education Clock v4.0
 
 > [!NOTE]
 >
-> 软件具有-桌面时钟 -课程表 -天气预报 -自动新闻联播 -定时关机 -消息通知栏 -随机点名-噪声超标预警等功能
+> 软件具有-桌面时钟 -课程表 -天气预报 -自动新闻联播 -定时关机 -消息通知栏 -随机点名-新闻看板等功能
 
 ![-Education Clock.png](https://s2.loli.net/2024/12/08/K8Dedr6xpkSvyPa.png)
 
 # 信息
 
-版本：v3.13
+版本：v4.0
 
-时间：2025年4月6日
+时间：2025年5月10日
 
 协议：GPLv3
 
 GitHub仓库: https://github.com/Return-Log/Education-Clock
-
-有建议与问题请提交Issues: https://github.com/Return-Log/Education-Clock/issues
 
 # 功能说明
 
@@ -219,13 +217,19 @@ alibabacloud-tea-util  # 钉钉 SDK 依赖的 TEA 工具库
 
 点击小猫悬浮球可打开工具栏，目前有随机点名、通知消息本地发送功能
 
-## 噪音检测
+## API调用（新闻看板）
 
-需要准备一个SM.MS图床账户和一个钉钉群机器人的Webhook地址
+显示效果
 
-钉钉机器人需设置安全设置自定义关键词"监控报警"
+![PixPin_2025-05-11_01-17-31.png](https://s2.loli.net/2025/05/11/1xKqRodS5mn2u9c.png)
 
-噪音检测运行时会检测15秒内的噪音均值，如果超出阈值则会弹出提示框警告，警告结束后的15秒内噪音继续超出阈值则会向对应钉钉群推送预警信息，如果二次检测没有超出阈值则回到最初的检测状态
+### 设置
+
+![PixPin_2025-05-11_01-18-49.png](https://s2.loli.net/2025/05/11/asMZ7bqpWf295V6.png)
+
+目前只能解析文本类API（需要显示的项都在"data"下）
+
+使用md格式，api中的内容显示需加{}，如上图所示
 
 ------
 
