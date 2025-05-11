@@ -3,9 +3,9 @@ import os
 import sys
 import requests
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget, QToolButton, QTextEdit, QLabel, \
-    QTextBrowser
+    QTextBrowser, QDialog
 from PyQt6.uic import loadUi
-from PyQt6.QtCore import QTimer, Qt, QUrl
+from PyQt6.QtCore import QTimer, Qt, QUrl, pyqtSignal
 from PyQt6.QtGui import QDesktopServices, QIcon, QPixmap
 from PyQt6.QtWidgets import QMessageBox
 from PyQt6.QtCore import QSettings
@@ -32,10 +32,27 @@ from API_display_module import APIDisplayModule
 
 
 class MainWindow(QMainWindow):
+    # 自定义刷新信号
+    refresh_timetable_signal = pyqtSignal()
+    refresh_weather_signal = pyqtSignal()
+    refresh_news_signal = pyqtSignal()
+    refresh_shutdown_signal = pyqtSignal()
+    refresh_bulletin_signal = pyqtSignal()
+    refresh_api_display_signal = pyqtSignal()
+    refresh_time_signal = pyqtSignal()
     def __init__(self):
         super().__init__()
         # 加载 .ui 文件
         loadUi('./ui/mainwindow.ui', self)  # 替换为实际路径
+
+        # 连接信号到对应的刷新方法
+        self.refresh_timetable_signal.connect(self.refresh_timetable)
+        self.refresh_weather_signal.connect(self.refresh_weather)
+        self.refresh_news_signal.connect(self.refresh_news)
+        self.refresh_shutdown_signal.connect(self.refresh_shutdown)
+        self.refresh_bulletin_signal.connect(self.refresh_bulletin)
+        self.refresh_api_display_signal.connect(self.refresh_api_display)
+        self.refresh_time_signal.connect(self.refresh_time)
 
         # 初始化各个模块
         self.init_modules()
@@ -90,6 +107,49 @@ class MainWindow(QMainWindow):
         # 将窗口置于最下层
         self.lower()
 
+    def refresh_timetable(self):
+        """刷新课表模块"""
+        self.timetable_module = TimetableModule(self)
+        self.update_timetable()
+
+    def refresh_time(self):
+        self.time_module = TimeModule(self)
+        logging.info("更新时间模块")
+
+    def refresh_weather(self):
+        """刷新天气模块"""
+        widget_2 = self.findChild(QWidget, "widget_2")
+        if widget_2 is not None:
+            self.weather_module = WeatherModule(widget_2)
+            layout = QVBoxLayout()
+            layout.addWidget(self.weather_module)
+            widget_2.setLayout(layout)
+        else:
+            self.show_message("找不到 widget_2，请检查 UI 文件")
+
+    def refresh_news(self):
+        """刷新自动新闻模块"""
+        self.load_settings()
+        self.init_news_module()
+
+    def refresh_shutdown(self):
+        """刷新关机模块"""
+        self.load_settings()
+        self.init_shutdown_module()
+
+    def refresh_bulletin(self):
+        """刷新公告板模块"""
+        text_edit = self.findChild(QTextBrowser, "textBrowser")
+        if text_edit is not None:
+            self.bulletin_board_module = BulletinBoardModule(self, text_edit)
+        else:
+            self.show_message("找不到 textEdit，请检查 UI 文件")
+
+    def refresh_api_display(self):
+        if hasattr(self, 'api_display_module') and self.api_display_module is not None:
+            self.api_display_module.update()  # 假设该模块有一个 update 方法
+        else:
+            self.show_message("API 显示模块未初始化")
 
     def init_floating_ball(self):
         """初始化悬浮球"""
@@ -261,9 +321,38 @@ class MainWindow(QMainWindow):
         event.accept()
 
     def open_settings_window(self):
-        # 创建并显示设置窗口
         settings_window = SettingsWindow(self)
-        settings_window.exec()
+
+        # 安全地尝试断开旧连接（仅当存在该属性）
+        if hasattr(settings_window, 'refresh_signal'):
+            try:
+                settings_window.refresh_signal.disconnect()
+            except TypeError:
+                pass
+
+            settings_window.refresh_signal.connect(self.handle_module_refresh)
+
+        if settings_window.exec() == QDialog.DialogCode.Accepted:
+            pass
+
+    def handle_module_refresh(self, module_name: str):
+        QTimer.singleShot(0, lambda: self.emit_specific_signal(module_name))
+
+    def emit_specific_signal(self, module_name: str):
+        if module_name == "timetable":
+            self.refresh_timetable_signal.emit()
+        elif module_name == "weather":
+            self.refresh_weather_signal.emit()
+        elif module_name == "news":
+            self.refresh_news_signal.emit()
+        elif module_name == "shutdown":
+            self.refresh_shutdown_signal.emit()
+        elif module_name == "bulletin":
+            self.refresh_bulletin_signal.emit()
+        elif module_name == "api_display":
+            self.refresh_api_display_signal.emit()
+        elif module_name == "time":
+            self.refresh_time_signal.emit()
 
     def init_bulletin_board_module(self):
         text_edit = self.findChild(QTextBrowser, "textBrowser")

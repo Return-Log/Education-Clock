@@ -42,6 +42,8 @@ class GroupBoxWidget(QGroupBox):
         self.refresh_time_input.textChanged.connect(self.on_config_changed)
         logging.debug("GroupBoxWidget initialization complete")
 
+
+
     def setup_ui(self):
         layout = QGridLayout(self)
 
@@ -197,8 +199,10 @@ class GroupBoxWidget(QGroupBox):
 
 
 class SettingsWindow(QDialog):
+    refresh_signal = pyqtSignal(str)  # 发送给主窗口的刷新信号
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.modules_to_refresh = set()  # 使用 set 避免重复添加模块
         self.setup_ui()
         self.timetable_file = './data/timetable.json'
         self.db_config_file = './data/db_config.json'
@@ -223,6 +227,14 @@ class SettingsWindow(QDialog):
         self.load_location_settings()  # 加载位置设置
         self.load_names()  # 加载名字列表
         self.setup_api_tab()
+
+    def closeEvent(self, event):
+        """无论点击 OK、Cancel 还是关闭按钮，都会进入这里"""
+        logging.debug(f"刷新模块: {self.modules_to_refresh}")
+        for module in self.modules_to_refresh:
+            self.refresh_signal.emit(module)
+        self.modules_to_refresh.clear()
+        super().accept()
 
     def setup_ui(self):
         loadUi('./ui/setting.ui', self)
@@ -492,6 +504,7 @@ class SettingsWindow(QDialog):
         with open(self.timetable_file, 'w', encoding='utf-8') as f:
             json.dump(self.timetable_data, f, ensure_ascii=False, indent=4)
         logging.info(f"{day_name}的课表已保存。")
+        self.modules_to_refresh.add("timetable")
 
     def validate_time_format(self, time_str):
         """验证时间格式是否为 hh:mm"""
@@ -595,6 +608,9 @@ class SettingsWindow(QDialog):
             with open(self.db_config_file, 'w', encoding='utf-8') as f:
                 f.write(encrypted_data)
                 logging.info("Database configuration saved.")
+
+            self.modules_to_refresh.add("bulletin")
+
         except Exception as e:
             logging.error(f"Failed to save database configuration: {e}")
 
@@ -657,6 +673,10 @@ class SettingsWindow(QDialog):
             with open(self.countdown_file, 'w', encoding='utf-8') as f:
                 f.write(json_data)
                 logging.info("Countdown saved successfully.")
+
+            self.modules_to_refresh.add("time")
+
+
         except Exception as e:
             logging.error(f"Failed to save countdown: {e}")
 
@@ -826,6 +846,8 @@ class SettingsWindow(QDialog):
             with open(self.closetime_file, 'w', encoding='utf-8') as f:
                 json.dump(closetime_data, f, ensure_ascii=False, indent=4)
 
+            self.modules_to_refresh.add("shutdown")
+
             logging.info("Shutdown times saved successfully.")
         except Exception as e:
             logging.error(f"Failed to save shutdown settings: {e}")
@@ -870,6 +892,8 @@ class SettingsWindow(QDialog):
                 with open(self.launch_file, 'w', encoding='utf-8') as f:
                     json.dump(launch_data, f, ensure_ascii=False, indent=4)
 
+                self.modules_to_refresh.add("news")
+
                 self.label_2.setText(f"{new_status}")
                 logging.info(f"News status toggled to: {new_status}")
         except Exception as e:
@@ -908,6 +932,7 @@ class SettingsWindow(QDialog):
             api_key = self.lineEdit_2.text().strip()
             with open(self.weather_file, 'w', encoding='utf-8') as f:
                 f.write(api_key)
+            self.modules_to_refresh.add("weather")
             logging.info("Weather settings saved successfully.")
         except Exception as e:
             logging.error(f"Failed to save weather settings: {e}")
@@ -1038,17 +1063,5 @@ class SettingsWindow(QDialog):
         except Exception as e:
             QMessageBox.critical(self, "错误", f"无法保存主题设置: {e}")
 
-    def closeEvent(self, event):
-        QMessageBox.information(self, "重启", "设置已更改，重启应用程序以应用更改。")
-        python = sys.executable
-        os.execl(python, python, *sys.argv)
 
 
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    with open('data/qss.qss', 'r', encoding="utf-8") as f:
-        app.setStyleSheet(f.read())
-    window = SettingsWindow()
-    window.show()
-    sys.exit(app.exec())

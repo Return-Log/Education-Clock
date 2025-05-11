@@ -733,10 +733,7 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="1">
-        <widget class="QComboBox" name="comboBox"/>
-       </item>
-       <item row="1" column="0">
+       <item row="2" column="0">
         <spacer name="verticalSpacer_8">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -748,6 +745,16 @@
           </size>
          </property>
         </spacer>
+       </item>
+       <item row="0" column="1">
+        <widget class="QComboBox" name="comboBox"/>
+       </item>
+       <item row="1" column="0" colspan="2">
+        <widget class="QLabel" name="label_42">
+         <property name="text">
+          <string>设置完成后需手动重启以应用新主题</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -780,8 +787,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>698</width>
-            <height>551</height>
+            <width>98</width>
+            <height>28</height>
            </rect>
           </property>
          </widget>

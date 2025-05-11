@@ -242,3 +242,43 @@ class APIDisplayModule:
         tab_info = self.tabs_info.get(name)
         if tab_info and tab_info["browser"]:
             tab_info["browser"].setHtml(f"<p style='color:red;'><strong>错误</strong>: {message}</p>")
+
+    def update(self):
+        """重新初始化模块：清除现有内容并重新加载 API 配置"""
+        self.clear_all_tabs()
+        self.late_init()
+
+    def clear_all_tabs(self):
+        """清理所有由本模块创建的 tab 和线程资源"""
+        for name, info in list(self.tabs_info.items()):
+            # 停止定时器
+            if "timer" in info:
+                info["timer"].stop()
+
+            # 清理 API 线程
+            if "api_thread" in info:
+                info["api_thread"].quit()
+                info["api_thread"].wait()
+                del info["api_thread"]
+            if "api_worker" in info:
+                del info["api_worker"]
+
+            # 清理图片线程
+            if "image_thread" in info:
+                info["image_thread"].quit()
+                info["image_thread"].wait()
+                del info["image_thread"]
+            if "image_worker" in info:
+                del info["image_worker"]
+
+            # 获取 tab 对象
+            tab_obj = self.tab_widget.widget(self.tab_widget.indexOf(info["browser"]))
+
+            # 从 tabWidget 中移除 tab
+            if tab_obj:
+                self.tab_widget.removeTab(self.tab_widget.indexOf(tab_obj))
+                tab_obj.deleteLater()  # 安全释放内存
+
+        # 清空状态字典
+        self.tabs_info.clear()
+
