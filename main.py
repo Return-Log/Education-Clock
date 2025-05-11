@@ -147,7 +147,7 @@ class MainWindow(QMainWindow):
 
     def refresh_api_display(self):
         if hasattr(self, 'api_display_module') and self.api_display_module is not None:
-            self.api_display_module.update()  # 假设该模块有一个 update 方法
+            self.api_display_module.update()
         else:
             self.show_message("API 显示模块未初始化")
 
@@ -353,6 +353,7 @@ class MainWindow(QMainWindow):
             self.refresh_api_display_signal.emit()
         elif module_name == "time":
             self.refresh_time_signal.emit()
+
 
     def init_bulletin_board_module(self):
         text_edit = self.findChild(QTextBrowser, "textBrowser")

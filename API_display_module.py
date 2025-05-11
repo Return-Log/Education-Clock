@@ -68,10 +68,14 @@ class APIWorker(QObject):
 
             output = ""
             for item in data:
+                if not isinstance(item, dict):
+                    continue  # 跳过非字典类型的数据项
                 line = self.template
                 for key, value in item.items():
-                    line = line.replace("{" + key + "}", str(value))
+                    placeholder = "{" + key + "}"
+                    line = line.replace(placeholder, str(value))
                 output += line + "\n"
+
             self.data_fetched.emit(output)
         except Exception as e:
             self.error_occurred.emit(f"API 请求失败: {str(e)}")
@@ -92,7 +96,28 @@ class APIDisplayModule:
         config_path = "data/api_config.json"
         try:
             with open(config_path, "r", encoding="utf-8") as f:
-                self.api_configs = json.load(f)  # 读取全部配置
+                raw_data = f.read()
+                if not raw_data.strip():
+                    raise ValueError("配置文件为空")
+                self.api_configs = json.loads(raw_data)
+        except FileNotFoundError:
+            error_tab = QWidget()
+            layout = QVBoxLayout()
+            browser = QTextBrowser()
+            browser.setMarkdown("**错误**: 找不到配置文件，请确认 'data/api_config.json' 是否存在。")
+            layout.addWidget(browser)
+            error_tab.setLayout(layout)
+            self.tab_widget.addTab(error_tab, "错误")
+            return
+        except json.JSONDecodeError as je:
+            error_tab = QWidget()
+            layout = QVBoxLayout()
+            browser = QTextBrowser()
+            browser.setMarkdown(f"**错误**: 配置文件格式错误（JSON 解析失败） - {str(je)}")
+            layout.addWidget(browser)
+            error_tab.setLayout(layout)
+            self.tab_widget.addTab(error_tab, "错误")
+            return
         except Exception as e:
             error_tab = QWidget()
             layout = QVBoxLayout()
@@ -104,13 +129,16 @@ class APIDisplayModule:
             return
 
         for config in self.api_configs:
+            # 检查每个配置项是否为字典类型
+            if not isinstance(config, dict):
+                continue
             self.create_api_tab(config)
 
     def create_api_tab(self, config):
         name = config.get("name", "Unnamed Tab")
         url = config.get("url")
         template = config.get("template", "")
-        refresh_time = int(config.get("refresh_time", "1440")) * 1000  # 单位：毫秒
+        refresh_time_str = config.get("refresh_time", "1440")
 
         if not url or not template:
             tab = QWidget()
@@ -121,6 +149,11 @@ class APIDisplayModule:
             tab.setLayout(layout)
             self.tab_widget.addTab(tab, name)
             return
+
+        try:
+            refresh_time = int(refresh_time_str) * 1000
+        except (TypeError, ValueError):
+            refresh_time = 1440 * 1000  # 默认值
 
         # 创建标签页
         tab = QWidget()
@@ -271,13 +304,15 @@ class APIDisplayModule:
             if "image_worker" in info:
                 del info["image_worker"]
 
-            # 获取 tab 对象
-            tab_obj = self.tab_widget.widget(self.tab_widget.indexOf(info["browser"]))
-
-            # 从 tabWidget 中移除 tab
-            if tab_obj:
-                self.tab_widget.removeTab(self.tab_widget.indexOf(tab_obj))
-                tab_obj.deleteLater()  # 安全释放内存
+        tab_count = self.tab_widget.count()
+        print(f"当前共有 {tab_count} 个标签页，将删除除第一个外的所有标签页。")
+        for i in range(tab_count - 1, 0, -1):  # 倒序删除
+            tab = self.tab_widget.widget(i)
+            tab_name = self.tab_widget.tabText(i)
+            print(f"正在删除标签页: {tab_name}")
+            if tab:
+                tab.deleteLater()
+            self.tab_widget.removeTab(i)
 
         # 清空状态字典
         self.tabs_info.clear()

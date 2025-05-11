@@ -310,6 +310,7 @@ class SettingsWindow(QDialog):
             self.scroll_area.setWidgetResizable(True)
             self.scroll_area.setWidget(self.scroll_content)
 
+
         except Exception as e:
             logging.error(f"Failed to setup API tab: {str(e)}")
             QMessageBox.critical(self, "Error", f"Failed to setup API tab: {str(e)}")
@@ -387,6 +388,7 @@ class SettingsWindow(QDialog):
                 json.dump(configs, f, indent=2, ensure_ascii=False)
             logging.debug(f"Saved {len(configs)} API configurations")
             self.settings_changed = True
+            self.modules_to_refresh.add("api_display")
         except OSError as e:
             logging.error(f"Failed to save API configs: {str(e)}")
             QMessageBox.critical(self, "Error", f"Failed to save API configs: {str(e)}")
