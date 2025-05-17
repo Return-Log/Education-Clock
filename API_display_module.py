@@ -3,10 +3,43 @@ import requests
 import base64
 import re
 import markdown2  # 新增依赖
+from PyQt6.QtGui import QMouseEvent
 
 from PyQt6.QtWidgets import QTextBrowser, QWidget, QVBoxLayout
-from PyQt6.QtCore import QThread, QObject, pyqtSignal, QTimer
+from PyQt6.QtCore import QThread, QObject, pyqtSignal, QTimer, QPoint, Qt
 
+
+class DraggableTextBrowser(QTextBrowser):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMouseTracking(True)
+        self._is_dragging = False
+        self._last_pos = QPoint()
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._is_dragging = True
+            self._last_pos = event.pos()
+            self.setCursor(Qt.CursorShape.ClosedHandCursor)
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if self._is_dragging:
+            delta = event.pos() - self._last_pos
+            self._last_pos = event.pos()
+            v_scroll = self.verticalScrollBar()
+            h_scroll = self.horizontalScrollBar()
+            v_scroll.setValue(v_scroll.value() - delta.y())
+            h_scroll.setValue(h_scroll.value() - delta.x())
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._is_dragging = False
+            self.setCursor(Qt.CursorShape.ArrowCursor)
+        super().mouseReleaseEvent(event)
 
 class ImagePreloadWorker(QObject):
     images_processed = pyqtSignal(str)  # 输出 HTML 字符串
@@ -103,7 +136,7 @@ class APIDisplayModule:
         except FileNotFoundError:
             error_tab = QWidget()
             layout = QVBoxLayout()
-            browser = QTextBrowser()
+            browser = DraggableTextBrowser()
             browser.setMarkdown("**错误**: 找不到配置文件，请确认 'data/api_config.json' 是否存在。")
             layout.addWidget(browser)
             error_tab.setLayout(layout)
@@ -112,7 +145,7 @@ class APIDisplayModule:
         except json.JSONDecodeError as je:
             error_tab = QWidget()
             layout = QVBoxLayout()
-            browser = QTextBrowser()
+            browser = DraggableTextBrowser()
             browser.setMarkdown(f"**错误**: 配置文件格式错误（JSON 解析失败） - {str(je)}")
             layout.addWidget(browser)
             error_tab.setLayout(layout)
@@ -121,7 +154,7 @@ class APIDisplayModule:
         except Exception as e:
             error_tab = QWidget()
             layout = QVBoxLayout()
-            browser = QTextBrowser()
+            browser = DraggableTextBrowser()
             browser.setMarkdown(f"**错误**: 无法加载配置 - {str(e)}")
             layout.addWidget(browser)
             error_tab.setLayout(layout)
@@ -143,7 +176,7 @@ class APIDisplayModule:
         if not url or not template:
             tab = QWidget()
             layout = QVBoxLayout()
-            browser = QTextBrowser()
+            browser = DraggableTextBrowser()
             browser.setMarkdown(f"**错误**: 缺少 URL 或模板 - {name}")
             layout.addWidget(browser)
             tab.setLayout(layout)
@@ -158,7 +191,7 @@ class APIDisplayModule:
         # 创建标签页
         tab = QWidget()
         layout = QVBoxLayout()
-        browser = QTextBrowser()
+        browser = DraggableTextBrowser()
         browser.setOpenExternalLinks(True)
         browser.setHtml("<p><strong>加载中...</strong><br>正在获取数据和图片，请稍候。</p>")
         layout.addWidget(browser)
