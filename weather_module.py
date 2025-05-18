@@ -146,19 +146,61 @@ class WeatherModule(QWidget):
             self.display_error("缺少location.txt文件")
             return None
 
+    def get_wind_description(self, speed_mps):
+        """根据风速(m/s)返回风力等级和描述"""
+        if speed_mps < 0.3:
+            return "0级无风"
+        elif speed_mps < 1.6:
+            return "1级软风"
+        elif speed_mps < 3.4:
+            return "2级轻风"
+        elif speed_mps < 5.5:
+            return "3级微风"
+        elif speed_mps < 8.0:
+            return "4级和风"
+        elif speed_mps < 10.8:
+            return "5级清风"
+        elif speed_mps < 13.9:
+            return "6级强风"
+        elif speed_mps < 17.2:
+            return "7级劲风"
+        elif speed_mps < 20.8:
+            return "8级大风"
+        elif speed_mps < 24.5:
+            return "9级烈风"
+        elif speed_mps < 28.5:
+            return "10级狂风"
+        elif speed_mps < 32.7:
+            return "11级暴风"
+        elif speed_mps < 36.9:
+            return "一级飓风"
+        elif speed_mps < 41.4:
+            return "一级飓风"
+        elif speed_mps < 46.1:
+            return "二级飓风"
+        elif speed_mps < 50.9:
+            return "三级飓风"
+        elif speed_mps < 56.0:
+            return "三级飓风"
+        else:
+            return "四级飓风"
+
     def handle_real_time_data(self, data):
         """处理实时天气数据"""
         try:
             now = data['now']
+            wind_speed_kmh = float(now['windSpeed'])  # 确保是浮点数
+            wind_speed_mps = round(wind_speed_kmh / 3.6, 1)  # 转换为 m/s，保留一位小数
+            wind_desc = self.get_wind_description(wind_speed_mps)
+
             real_time_text = (
                 f"当前: {now['text']}\n"
                 f"温度: {now['temp']}°C 体感: {now['feelsLike']}°C\n"
                 f"湿度: {now['humidity']}%\n"
-                f"风速: {now['windSpeed']} km/h"
+                f"风速: {wind_speed_mps} m/s ({wind_desc})"
             )
             self.real_time_weather_label.setText(real_time_text)
         except KeyError as e:
-            # self.handle_real_time_error(f"数据解析失败: 缺少关键字段 {str(e)}")
             self.handle_real_time_error(f"数据解析失败")
 
     def handle_forecast_data(self, data):
