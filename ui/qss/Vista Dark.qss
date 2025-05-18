@@ -112,18 +112,21 @@ QLabel[timetable="untimely"] {
 QLabel[time="time"] {
     color: #FFFFFF;
     font-weight: bold;
+    border: 0px;
     font-size: 45px;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); /* 文字阴影增加立体感 */
 }
 
 QLabel[time="date"] {
     color: #FFFFFF;
+    border: 0px;
     font-size: 28px;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
 QLabel[time="week"], QLabel[time="enddate"] {
     color: #4CC2FF;
+    border: 0px;
     font-size: 28px;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
@@ -139,6 +142,7 @@ QLabel[bulletin="danmaku"] {
 /* 天气相关标签 */
 QLabel[weather="now"] {
     font-size: 18px;
+    border: 0px;
     color: #FFFFFF;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
 }
@@ -146,6 +150,7 @@ QLabel[weather="now"] {
 QLabel[weather="next"] {
     font-size: 20px;
     color: #4CC2FF;
+    border: 0px;
     text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
 }
 
@@ -248,9 +253,9 @@ QTableWidget::corner:pressed {
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-#textBrowser {
+QTextBrowser {
     font-size: 18px;
-
+    border: 0px;
 }
 
 /* 自定义类样式 */

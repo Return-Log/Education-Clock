@@ -20,16 +20,6 @@ from settings_window import SettingsWindow  # 导入设置窗口类
 from bulletin_board_module import BulletinBoardModule  # 导入公告板模块
 from API_display_module import APIDisplayModule
 
-# # 配置日志
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format='%(asctime)s - %(levelname)s - %(message)s',
-#     handlers=[
-#         logging.FileHandler("logging.log"),
-#         logging.StreamHandler()
-#     ]
-# )
-
 
 class MainWindow(QMainWindow):
     # 自定义刷新信号
@@ -370,7 +360,7 @@ class MainWindow(QMainWindow):
             tags = response.json()
             if tags:
                 latest_tag = tags[0]['name']
-                current_version = "v4.1"  # 替换为你的当前版本号
+                current_version = "v4.2"  # 当前版本号
                 if latest_tag != current_version:
                     self.label_update.setText(f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: red;">检测到新版本 {latest_tag}, 当前版本 {current_version}</a>')
                     self.label_update.setOpenExternalLinks(True)
@@ -385,7 +375,7 @@ class MainWindow(QMainWindow):
 
 
     def get_qss_path(self):
-        default_qss = './ui/qss/dark.qss'
+        default_qss = './ui/qss/Dark.qss'
         qss_txt_path = './data/qss.txt'
 
         if not os.path.exists(qss_txt_path):
@@ -409,7 +399,7 @@ class MainWindow(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
-    window = MainWindow()  # 只创建一次
+    window = MainWindow()
     qss_path = window.get_qss_path()
 
     try:

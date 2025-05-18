@@ -1,4 +1,4 @@
-# Education Clock v4.1
+# Education Clock v4.2
 
 > [!NOTE]
 >
@@ -8,9 +8,9 @@
 
 # 信息
 
-版本：v4.1
+版本：v4.2
 
-时间：2025年5月11日
+时间：2025年5月18日
 
 协议：GPLv3
 

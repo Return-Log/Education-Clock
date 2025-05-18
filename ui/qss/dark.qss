@@ -45,6 +45,7 @@ QMenu::item:selected, QMenuBar::item:selected {
     background-color: #3B404B; /* 选中时背景颜色 */
 }
 
+
 /* 标签 */
 QLabel {
     color: #FFFFFF; /* 文字颜色 */
@@ -72,8 +73,6 @@ QLabel[timetable="untimely"] {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* 阴影效果 */
 }
 
-
-
 /* 时间相关标签 */
 QLabel[time="time"] {
     color: #ffffff;  /* 白色 */
@@ -81,6 +80,7 @@ QLabel[time="time"] {
     padding: 0px;  /* 增加内边距 */
     font-weight: bold;
     font-size: 45px;
+    border: 0px;
 }
 
 QLabel[time="date"] {
@@ -88,6 +88,7 @@ QLabel[time="date"] {
     border-radius: 0px;  /* 设置边框圆角 */
     padding: 0px;  /* 增加内边距 */
     font-size: 28px;
+    border: 0px;
 }
 
 QLabel[time="week"] {
@@ -95,6 +96,7 @@ QLabel[time="week"] {
     border-radius: 0px;  /* 设置边框圆角 */
     padding: 0px;  /* 增加内边距 */
     font-size: 28px;
+    border: 0px;
 }
 
 QLabel[time="enddate"] {
@@ -102,6 +104,7 @@ QLabel[time="enddate"] {
     border-radius: 0px;  /* 设置边框圆角 */
     padding: 0px;  /* 增加内边距 */
     font-size: 28px;
+    border: 0px;
 }
 
 /* 弹幕 */
@@ -119,6 +122,7 @@ QLabel[weather="now"] {
     color: #ffffff;  /* 白色 */
     padding: 0px;  /* 增加内边距 */
     border-radius: 5px;  /* 圆角 */
+    border: 0px;
 }
 
 QLabel[weather="next"] {
@@ -126,13 +130,7 @@ QLabel[weather="next"] {
     color: #4cc2ff;  /* 浅蓝色 */
     padding: 0px;  /* 增加内边距 */
     border-radius: 5px;  /* 圆角 */
-}
-
-
-
-#textBrowser {
-    font-size: 18px;
-
+    border: 0px;
 }
 
 #label_28, #label_29, #label_30, #label_40, #label_39 {
@@ -229,6 +227,12 @@ QTableWidget::item:selected, QTableWidget::item:focus {
 QTableWidget::item:alternate {
     background-color: #252931; /* 交替行背景颜色 */
 }
+
+QTextBrowser {
+    font-size: 18px;
+    border: 0px;
+}
+
 
 /* styles.qss */
 .sender {

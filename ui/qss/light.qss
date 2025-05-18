@@ -80,6 +80,7 @@ QLabel[time="time"] {
     border-radius: 0px;
     padding: 0px;
     font-weight: bold;
+    border: 0px;
     font-size: 45px;
 }
 
@@ -87,6 +88,7 @@ QLabel[time="date"] {
     color: #000000;
     border-radius: 0px;
     padding: 0px;
+    border: 0px;
     font-size: 28px;
 }
 
@@ -94,6 +96,7 @@ QLabel[time="week"] {
     color: #0067c0;
     border-radius: 0px;
     padding: 0px;
+    border: 0px;
     font-size: 28px;
 }
 
@@ -101,6 +104,7 @@ QLabel[time="enddate"] {
     color: #0067c0;
     border-radius: 0px;
     padding: 0px;
+    border: 0px;
     font-size: 28px;
 }
 
@@ -117,6 +121,7 @@ QLabel[bulletin="danmaku"] {
 QLabel[weather="now"] {
     font-size: 18px;
     color: #000000;
+    border: 0px;
     padding: 0px;
     border-radius: 5px;
 }
@@ -125,6 +130,7 @@ QLabel[weather="next"] {
     font-size: 20px;
     color: #0067c0;
     padding: 0px;
+    border: 0px;
     border-radius: 5px;
 }
 
@@ -225,6 +231,11 @@ QTableWidget::item:selected, QTableWidget::item:focus {
 /* 交替行颜色（斑马线效果）*/
 QTableWidget::item:alternate {
     background-color: #EDEBE9;
+}
+
+QTextBrowser {
+    font-size: 18px;
+    border: 0px;
 }
 
 .sender {

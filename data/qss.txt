@@ -1,1 +1,1 @@
-Vista Blue.qss
+Dark.qss

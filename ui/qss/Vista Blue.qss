@@ -276,7 +276,7 @@ QTableWidget::corner:pressed {
 
 QTextBrowser {
     font-size: 18px;
-    border: 0px solid rgba(100, 150, 200, 150);
+    border: 0px;
 }
 
 /* 自定义类样式 */
