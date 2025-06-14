@@ -227,9 +227,9 @@ alibabacloud-tea-util  # 钉钉 SDK 依赖的 TEA 工具库
 
 ![PixPin_2025-05-11_01-18-49.png](https://s2.loli.net/2025/05/11/asMZ7bqpWf295V6.png)
 
-目前只能解析文本类API（需要显示的项都在"data"下）
+目前只能解析新闻类API（需要显示的项都在"data"下）
 
-使用md格式，api中的内容显示需加{}，如上图所示
+使用md格式，API中的内容显示需加{}，如上图所示
 
 ------
 
