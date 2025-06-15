@@ -103,7 +103,7 @@ QLabel[time="enddate"] {
     color: #4cc2ff;  /* 浅蓝色 */
     border-radius: 0px;  /* 设置边框圆角 */
     padding: 0px;  /* 增加内边距 */
-    font-size: 28px;
+    font-size: 26px;
     border: 0px;
 }
 
