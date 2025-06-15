@@ -6,6 +6,7 @@ from PyQt6.QtCore import Qt, QPoint, QSettings
 from PyQt6.QtGui import QPainter, QBrush, QColor, QPixmap
 from roll_call_module import RollCallDialog
 from db_manager import MainWindow
+from timer_module import TimerApp
 
 # 配置日志
 logging.basicConfig(
@@ -77,6 +78,7 @@ class FloatingBall(QWidget):
     def show_menu(self, position):
         menu = QMenu(self)
         menu.addAction("随机点名", self.roll_call_module)
+        menu.addAction("计时器", self.timer_module)
         menu.addAction("通知发送器", self.db_manager)
         menu.exec(position)
 
@@ -90,6 +92,17 @@ class FloatingBall(QWidget):
             logging.info("RollCallDialog opened")
         except Exception as e:
             logging.error(f"Error running RollCallDialog: {e}")
+
+    def timer_module(self):
+        """运行 TimerApp"""
+        logging.info("Running TimerApp")
+        try:
+            timer_app = TimerApp()
+            timer_app.show()
+            self.active_windows.append(timer_app)  # 防止垃圾回收
+            logging.info("TimerApp opened")
+        except Exception as e:
+            logging.error(f"Error running TimerApp: {e}")
 
     def db_manager(self):
         """运行 MainWindow"""

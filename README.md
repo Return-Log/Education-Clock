@@ -1,4 +1,4 @@
-# Education Clock v4.2
+# Education Clock v4.3
 
 > [!NOTE]
 >
@@ -8,9 +8,9 @@
 
 # 信息
 
-版本：v4.2
+版本：v4.3
 
-时间：2025年5月18日
+时间：2025年6月15日
 
 协议：GPLv3
 
@@ -230,6 +230,18 @@ alibabacloud-tea-util  # 钉钉 SDK 依赖的 TEA 工具库
 目前只能解析新闻类API（需要显示的项都在"data"下）
 
 使用md格式，API中的内容显示需加{}，如上图所示
+
+## 计时器
+
+从悬浮窗启动
+
+具有秒表和倒计时功能
+
+![PixPin_2025-06-15_12-46-07.png](https://s2.loli.net/2025/06/15/ktYLZg6Q1hNWcl5.png)
+
+---
+
+![.png](https://s2.loli.net/2025/06/15/bBKPC7ATZ5UFpRf.png)
 
 ------
 

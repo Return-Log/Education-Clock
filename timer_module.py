@@ -3,13 +3,15 @@ import sys
 from PyQt6.QtMultimedia import QSoundEffect
 from PyQt6.QtWidgets import QApplication, QMainWindow
 from PyQt6 import uic
-from PyQt6.QtCore import QTimer, QUrl
+from PyQt6.QtCore import QTimer, QUrl, Qt
 
 
 class TimerApp(QMainWindow):
     def __init__(self):
         super().__init__()
         uic.loadUi("./ui/timers.ui", self)
+
+        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
 
         # 默认倒计时模式
         self.radioButton_2.setChecked(True)
@@ -31,6 +33,10 @@ class TimerApp(QMainWindow):
 
         # 初始化LCD显示
         self.update_lcd_from_sliders()
+
+        # 居中窗口
+        screen = QApplication.primaryScreen().availableGeometry()
+        self.move((screen.width() - self.width()) // 2, (screen.height() - self.height()) // 2)
 
         # 设置定时器
         self.timer = QTimer()

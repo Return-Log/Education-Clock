@@ -81,14 +81,6 @@ class MainWindow(QMainWindow):
         # 初始化公告板模块
         self.init_bulletin_board_module()
 
-        # 找到 label_update 控件
-        self.label_update = self.findChild(QLabel, "label_update")
-        if self.label_update is None:
-            raise ValueError("找不到 label_update，请检查 UI 文件")
-
-        # 在启动时检测更新
-        self.check_for_updates()
-
         # 移除窗口边框
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         # 固定窗口位置和大小
@@ -96,6 +88,19 @@ class MainWindow(QMainWindow):
 
         # 将窗口置于最下层
         self.lower()
+
+        self.github_tags = None
+
+
+        # 找到 label_update 控件
+        self.label_update = self.findChild(QLabel, "label_update")
+        if self.label_update is None:
+            raise ValueError("找不到 label_update，请检查 UI 文件")
+
+        # 启动检查更新
+        self.check_for_updates()
+
+
 
     def refresh_timetable(self):
         """刷新课表模块"""
@@ -354,25 +359,55 @@ class MainWindow(QMainWindow):
 
     def check_for_updates(self):
         """检测最新版本并更新状态"""
+        self.links = [
+            '<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: red;">检测到新版本 {latest_tag}, 当前版本 {current_version}</a>',
+            '<a href="https://s2.loli.net/2025/06/15/bBKPC7ATZ5UFpRf.png" style="color: green;">捐赠入口</a>',
+        ]
+        self.current_link_index = 0
+        self.github_tags = None
+        self.current_version = "v4.3"
+
         try:
             response = requests.get('https://api.github.com/repos/Return-Log/Education-Clock/tags', timeout=5)
             response.raise_for_status()
-            tags = response.json()
-            if tags:
-                latest_tag = tags[0]['name']
-                current_version = "v4.2"  # 当前版本号
-                if latest_tag != current_version:
-                    self.label_update.setText(f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: red;">检测到新版本 {latest_tag}, 当前版本 {current_version}</a>')
-                    self.label_update.setOpenExternalLinks(True)
-                else:
-                    self.label_update.setText(f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: green;">已是最新版 {latest_tag}</a>')
-                    self.label_update.setOpenExternalLinks(True)
-            else:
-                self.label_update.setText("无法检测更新")
+            self.github_tags = response.json()  # 缓存结果
         except requests.RequestException:
             self.label_update.setText("无法检测更新")
+            return
 
+        if self.github_tags:
+            latest_tag = self.github_tags[0]['name']
+            if latest_tag != self.current_version:
+                self.label_update.setText(
+                    self.links[self.current_link_index].format(latest_tag=latest_tag,
+                                                               current_version=self.current_version)
+                )
+            else:
+                self.label_update.setText(
+                    f'<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: green;">已是最新版 {latest_tag}</a>')
+            self.label_update.setOpenExternalLinks(True)
+        else:
+            self.label_update.setText("无法检测更新")
 
+        # 设置定时器，每隔 5 秒更新一次链接（不调用 API）
+        self.update_timer = QTimer(self)
+        self.update_timer.timeout.connect(self.update_link)
+        self.update_timer.start(5000)
+
+    def update_link(self):
+        """更新标签中的链接（仅使用已缓存的 tags 数据）"""
+        if not self.github_tags:
+            self.label_update.setText("无法检测更新")
+            return
+
+        latest_tag = self.github_tags[0]['name']
+        if latest_tag != self.current_version:
+            self.label_update.setText(
+                self.links[self.current_link_index].format(latest_tag=latest_tag,
+                                                           current_version=self.current_version)
+            )
+            self.label_update.setOpenExternalLinks(True)
+            self.current_link_index = (self.current_link_index + 1) % len(self.links)
 
     def get_qss_path(self):
         default_qss = './ui/qss/Dark.qss'

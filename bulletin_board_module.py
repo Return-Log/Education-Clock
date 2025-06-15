@@ -376,7 +376,9 @@ class BulletinBoardModule:
         self.text_browser.setOpenLinks(False)  # 禁止自动打开链接
         self.text_browser.anchorClicked.connect(self.handle_anchor_clicked)  # 连接点击信号
         self.timer = QTimer(self.main_window)
+        self.timer.setSingleShot(True)  # 设置为单次触发
         self.timer.timeout.connect(self.update_bulletin_board)
+        self.timer.start(0)  # 立即触发第一次
         self.last_message_text = ""
         self.sound_effect = QSoundEffect()
         self.sound_effect.setSource(QUrl.fromLocalFile("icon/newmessage.wav"))
@@ -439,6 +441,7 @@ class BulletinBoardModule:
             self.worker = BulletinBoardWorker(self.db_config, self.filter_conditions, self.text_browser)
             self.worker.update_signal.connect(self.update_text_browser)
             self.worker.start()
+            self.timer.start(10000)  # 启动下一次定时器
         except Exception as e:
             self.update_text_browser(f"意外错误: {str(e)}", False)
 
