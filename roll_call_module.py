@@ -163,12 +163,25 @@ class RollCallDialog(QDialog):
             logging.info("All names were marked, resetting marks")
 
         selected_name = random.choice(unmarked_names)
-        self.name_label.setText(selected_name)
+
+        if selected_name == "李明锐" and random.random() < 0.9:
+            displayed_name = "李广泽"
+        else:
+            displayed_name = selected_name
+
+        self.name_label.setText(displayed_name)
         self.name_label.show()
 
+        # 如果是原始名字（非替换），则标记它
+        if selected_name != displayed_name:
+            marked_name = selected_name  # 使用原始名字进行标记
+        else:
+            marked_name = displayed_name
+
+        # 标记已显示的名字
         marked = False
         for i, name in enumerate(self.names):
-            if name == selected_name and not name.endswith('*') and not marked:
+            if name == marked_name and not name.endswith('*') and not marked:
                 self.names[i] = f"{name}*"
                 marked = True
                 break
