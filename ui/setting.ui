@@ -787,8 +787,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>698</width>
-            <height>551</height>
+            <width>98</width>
+            <height>28</height>
            </rect>
           </property>
          </widget>
@@ -810,7 +810,7 @@
        <item row="2" column="1" colspan="3">
         <widget class="QLabel" name="label_33">
          <property name="text">
-          <string>2025年6月15日 构建</string>
+          <string>2025年6月22日 构建</string>
          </property>
         </widget>
        </item>
@@ -895,7 +895,7 @@
        <item row="0" column="1" colspan="3">
         <widget class="QLabel" name="label_32">
          <property name="text">
-          <string>## Education Clock v4.3</string>
+          <string>## Education Clock v4.4</string>
          </property>
          <property name="textFormat">
           <enum>Qt::MarkdownText</enum>

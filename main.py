@@ -5,7 +5,7 @@ import requests
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget, QToolButton, QTextEdit, QLabel, \
     QTextBrowser, QDialog
 from PyQt6.uic import loadUi
-from PyQt6.QtCore import QTimer, Qt, QUrl, pyqtSignal
+from PyQt6.QtCore import QTimer, Qt, QUrl, pyqtSignal, QSharedMemory
 from PyQt6.QtGui import QDesktopServices, QIcon, QPixmap
 from PyQt6.QtWidgets import QMessageBox
 from PyQt6.QtCore import QSettings
@@ -19,6 +19,32 @@ from weather_module import WeatherModule
 from settings_window import SettingsWindow  # 导入设置窗口类
 from bulletin_board_module import BulletinBoardModule  # 导入公告板模块
 from API_display_module import APIDisplayModule
+
+def main():
+    app = QApplication(sys.argv)
+
+    # 使用 QSharedMemory 来确保只有一个实例运行
+    shared_memory = QSharedMemory("Education-Clock-Unique-ID")
+    if not shared_memory.create(1):
+        # 如果已经存在
+        msg_box = QMessageBox()
+        msg_box.setWindowTitle("提示")
+        msg_box.setText("该程序已经在运行中。")
+        msg_box.setIcon(QMessageBox.Icon.Information)
+        msg_box.exec()
+        sys.exit(0)
+
+    window = MainWindow()
+    qss_path = window.get_qss_path()
+
+    try:
+        with open(qss_path, 'r', encoding="utf-8") as f:
+            app.setStyleSheet(f.read())
+    except Exception as e:
+        window.show_message(f"Failed to load QSS file: {e}")
+
+    window.show()
+    sys.exit(app.exec())
 
 
 class MainWindow(QMainWindow):
@@ -365,7 +391,7 @@ class MainWindow(QMainWindow):
         ]
         self.current_link_index = 0
         self.github_tags = None
-        self.current_version = "v4.3"
+        self.current_version = "v4.4"
 
         try:
             response = requests.get('https://api.github.com/repos/Return-Log/Education-Clock/tags', timeout=5)
@@ -432,16 +458,4 @@ class MainWindow(QMainWindow):
             return default_qss
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-
-    window = MainWindow()
-    qss_path = window.get_qss_path()
-
-    try:
-        with open(qss_path, 'r', encoding="utf-8") as f:
-            app.setStyleSheet(f.read())
-    except Exception as e:
-        window.show_message(f"Failed to load QSS file: {e}")
-
-    window.show()
-    sys.exit(app.exec())
+    main()

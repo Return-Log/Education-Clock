@@ -3,8 +3,23 @@ import os
 import sys
 from datetime import datetime
 import requests
-from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout
+from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QToolTip
 from PyQt6.QtCore import Qt, QTimer, QObject, pyqtSignal, QThread
+
+from PyQt6.QtWidgets import QLabel
+from PyQt6.QtCore import Qt, QEvent
+from PyQt6.QtGui import QMouseEvent
+
+class ClickableLabel(QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setMouseTracking(True)  # 启用鼠标追踪以便接收鼠标事件
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.MouseButton.LeftButton:
+            # 手动显示 ToolTip
+            QToolTip.showText(event.globalPosition().toPoint(), self.toolTip(), self)
+
 
 class RealTimeWorker(QObject):
     """实时天气数据获取工作线程"""
@@ -28,11 +43,9 @@ class RealTimeWorker(QObject):
                 else:
                     self.error_occurred.emit(f"API错误码: {data.get('code')}")
             else:
-                # self.error_occurred.emit(f"HTTP错误: {response.status_code}")
-                self.error_occurred.emit(f"HTTP错误")
+                self.error_occurred.emit(f"HTTP错误: {response.status_code}")
         except Exception as e:
-            # self.error_occurred.emit(f"请求异常: {str(e)}")
-            self.error_occurred.emit(f"请求异常")
+            self.error_occurred.emit(f"请求异常: {str(e)}")
 
 class ForecastWorker(QObject):
     """天气预报数据获取工作线程"""
@@ -56,11 +69,9 @@ class ForecastWorker(QObject):
                 else:
                     self.error_occurred.emit(f"API错误码: {data.get('code')}")
             else:
-                # self.error_occurred.emit(f"HTTP错误: {response.status_code}")
-                self.error_occurred.emit(f"HTTP错误")
+                self.error_occurred.emit(f"HTTP错误: {response.status_code}")
         except Exception as e:
-            # self.error_occurred.emit(f"请求异常: {str(e)}")
-            self.error_occurred.emit(f"请求异常")
+            self.error_occurred.emit(f"请求异常: {str(e)}")
 
 class WeatherModule(QWidget):
     def __init__(self, parent=None):
@@ -75,13 +86,13 @@ class WeatherModule(QWidget):
     def init_ui(self):
         """初始化用户界面"""
         # 实时天气标签
-        self.real_time_weather_label = QLabel(self)
+        self.real_time_weather_label = ClickableLabel(self)
         self.real_time_weather_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self.real_time_weather_label.setProperty("weather", "now")
         self.real_time_weather_label.setContentsMargins(0, 0, 0, 0)
 
         # 天气预报标签
-        self.forecast_weather_label = QLabel(self)
+        self.forecast_weather_label = ClickableLabel(self)
         self.forecast_weather_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self.forecast_weather_label.setProperty("weather", "next")
         self.forecast_weather_label.setContentsMargins(0, 0, 0, 0)
@@ -214,23 +225,28 @@ class WeatherModule(QWidget):
             )
             self.forecast_weather_label.setText(forecast_text)
         except (KeyError, IndexError) as e:
-            # self.handle_forecast_error(f"数据解析失败: {str(e)}")
-            self.handle_forecast_error(f"数据解析失败")
+            self.handle_forecast_error(f"数据解析失败: {str(e)}")
+
 
     def handle_real_time_error(self, error_msg):
         """处理实时天气错误"""
-        # self.real_time_weather_label.setText(f"实时天气错误: {error_msg}")
-        self.real_time_weather_label.setText(f"实时天气错误")
+        full_msg = f"实时天气错误: {error_msg}"
+        self.real_time_weather_label.setToolTip(full_msg)
+        self.real_time_weather_label.setText("实时天气错误")
 
     def handle_forecast_error(self, error_msg):
         """处理天气预报错误"""
-        # self.forecast_weather_label.setText(f"天气预报错误: {error_msg}")
-        self.forecast_weather_label.setText(f"天气预报错误")
+        full_msg = f"天气预报错误: {error_msg}"
+        self.forecast_weather_label.setToolTip(full_msg)
+        self.forecast_weather_label.setText("天气预报错误")
 
     def display_error(self, error_msg):
         """显示通用错误信息"""
-        self.real_time_weather_label.setText(f"错误: {error_msg}")
-        self.forecast_weather_label.setText(f"错误: {error_msg}")
+        full_msg = f"错误: {error_msg}"
+        self.real_time_weather_label.setToolTip(full_msg)
+        self.real_time_weather_label.setText("错误")
+        self.forecast_weather_label.setToolTip(full_msg)
+        self.forecast_weather_label.setText("错误")
 
     def closeEvent(self, event):
         """窗口关闭时停止所有线程"""
