@@ -170,11 +170,17 @@ class BulletinBoardWorker(QThread):
             logging.error(f"保存 failed_urls.json 失败: {e}")
 
     def run(self):
-        """运行工作线程，获取并处理新消息"""
         last_id = self.read_last_db_id()
-        new_messages, has_new_message = self.fetch_and_filter_messages(last_id)
-        self.process_downloads(new_messages)
-        formatted_text = self.format_text(new_messages)
+        new_messages, has_new_message, error = self.fetch_and_filter_messages(last_id)
+
+        if error:
+            formatted_text = error
+        elif not new_messages and not has_new_message:
+            formatted_text = "数据库中暂无公告信息"
+        else:
+            self.process_downloads(new_messages)
+            formatted_text = self.format_text(new_messages)
+
         self.update_signal.emit(formatted_text, has_new_message)
 
     def read_last_db_id(self):
@@ -196,12 +202,12 @@ class BulletinBoardWorker(QThread):
         """从数据库中获取并过滤消息，同时检查是否有新消息"""
         try:
             with pymysql.connect(
-                host=self.db_config["host"],
-                port=self.db_config["port"],
-                user=self.db_config["user"],
-                password=self.db_config["password"],
-                database=self.db_config["database"],
-                cursorclass=pymysql.cursors.DictCursor
+                    host=self.db_config["host"],
+                    port=self.db_config["port"],
+                    user=self.db_config["user"],
+                    password=self.db_config["password"],
+                    database=self.db_config["database"],
+                    cursorclass=pymysql.cursors.DictCursor
             ) as connection:
                 with connection.cursor() as cursor:
                     start_date = datetime.now() - timedelta(days=7)
@@ -221,21 +227,19 @@ class BulletinBoardWorker(QThread):
                         with open('data/dbid.txt', 'w', encoding='utf-8') as f:
                             f.write(str(latest_id))
 
-                    return filtered_rows, has_new_message
+                    # 如果有数据就返回正常结果
+                    return filtered_rows, has_new_message, None
 
         except pymysql.MySQLError as e:
-            self.update_signal.emit(f"数据库错误: {str(e)}", False)
-            return [], False
+            # return [], False, f"数据库错误: {str(e)}"
+            return [], False, f"您與伺服器的連線已中斷"
         except FileNotFoundError as e:
-            self.update_signal.emit(f"找不到文件: {str(e)}", False)
-            return [], False
+            return [], False, f"找不到文件: {str(e)}"
         except Exception as e:
             if "Errno 99" in str(e) or "Errno 111" in str(e) or "Errno 10065" in str(e):
-                self.update_signal.emit(f"网络错误: {str(e)}", False)
-                return [], False
+                return [], False, f"网络错误: {str(e)}"
             else:
-                self.update_signal.emit(f"意外错误: {str(e)}", False)
-                return [], False
+                return [], False, f"意外错误: {str(e)}"
 
     def filter_data(self, rows):
         """过滤消息数据"""
@@ -448,6 +452,13 @@ class BulletinBoardModule:
     def update_text_browser(self, text, has_new_message):
         """更新 QTextBrowser 内容"""
         try:
+            # 如果是错误信息，则直接显示并停止后续操作
+            if text.startswith("数据库错误:") or text.startswith("网络错误:") or text.startswith(
+                    "找不到文件:") or text.startswith("意外错误:"):
+                self.text_browser.setHtml(f"<font color='red'>{text}</font>")
+                return
+
+            # 正常情况下只有内容变化才更新
             current_text = self.text_browser.toPlainText()
             if current_text != text:
                 self.text_browser.setHtml(text)
@@ -455,7 +466,9 @@ class BulletinBoardModule:
                 if has_new_message:
                     self.play_new_message_sound()
         except Exception as e:
-            self.update_text_browser(f"意外错误: {str(e)}", False)
+            # 出现异常时回退到上一次有效内容
+            logging.error(f"更新 QTextBrowser 时发生错误: {e}")
+            self.text_browser.setHtml(self.last_message_text or "<font color='red'>无法加载公告板内容</font>")
 
     def play_new_message_sound(self):
         """播放新消息提示音并处理弹幕"""
