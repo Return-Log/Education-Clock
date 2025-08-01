@@ -6,21 +6,126 @@ import re
 import sys
 from queue import Queue
 import requests
+from urllib3.util.retry import Retry
+from requests.adapters import HTTPAdapter
 from PyQt6.QtCore import QThread, pyqtSignal, QTimer, QUrl, QEasingCurve, QAbstractAnimation, QParallelAnimationGroup
 from PyQt6.QtMultimedia import QSoundEffect
 from datetime import datetime, timedelta
 from markdown import markdown
-import pymysql
 from PyQt6.QtWidgets import QLabel, QWidget, QVBoxLayout, QApplication, QTextBrowser
 from PyQt6.QtCore import QTimer, Qt, QPropertyAnimation, QRect
 from PyQt6.QtGui import QFont, QFontMetrics, QDesktopServices
+import uuid
+import threading
+import time
+import urllib3
+
+# 禁用不安全请求警告（仅用于测试）
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # 配置日志
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
+class MessagePollWorker(QThread):
+    """消息轮询工作线程"""
+    message_received = pyqtSignal(dict)
+    error_occurred = pyqtSignal(str)
+
+    def __init__(self, server_url, agent_id, filter_conditions):
+        super().__init__()
+        self.server_url = server_url
+        self.agent_id = agent_id
+        self.filter_conditions = filter_conditions
+        self.running = True
+        self.session = None
+
+    def setup_session(self):
+        """设置请求会话"""
+        self.session = requests.Session()
+
+        # 配置重试策略
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
+
+        # 设置请求头
+        self.session.headers.update({
+            'User-Agent': 'Education-Clock-Client/1.0'
+        })
+
+    def run(self):
+        """运行消息轮询"""
+        try:
+            # 设置会话
+            self.setup_session()
+
+            while self.running:
+                try:
+                    # 构建URL参数
+                    params = {
+                        'agent_id': self.agent_id
+                    }
+
+                    if 'sender_names' in self.filter_conditions and self.filter_conditions['sender_names']:
+                        params['sender_names'] = ','.join(self.filter_conditions['sender_names'])
+
+                    if 'conversation_titles' in self.filter_conditions and self.filter_conditions[
+                        'conversation_titles']:
+                        params['conversation_titles'] = ','.join(self.filter_conditions['conversation_titles'])
+
+                    url = f"{self.server_url}/api/messages"
+                    logging.info(f"发送轮询请求到: {url}")
+                    logging.debug(f"请求参数: {params}")
+
+                    # 发起请求
+                    response = self.session.get(
+                        url,
+                        params=params,
+                        timeout=(10, 30),  # 连接超时10秒，读取超时30秒
+                    )
+
+                    logging.info(f"收到响应，状态码: {response.status_code}")
+                    if response.status_code == 200:
+                        data = response.json()
+                        logging.info(f"响应数据: {data}")
+                        self.message_received.emit(data)
+                    else:
+                        logging.error(f"请求失败，状态码: {response.status_code}, 响应内容: {response.text}")
+                        self.error_occurred.emit(f"请求失败，状态码: {response.status_code}")
+
+                except Exception as e:
+                    logging.error(f"轮询错误: {str(e)}", exc_info=True)
+                    self.error_occurred.emit(f"轮询错误: {str(e)}")
+
+                # 等待10秒后再次轮询
+                logging.info("等待10秒后进行下一次轮询")
+                for _ in range(100):  # 10秒 = 100 * 0.1秒
+                    if not self.running:
+                        break
+                    time.sleep(0.1)
+
+        except Exception as e:
+            logging.error(f"连接错误: {str(e)}", exc_info=True)
+            self.error_occurred.emit(f"连接错误: {str(e)}")
+        finally:
+            if self.session:
+                self.session.close()
+
+    def stop(self):
+        """停止工作线程"""
+        self.running = False
+
+
 class DownloadWorker(QThread):
     """文件下载工作线程"""
-    download_finished = pyqtSignal(str, str, str, str, str, bool, str)  # 文件路径, 文件名, 原始消息, sender_name, created_at, 是否成功, 错误信息
+    download_finished = pyqtSignal(str, str, str, str, str, bool,
+                                   str)  # 文件路径, 文件名, 原始消息, sender_name, created_at, 是否成功, 错误信息
 
     def __init__(self, url, message, sender_name, created_at, download_dir="./data/download/"):
         super().__init__()
@@ -37,27 +142,43 @@ class DownloadWorker(QThread):
         file_path = os.path.join(self.download_dir, self.filename)
         if os.path.exists(file_path):
             logging.info(f"文件已存在，跳过下载: {file_path}")
-            self.download_finished.emit(file_path, self.filename, self.message, self.sender_name, self.created_at, True, "")
+            self.download_finished.emit(file_path, self.filename, self.message, self.sender_name, self.created_at, True,
+                                        "")
             return
 
         try:
-            response = requests.get(self.url, stream=True, timeout=10)
+            # 配置请求会话，增加重试机制
+            session = requests.Session()
+            retry_strategy = Retry(
+                total=3,
+                backoff_factor=1,
+                status_forcelist=[429, 500, 502, 503, 504],
+            )
+            adapter = HTTPAdapter(max_retries=retry_strategy)
+            session.mount("http://", adapter)
+            session.mount("https://", adapter)
+
+            response = session.get(self.url, stream=True, timeout=30)
             response.raise_for_status()
             with open(file_path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
             logging.info(f"文件下载成功: {file_path}")
-            self.download_finished.emit(file_path, self.filename, self.message, self.sender_name, self.created_at, True, "")
+            self.download_finished.emit(file_path, self.filename, self.message, self.sender_name, self.created_at, True,
+                                        "")
         except requests.exceptions.HTTPError as e:
             error_msg = str(e)
             if e.response.status_code == 403:
                 error_msg = "403 请求已达上限"
             logging.error(f"下载文件失败 {self.url}: {error_msg}")
-            self.download_finished.emit(file_path, self.filename, self.message, self.sender_name, self.created_at, False, error_msg)
+            self.download_finished.emit(file_path, self.filename, self.message, self.sender_name, self.created_at,
+                                        False, error_msg)
         except Exception as e:
             error_msg = str(e)
             logging.error(f"下载文件失败 {self.url}: {error_msg}")
-            self.download_finished.emit(file_path, self.filename, self.message, self.sender_name, self.created_at, False, error_msg)
+            self.download_finished.emit(file_path, self.filename, self.message, self.sender_name, self.created_at,
+                                        False, error_msg)
+
 
 class DanmakuWindow(QWidget):
     finished = pyqtSignal()
@@ -115,8 +236,10 @@ class DanmakuWindow(QWidget):
         for i, label in enumerate(self.labels):
             animation = QPropertyAnimation(label, b"geometry")
             animation.setDuration(30000)
-            animation.setStartValue(QRect(screen_width + 50, i * (label.height() + self.layout.spacing()), label.width(), label.height()))
-            animation.setEndValue(QRect(-label.width() - 50, i * (label.height() + self.layout.spacing()), label.width(), label.height()))
+            animation.setStartValue(
+                QRect(screen_width + 50, i * (label.height() + self.layout.spacing()), label.width(), label.height()))
+            animation.setEndValue(
+                QRect(-label.width() - 50, i * (label.height() + self.layout.spacing()), label.width(), label.height()))
             animation.setEasingCurve(QEasingCurve.Type.Linear)
             self.animations.append(animation)
             self.animation_group.addAnimation(animation)
@@ -134,125 +257,45 @@ class DanmakuWindow(QWidget):
         self.finished.emit()
         self.close()
 
-class BulletinBoardWorker(QThread):
-    update_signal = pyqtSignal(str, bool)
 
-    def __init__(self, db_config, filter_conditions, text_browser):
-        super().__init__()
-        self.db_config = db_config
-        self.filter_conditions = filter_conditions
-        self.text_browser = text_browser
-        self.theme_config = self.load_theme()
-        self.download_queue = Queue()
-        self.current_download = None
-        self.failed_urls = self.load_failed_urls()  # 从文件加载失败的 URL
-
-    def load_failed_urls(self):
-        """从文件加载失败的 URL"""
-        failed_urls_file = './data/failed_urls.json'
-        if os.path.exists(failed_urls_file):
-            try:
-                with open(failed_urls_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except Exception as e:
-                logging.error(f"加载 failed_urls.json 失败: {e}")
-                return {}
-        return {}
-
-    def save_failed_urls(self):
-        """保存失败的 URL 到文件"""
-        failed_urls_file = './data/failed_urls.json'
-        os.makedirs(os.path.dirname(failed_urls_file), exist_ok=True)
+class BulletinBoardModule:
+    def __init__(self, main_window, text_browser):
         try:
-            with open(failed_urls_file, 'w', encoding='utf-8') as f:
-                json.dump(self.failed_urls, f, ensure_ascii=False, indent=4)
-        except Exception as e:
-            logging.error(f"保存 failed_urls.json 失败: {e}")
+            self.current_danmaku = None
+            self.danmaku_queue = Queue()
+            self.main_window = main_window
 
-    def run(self):
-        last_id = self.read_last_db_id()
-        new_messages, has_new_message, error = self.fetch_and_filter_messages(last_id)
+            # 确保 text_browser 不为 None
+            if text_browser is None:
+                logging.error("text_browser 为 None")
+                raise ValueError("text_browser 不能为 None")
 
-        if error:
-            formatted_text = error
-        elif not new_messages and not has_new_message:
-            formatted_text = "数据库中暂无公告信息"
-        else:
-            self.process_downloads(new_messages)
-            formatted_text = self.format_text(new_messages)
+            self.text_browser = text_browser
+            self.text_browser.setOpenLinks(False)  # 禁止自动打开链接
+            self.text_browser.anchorClicked.connect(self.handle_anchor_clicked)  # 连接点击信号
 
-        self.update_signal.emit(formatted_text, has_new_message)
-
-    def read_last_db_id(self):
-        """读取 dbid.txt 文件中的最后一条消息 ID"""
-        last_id = 0
-        if os.path.exists('data/dbid.txt'):
+            self.last_message_text = ""
+            self.sound_effect = QSoundEffect()
             try:
-                with open('data/dbid.txt', 'r', encoding='utf-8') as f:
-                    content = f.read().strip()
-                    if content:
-                        last_id = int(content)
-            except ValueError as e:
-                self.update_signal.emit(f"值错误: {str(e)}", False)
+                self.sound_effect.setSource(QUrl.fromLocalFile("icon/newmessage.wav"))
             except Exception as e:
-                self.update_signal.emit(f"意外错误: {str(e)}", False)
-        return last_id
+                logging.warning(f"无法加载提示音: {e}")
 
-    def fetch_and_filter_messages(self, last_id):
-        """从数据库中获取并过滤消息，同时检查是否有新消息"""
-        try:
-            with pymysql.connect(
-                    host=self.db_config["host"],
-                    port=self.db_config["port"],
-                    user=self.db_config["user"],
-                    password=self.db_config["password"],
-                    database=self.db_config["database"],
-                    cursorclass=pymysql.cursors.DictCursor
-            ) as connection:
-                with connection.cursor() as cursor:
-                    start_date = datetime.now() - timedelta(days=7)
-                    query = """
-                    SELECT * FROM messages
-                    WHERE timestamp >= %s
-                    ORDER BY timestamp DESC
-                    """
-                    cursor.execute(query, (start_date,))
-                    rows = cursor.fetchall()
+            # 消息轮询相关变量
+            self.poll_thread = None
+            self.poll_worker = None
+            self.server_url = "http://localhost:10240"
+            self.agent_id = None
+            self.filter_conditions = {}
+            self.connection_retry_count = 0
+            self.max_retry_count = 5  # 最大重试次数
 
-                    filtered_rows = self.filter_data(rows)
-                    has_new_message = False
-                    if filtered_rows:
-                        latest_id = filtered_rows[0]['id']
-                        has_new_message = any(row['id'] > last_id for row in filtered_rows)
-                        with open('data/dbid.txt', 'w', encoding='utf-8') as f:
-                            f.write(str(latest_id))
+            # 加载配置并启动轮询
+            if not self.load_config():
+                logging.error("无法加载配置文件")
 
-                    # 如果有数据就返回正常结果
-                    return filtered_rows, has_new_message, None
-
-        except pymysql.MySQLError as e:
-            # return [], False, f"数据库错误: {str(e)}"
-            return [], False, f"您與伺服器的連線已中斷"
-        except FileNotFoundError as e:
-            return [], False, f"找不到文件: {str(e)}"
         except Exception as e:
-            if "Errno 99" in str(e) or "Errno 111" in str(e) or "Errno 10065" in str(e):
-                return [], False, f"网络错误: {str(e)}"
-            else:
-                return [], False, f"意外错误: {str(e)}"
-
-    def filter_data(self, rows):
-        """过滤消息数据"""
-        filtered_rows = []
-        for row in rows:
-            robot_names = self.filter_conditions.get("robot_names", [])
-            sender_names = self.filter_conditions.get("sender_names", [])
-            conversation_titles = self.filter_conditions.get("conversation_titles", [])
-            if (not robot_names or row['robot_name'] in robot_names) or \
-               (not sender_names or row['sender_name'] in sender_names) or \
-               (not conversation_titles or row['conversationTitle'] in conversation_titles):
-                filtered_rows.append(row)
-        return filtered_rows
+            logging.error(f"初始化 BulletinBoardModule 时发生错误: {e}", exc_info=True)
 
     def get_qss_path(self):
         """获取 QSS 文件路径"""
@@ -269,16 +312,20 @@ class BulletinBoardWorker(QThread):
                 if os.path.exists(qss_path):
                     return qss_path
                 else:
-                    self.update_signal.emit(f"QSS file {qss_file} does not exist, using default.", False)
+                    logging.warning(f"QSS file {qss_file} does not exist, using default.")
                     return default_qss
         except Exception as e:
-            self.update_signal.emit(f"Error reading qss.txt: {e}, using default.", False)
+            logging.error(f"Error reading qss.txt: {e}, using default.")
             return default_qss
 
     def parse_qss_colors(self, qss_file):
         """解析 QSS 文件中的颜色"""
         colors = {}
         try:
+            if not os.path.exists(qss_file):
+                logging.warning(f"QSS 文件不存在: {qss_file}")
+                return colors
+
             with open(qss_file, 'r', encoding='utf-8') as f:
                 qss_content = f.read()
             pattern = re.compile(r'\.(\w+)\s*\{\s*color:\s*#([0-9a-fA-F]{6})\s*;\s*\}')
@@ -287,231 +334,495 @@ class BulletinBoardWorker(QThread):
                 css_class, hex_color = match
                 colors[css_class] = f"#{hex_color}"
         except Exception as e:
-            self.update_signal.emit(f"Error parsing QSS file: {e}", False)
+            logging.error(f"Error parsing QSS file: {e}")
         return colors
 
     def load_theme(self):
         """加载主题配置"""
-        qss_path = self.get_qss_path()
-        return self.parse_qss_colors(qss_path)
+        try:
+            qss_path = self.get_qss_path()
+            return self.parse_qss_colors(qss_path)
+        except Exception as e:
+            logging.error(f"加载主题配置时出错: {e}")
+            # 返回默认颜色配置
+            return {
+                'sender': '#4cc2ff',
+                'admin-sender': '#ff6b6b'
+            }
 
-    def process_downloads(self, rows):
-        """处理新消息中的下载任务"""
-        pattern = re.compile(r'&\[(.*?)\]&')
-        for row in rows:
-            message_content = row['message_content']
-            sender_name = row['sender_name']
-            created_at = row['timestamp'].strftime("%m-%d %H:%M")
-            matches = pattern.findall(message_content)
-            for url in matches:
-                file_path = os.path.join("./data/download/", os.path.basename(url.split('?')[0]))
-                # 如果文件不存在且 URL 未标记为 403，则加入下载队列
-                if not os.path.exists(file_path) and (url not in self.failed_urls or "403" not in self.failed_urls.get(url, "")):
-                    self.download_queue.put((url, message_content, sender_name, created_at))
-        self.start_next_download()
+    def format_messages(self, rows):
+        """格式化消息"""
+        try:
+            logging.info(f"开始格式化 {len(rows)} 条消息")
+            formatted_text = ""
+            pattern = re.compile(r'&\[(.*?)\]&')
 
-    def start_next_download(self):
-        """启动下一个下载任务"""
-        if self.current_download is None and not self.download_queue.empty():
-            url, message, sender_name, created_at = self.download_queue.get()
-            self.current_download = DownloadWorker(url, message, sender_name, created_at)
-            self.current_download.download_finished.connect(self.on_download_finished)
-            self.current_download.start()
+            # 加载主题配置
+            try:
+                theme_config = self.load_theme()
+            except Exception as e:
+                logging.error(f"加载主题配置失败: {e}")
+                theme_config = {'sender': '#4cc2ff', 'admin-sender': '#ff6b6b'}
 
-    def on_download_finished(self, file_path, filename, original_message, sender_name, created_at, success, error_msg):
-        """下载完成后的处理"""
-        self.current_download = None
-        url = re.search(r'&\[(.*?)\]&', original_message).group(1)
-        if not success:
-            self.failed_urls[url] = error_msg  # 记录失败原因
-            self.save_failed_urls()  # 保存到文件
-            logging.debug(f"记录失败 URL: {url} - {error_msg}")
-        # 无论成功或失败，都更新界面
-        messages, _ = self.fetch_and_filter_messages(self.read_last_db_id())
-        formatted_text = self.format_text(messages)
-        self.update_signal.emit(formatted_text, False)
-        self.start_next_download()
+            if not rows:
+                return "<p style='text-align: center; color: gray;'>暂无符合条件的消息</p>"
 
-    def format_text(self, rows):
-        """格式化消息文本，保持原有格式"""
-        formatted_text = ""
-        pattern = re.compile(r'&\[(.*?)\]&')
-        for row in rows:
-            sender_name = row['sender_name']
-            conversationTitle = row['conversationTitle']
-            created_at = row['timestamp'].strftime("%m-%d %H:%M")
-            message_content = row['message_content']
-            css_class = 'admin-sender' if "管理组" in conversationTitle else 'sender'
-            color = self.theme_config.get(css_class, '#4cc2ff')
+            for i, row in enumerate(rows):
+                try:
+                    logging.debug(f"处理第 {i + 1} 条消息: {row}")
 
-            matches = pattern.findall(message_content)
-            if matches:
-                for url in matches:
-                    file_path = os.path.join("./data/download/", os.path.basename(url.split('?')[0]))
-                    file_url = QUrl.fromLocalFile(file_path).toString()
-                    if os.path.exists(file_path):
-                        ext = os.path.splitext(file_path)[1].lower()
-                        new_message = re.sub(r'&\[(.*?)\]&', '', message_content).strip()
-                        if ext in ['.png', '.jpg', '.jpeg', '.gif']:
-                            message_content = f"{new_message}<br><a href='{file_url}'><img src='{file_path}' style='max-width: 100%; width: auto; height: auto;'></a>"
-                        else:
-                            icon_path = "icon/file.png"
-                            if os.path.exists(icon_path):
-                                message_content = f"{new_message}<br><a href='{file_url}'><img src='{icon_path}' width='128'></a>"
+                    # 安全地获取字段值
+                    sender_name = str(row.get('sender_name', '未知发送者')) if row.get(
+                        'sender_name') is not None else '未知发送者'
+                    conversationTitle = str(row.get('conversationTitle', '未知群聊')) if row.get(
+                        'conversationTitle') is not None else '未知群聊'
+
+                    # 处理时间格式
+                    created_at = "未知时间"
+                    timestamp_value = row.get('timestamp')
+                    if timestamp_value:
+                        try:
+                            # 处理不同格式的时间戳
+                            if isinstance(timestamp_value, str):
+                                # 尝试解析 RFC 格式的时间戳
+                                if timestamp_value.endswith(' GMT'):
+                                    dt = datetime.strptime(timestamp_value, "%a, %d %b %Y %H:%M:%S GMT")
+                                else:
+                                    # 尝试解析常见的日期时间格式
+                                    dt = datetime.strptime(timestamp_value, "%Y-%m-%d %H:%M:%S")
                             else:
-                                message_content = f"{new_message}<br><a href='{file_url}'>{os.path.basename(file_path)} (图标丢失)</a>"
-                    elif url in self.failed_urls and "403" in self.failed_urls[url]:
-                        message_content = re.sub(r'&\[(.*?)\]&', "403 Forbidden, 资源超时, 请重新发送", message_content)
-                    elif url in self.failed_urls:
-                        message_content = re.sub(r'&\[(.*?)\]&', f"下载失败: {self.failed_urls[url]}", message_content)
-                    else:
-                        message_content = "下载中..."
-            formatted_message = f"<b style='color:{color}; font-size:16px;'>{sender_name} ({created_at})</b>{markdown(message_content)}<hr>"
-            formatted_text += formatted_message
-        return formatted_text
+                                dt = timestamp_value
+                            created_at = dt.strftime("%m-%d %H:%M")
+                        except ValueError as e:
+                            logging.warning(f"时间格式解析错误: {e}")
+                            created_at = str(timestamp_value)
 
-class BulletinBoardModule:
-    def __init__(self, main_window, text_browser):
-        self.encryption_key = 0x5A
-        self.current_danmaku = None
-        self.danmaku_queue = Queue()
-        self.main_window = main_window
-        self.text_browser = text_browser  # 使用 QTextBrowser
-        self.text_browser.setOpenLinks(False)  # 禁止自动打开链接
-        self.text_browser.anchorClicked.connect(self.handle_anchor_clicked)  # 连接点击信号
-        self.timer = QTimer(self.main_window)
-        self.timer.setSingleShot(True)  # 设置为单次触发
-        self.timer.timeout.connect(self.update_bulletin_board)
-        self.timer.start(0)  # 立即触发第一次
-        self.last_message_text = ""
-        self.sound_effect = QSoundEffect()
-        self.sound_effect.setSource(QUrl.fromLocalFile("icon/newmessage.wav"))
-        if not self.check_db_config():
-            self.timer.stop()
+                    # 安全地获取消息内容
+                    message_content = str(row.get('message_content', '')) if row.get(
+                        'message_content') is not None else ''
+
+                    css_class = 'admin-sender' if "管理组" in conversationTitle else 'sender'
+                    color = theme_config.get(css_class, '#4cc2ff')
+
+                    # 处理文件链接
+                    matches = pattern.findall(message_content)
+                    processed_message_content = message_content
+                    if matches:
+                        for url in matches:
+                            try:
+                                file_path = os.path.join("./data/download/", os.path.basename(url.split('?')[0]))
+                                file_url = QUrl.fromLocalFile(file_path).toString()
+                                if os.path.exists(file_path):
+                                    ext = os.path.splitext(file_path)[1].lower()
+                                    new_message = re.sub(r'&\[(.*?)\]&', '', processed_message_content).strip()
+                                    if ext in ['.png', '.jpg', '.jpeg', '.gif']:
+                                        processed_message_content = f"{new_message}<br><a href='{file_url}'><img src='{file_path}' style='max-width: 100%; width: auto; height: auto;'></a>"
+                                    else:
+                                        icon_path = "icon/file.png"
+                                        if os.path.exists(icon_path):
+                                            processed_message_content = f"{new_message}<br><a href='{file_url}'><img src='{icon_path}' width='128'></a>"
+                                        else:
+                                            processed_message_content = f"{new_message}<br><a href='{file_url}'>{os.path.basename(file_path)} (图标丢失)</a>"
+                                else:
+                                    processed_message_content = "下载中..."
+                            except Exception as e:
+                                logging.error(f"处理文件链接时出错: {e}")
+                                processed_message_content = "[文件链接处理错误]"
+
+                    # 构建格式化的消息
+                    try:
+                        formatted_message = f"<b style='color:{color}; font-size:16px;'>{sender_name} ({created_at})</b>{markdown(processed_message_content)}<hr>"
+                        formatted_text += formatted_message
+                    except Exception as e:
+                        logging.error(f"构建格式化消息时出错: {e}")
+                        formatted_text += f"<p style='color: red;'>消息格式化错误: {str(e)}</p><hr>"
+
+                except Exception as e:
+                    logging.error(f"处理第 {i + 1} 条消息时出错: {e}", exc_info=True)
+                    formatted_text += f"<p style='color: red;'>消息处理错误: {str(e)}</p><hr>"
+
+            logging.info(f"消息格式化完成，总长度: {len(formatted_text)}")
+            return formatted_text
+
+        except Exception as e:
+            logging.error(f"格式化消息时发生严重错误: {e}", exc_info=True)
+            return "<p style='color: red; text-align: center;'>消息格式化错误</p>"
 
     def handle_anchor_clicked(self, url):
         """处理链接点击事件"""
-        if url.isLocalFile():
-            file_path = url.toLocalFile()
-            if os.path.exists(file_path):
-                QDesktopServices.openUrl(url)  # 使用默认程序打开文件
-                logging.info(f"打开文件: {file_path}")
-            else:
-                logging.warning(f"文件不存在: {file_path}")
+        try:
+            if url.isLocalFile():
+                file_path = url.toLocalFile()
+                if os.path.exists(file_path):
+                    QDesktopServices.openUrl(url)  # 使用默认程序打开文件
+                    logging.info(f"打开文件: {file_path}")
+                else:
+                    logging.warning(f"文件不存在: {file_path}")
+        except Exception as e:
+            logging.error(f"处理链接点击事件时出错: {e}")
 
-    def check_db_config(self):
-        """检查数据库配置"""
+    def play_new_message_sound(self):
+        """播放新消息提示音并处理弹幕"""
+        try:
+            self.sound_effect.play()
+            # 从文本浏览器中提取最后一条消息用于弹幕显示
+            # 这里可以添加弹幕逻辑
+        except Exception as e:
+            logging.error(f"播放新消息提示音时出错: {e}")
+
+    def cleanup(self):
+        """清理资源"""
+        try:
+            # 停止轮询线程
+            if self.poll_worker:
+                self.poll_worker.stop()
+            if self.poll_thread and self.poll_thread.isRunning():
+                self.poll_thread.quit()
+                self.poll_thread.wait()
+        except Exception as e:
+            logging.error(f"清理资源时出错: {e}")
+
+    def load_config(self):
+        """加载配置文件"""
         try:
             with open('data/db_config.json', 'r', encoding='utf-8') as f:
-                encrypted_data = f.read()
-                config_data = self.decrypt_data(encrypted_data, self.encryption_key)
-                db_config = config_data.get("db_config", {})
-            required_fields = ["host", "port", "user", "password", "database"]
-            for field in required_fields:
-                if not db_config.get(field):
-                    self.update_text_browser(f"配置错误: {field} 在 db_config.json 中为空", False)
-                    return False
-            db_config['port'] = int(db_config['port'])
-            self.db_config = db_config
+                config_data = json.load(f)
+
+            # 获取agent_id和server_url
+            self.agent_id = config_data.get("agent_id")
+            self.server_url = config_data.get("server_url", "http://localhost:10240")  # 修复这里
             self.filter_conditions = config_data.get("filter_conditions", {})
-            self.timer.start(10000)
-            return True
+
+            # 启动消息轮询
+            if self.agent_id:
+                self.start_polling()
+                return True
+            else:
+                logging.warning("未找到agent_id，无法启动消息轮询")
+                return False
         except FileNotFoundError as e:
-            self.update_text_browser(f"找不到文件: {str(e)}", False)
+            logging.error(f"找不到配置文件: {str(e)}")
             return False
         except json.JSONDecodeError as e:
-            self.update_text_browser(f"JSON 解码错误: {str(e)}", False)
-            return False
-        except ValueError as e:
-            self.update_text_browser(f"值错误: {str(e)}", False)
+            logging.error(f"JSON 解码错误: {str(e)}")
             return False
         except Exception as e:
-            self.update_text_browser(f"意外错误: {str(e)}", False)
+            logging.error(f"加载配置时发生意外错误: {str(e)}", exc_info=True)
             return False
 
-    def decrypt_data(self, encrypted_data, key):
-        """解密数据"""
-        decoded_data = base64.b64decode(encrypted_data.encode('utf-8'))
-        decrypted_data = self.xor_encrypt_decrypt(decoded_data, key)
-        return json.loads(decrypted_data.decode('utf-8'))
+    def start_polling(self):
+        """启动消息轮询"""
+        if not self.agent_id:
+            logging.warning("缺少agent_id，无法启动消息轮询")
+            return
 
-    def xor_encrypt_decrypt(self, data, key):
-        """XOR 加密/解密函数"""
-        return bytes([b ^ key for b in data])
+        # 检查是否超过最大重试次数
+        if self.connection_retry_count >= self.max_retry_count:
+            logging.error(f"已达到最大重试次数 ({self.max_retry_count})，停止尝试连接")
+            return
 
-    def update_bulletin_board(self):
-        """更新公告板"""
+        logging.info(f"启动消息轮询 (尝试次数: {self.connection_retry_count + 1}/{self.max_retry_count})")
+
+        # 启动轮询线程
+        self.poll_thread = QThread()
+        self.poll_worker = MessagePollWorker(
+            self.server_url,
+            self.agent_id,
+            self.filter_conditions
+        )
+        self.poll_worker.moveToThread(self.poll_thread)
+
+        # 连接信号和槽
+        self.poll_thread.started.connect(self.poll_worker.run)
+        self.poll_worker.message_received.connect(self.handle_message)
+        self.poll_worker.error_occurred.connect(self.on_poll_error)  # 这里需要定义方法
+
+        # 启动线程
+        self.poll_thread.start()
+
+    def on_poll_error(self, error_msg):
+        """轮询错误处理"""
+        self.connection_retry_count += 1
+        logging.error(f"消息轮询错误: {error_msg}")
+
+        # 如果达到最大重试次数，停止轮询
+        if self.connection_retry_count >= self.max_retry_count:
+            logging.error(f"已达到最大重试次数 ({self.max_retry_count})，停止消息轮询")
+
+    def handle_message(self, message):
+        """处理接收到的消息"""
         try:
-            self.worker = BulletinBoardWorker(self.db_config, self.filter_conditions, self.text_browser)
-            self.worker.update_signal.connect(self.update_text_browser)
-            self.worker.start()
-            self.timer.start(10000)  # 启动下一次定时器
+            logging.info(f"收到服务器响应: {message}")
+            message_type = message.get("type", "unknown")
+
+            if message_type == "messages":
+                messages = message.get("data", [])
+                logging.info(f"收到 {len(messages)} 条消息")
+
+                if messages is not None and len(messages) > 0:
+                    # 检查是否有新消息
+                    has_new_message = self.check_for_new_messages(messages)
+
+                    formatted_text = self.format_messages(messages)
+                    logging.debug(f"格式化后的文本长度: {len(formatted_text) if formatted_text else 0}")
+                    self.update_text_browser(formatted_text, has_new_message)
+                else:
+                    # 显示"暂无消息"提示
+                    self.update_text_browser("<p style='text-align: center; color: gray;'>暂无符合条件的消息</p>",
+                                             False)
+            else:
+                logging.warning(f"收到未知类型的消息: {message}")
         except Exception as e:
-            self.update_text_browser(f"意外错误: {str(e)}", False)
+            logging.error(f"处理消息时发生错误: {e}", exc_info=True)
+            self.update_text_browser("<p style='color: red; text-align: center;'>消息处理错误</p>", False)
+
+    def check_for_new_messages(self, messages):
+        """检查是否有新消息"""
+        try:
+            if not messages:
+                return False
+
+            # 获取最新消息的ID
+            latest_message = messages[0]  # 消息按时间倒序排列
+            latest_id = latest_message.get('id', 0)
+
+            # 读取 dbid.txt 中保存的最后ID
+            last_id = self.read_last_message_id()
+
+            # 比较ID
+            if latest_id > last_id:
+                # 保存新的ID
+                self.save_last_message_id(latest_id)
+
+                # 播放提示音并显示弹幕
+                self.play_new_message_sound(latest_message)
+                return True
+
+            return False
+        except Exception as e:
+            logging.error(f"检查新消息时出错: {e}")
+            return False
+
+    def read_last_message_id(self):
+        """读取 dbid.txt 文件中的最后消息 ID"""
+        try:
+            last_id = 0
+            dbid_file = 'data/dbid.txt'
+            if os.path.exists(dbid_file):
+                with open(dbid_file, 'r', encoding='utf-8') as f:
+                    content = f.read().strip()
+                    if content:
+                        last_id = int(content)
+            logging.debug(f"读取到最后消息ID: {last_id}")
+            return last_id
+        except ValueError as e:
+            logging.error(f"dbid.txt 中的值不是有效数字: {e}")
+            return 0
+        except Exception as e:
+            logging.error(f"读取 dbid.txt 时出错: {e}")
+            return 0
+
+    def save_last_message_id(self, message_id):
+        """保存最后消息 ID 到 dbid.txt"""
+        try:
+            dbid_file = 'data/dbid.txt'
+            os.makedirs(os.path.dirname(dbid_file), exist_ok=True)
+            with open(dbid_file, 'w', encoding='utf-8') as f:
+                f.write(str(message_id))
+            logging.debug(f"保存消息ID到文件: {message_id}")
+        except Exception as e:
+            logging.error(f"保存消息ID到 dbid.txt 时出错: {e}")
+
+    def play_new_message_sound(self, message=None):
+        """播放新消息提示音并处理弹幕"""
+        try:
+            # 播放提示音
+            if hasattr(self, 'sound_effect') and self.sound_effect is not None:
+                self.sound_effect.play()
+                logging.info("播放新消息提示音")
+
+            # 显示弹幕
+            if message:
+                try:
+                    sender_name = message.get('sender_name', '未知发送者')
+                    message_content = message.get('message_content', '')
+                    # 清理消息内容，移除文件链接标记
+                    cleaned_content = re.sub(r'&\[(.*?)\]&', '[文件]', message_content).strip()
+                    formatted_message = f"{sender_name}：{cleaned_content}"
+
+                    # 添加到弹幕队列
+                    if hasattr(self, 'danmaku_queue'):
+                        self.danmaku_queue.put(formatted_message)
+                        self.display_next_danmaku()
+                except Exception as e:
+                    logging.error(f"处理弹幕消息时出错: {e}")
+
+        except Exception as e:
+            logging.error(f"播放新消息提示音时出错: {e}")
+
+    def display_next_danmaku(self):
+        """显示下一个弹幕"""
+        try:
+            if (hasattr(self, 'danmaku_queue') and
+                    not self.danmaku_queue.empty() and
+                    hasattr(self, 'current_danmaku') and
+                    self.current_danmaku is None):
+                next_message = self.danmaku_queue.get()
+                self.current_danmaku = DanmakuWindow([next_message])
+                self.current_danmaku.finished.connect(self.on_danmaku_finished)
+                self.current_danmaku.show()
+                logging.info(f"显示弹幕: {next_message}")
+        except Exception as e:
+            logging.error(f"显示弹幕时出错: {e}")
+
+    def on_danmaku_finished(self):
+        """弹幕结束后的处理"""
+        try:
+            if hasattr(self, 'current_danmaku') and self.current_danmaku:
+                self.current_danmaku.deleteLater()
+                self.current_danmaku = None
+            self.display_next_danmaku()
+        except Exception as e:
+            logging.error(f"弹幕结束处理时出错: {e}")
+
+    def format_messages(self, rows):
+        """格式化消息"""
+        try:
+            logging.info(f"开始格式化 {len(rows)} 条消息")
+            formatted_text = ""
+            pattern = re.compile(r'&\[(.*?)\]&')
+
+            # 加载主题配置
+            try:
+                theme_config = self.load_theme()
+            except Exception as e:
+                logging.error(f"加载主题配置失败: {e}")
+                theme_config = {'sender': '#4cc2ff', 'admin-sender': '#ff6b6b'}
+
+            if not rows:
+                return "<p style='text-align: center; color: gray;'>暂无符合条件的消息</p>"
+
+            for i, row in enumerate(rows):
+                try:
+                    logging.debug(f"处理第 {i + 1} 条消息: {row}")
+
+                    # 安全地获取字段值
+                    sender_name = str(row.get('sender_name', '未知发送者')) if row.get(
+                        'sender_name') is not None else '未知发送者'
+                    conversationTitle = str(row.get('conversationTitle', '未知群聊')) if row.get(
+                        'conversationTitle') is not None else '未知群聊'
+
+                    # 处理时间格式
+                    created_at = "未知时间"
+                    timestamp_value = row.get('timestamp')
+                    if timestamp_value:
+                        try:
+                            # 处理不同格式的时间戳
+                            if isinstance(timestamp_value, str):
+                                # 尝试解析 RFC 格式的时间戳
+                                if timestamp_value.endswith(' GMT'):
+                                    dt = datetime.strptime(timestamp_value, "%a, %d %b %Y %H:%M:%S GMT")
+                                else:
+                                    # 尝试解析常见的日期时间格式
+                                    dt = datetime.strptime(timestamp_value, "%Y-%m-%d %H:%M:%S")
+                            else:
+                                dt = timestamp_value
+                            created_at = dt.strftime("%m-%d %H:%M")
+                        except ValueError as e:
+                            logging.warning(f"时间格式解析错误: {e}")
+                            created_at = str(timestamp_value)
+
+                    # 安全地获取消息内容
+                    message_content = str(row.get('message_content', '')) if row.get(
+                        'message_content') is not None else ''
+
+                    css_class = 'admin-sender' if "管理组" in conversationTitle else 'sender'
+                    color = theme_config.get(css_class, '#4cc2ff')
+
+                    # 处理文件链接
+                    matches = pattern.findall(message_content)
+                    processed_message_content = message_content
+                    if matches:
+                        for url in matches:
+                            try:
+                                file_path = os.path.join("./data/download/", os.path.basename(url.split('?')[0]))
+                                file_url = QUrl.fromLocalFile(file_path).toString()
+                                if os.path.exists(file_path):
+                                    ext = os.path.splitext(file_path)[1].lower()
+                                    new_message = re.sub(r'&\[(.*?)\]&', '', processed_message_content).strip()
+                                    if ext in ['.png', '.jpg', '.jpeg', '.gif']:
+                                        processed_message_content = f"{new_message}<br><a href='{file_url}'><img src='{file_path}' style='max-width: 100%; width: auto; height: auto;'></a>"
+                                    else:
+                                        icon_path = "icon/file.png"
+                                        if os.path.exists(icon_path):
+                                            processed_message_content = f"{new_message}<br><a href='{file_url}'><img src='{icon_path}' width='128'></a>"
+                                        else:
+                                            processed_message_content = f"{new_message}<br><a href='{file_url}'>{os.path.basename(file_path)} (图标丢失)</a>"
+                                else:
+                                    processed_message_content = "下载中..."
+                            except Exception as e:
+                                logging.error(f"处理文件链接时出错: {e}")
+                                processed_message_content = "[文件链接处理错误]"
+
+                    # 构建格式化的消息
+                    try:
+                        formatted_message = f"<b style='color:{color}; font-size:16px;'>{sender_name} ({created_at})</b>{markdown(processed_message_content)}<hr>"
+                        formatted_text += formatted_message
+                    except Exception as e:
+                        logging.error(f"构建格式化消息时出错: {e}")
+                        formatted_text += f"<p style='color: red;'>消息格式化错误: {str(e)}</p><hr>"
+
+                except Exception as e:
+                    logging.error(f"处理第 {i + 1} 条消息时出错: {e}", exc_info=True)
+                    formatted_text += f"<p style='color: red;'>消息处理错误: {str(e)}</p><hr>"
+
+            logging.info(f"消息格式化完成，总长度: {len(formatted_text)}")
+            return formatted_text
+
+        except Exception as e:
+            logging.error(f"格式化消息时发生严重错误: {e}", exc_info=True)
+            return "<p style='color: red; text-align: center;'>消息格式化错误</p>"
 
     def update_text_browser(self, text, has_new_message):
         """更新 QTextBrowser 内容"""
         try:
-            # 如果是错误信息，则直接显示并停止后续操作
-            if text.startswith("数据库错误:") or text.startswith("网络错误:") or text.startswith(
-                    "找不到文件:") or text.startswith("意外错误:"):
-                self.text_browser.setHtml(f"<font color='red'>{text}</font>")
-                return
+            logging.info(f"更新文本浏览器，文本长度: {len(text) if text else 0}")
 
-            # 正常情况下只有内容变化才更新
-            current_text = self.text_browser.toPlainText()
-            if current_text != text:
+            # 确保文本不为 None
+            if text is None:
+                text = "<p style='text-align: center; color: gray;'>暂无消息</p>"
+
+            # 检查文本浏览器是否仍然有效
+            if hasattr(self, 'text_browser') and self.text_browser is not None:
+                # 正常情况下更新内容
                 self.text_browser.setHtml(text)
                 self.last_message_text = text
                 if has_new_message:
-                    self.play_new_message_sound()
+                    # 新消息已经在 check_for_new_messages 中处理了
+                    pass
+            else:
+                logging.warning("文本浏览器对象无效")
+
         except Exception as e:
             # 出现异常时回退到上一次有效内容
-            logging.error(f"更新 QTextBrowser 时发生错误: {e}")
-            self.text_browser.setHtml(self.last_message_text or "<font color='red'>无法加载公告板内容</font>")
-
-    def play_new_message_sound(self):
-        """播放新消息提示音并处理弹幕"""
-        self.sound_effect.play()
-        fetched_messages, _ = self.worker.fetch_and_filter_messages(self.worker.read_last_db_id())
-        filtered_messages = self.worker.filter_data(fetched_messages)
-        if isinstance(filtered_messages, tuple):
-            filtered_messages = filtered_messages[0]
-        if filtered_messages:
-            last_message = filtered_messages[0]
-            formatted_message = f"{last_message['sender_name']}：{last_message['message_content'].replace(' ', ' ').strip()}"
-            self.danmaku_queue.put(formatted_message)
-            self.display_next_danmaku()
-
-    def display_next_danmaku(self):
-        """显示下一个弹幕"""
-        if not self.danmaku_queue.empty() and self.current_danmaku is None:
-            next_message = self.danmaku_queue.get()
-            self.current_danmaku = DanmakuWindow([next_message])
-            self.current_danmaku.finished.connect(self.on_danmaku_finished)
-            self.current_danmaku.show()
-
-    def on_danmaku_finished(self):
-        """弹幕结束后的处理"""
-        if self.current_danmaku:
-            self.current_danmaku.deleteLater()
-            self.current_danmaku = None
-        self.display_next_danmaku()
-
-    def stop_timer(self):
-        """停止定时器"""
-        if self.timer.isActive():
-            self.timer.stop()
-
-    def start_timer(self):
-        """启动定时器"""
-        if not self.timer.isActive():
-            self.timer.start(10000)
+            logging.error(f"更新 QTextBrowser 时发生错误: {e}", exc_info=True)
+            fallback_text = self.last_message_text or "<font color='red'>无法加载公告板内容</font>"
+            try:
+                if hasattr(self, 'text_browser') and self.text_browser is not None:
+                    self.text_browser.setHtml(fallback_text)
+            except:
+                logging.error("无法设置回退文本")
 
     def cleanup(self):
         """清理资源"""
-        self.stop_timer()
-        if hasattr(self, 'worker') and self.worker.isRunning():
-            self.worker.quit()
-            self.worker.wait()
+        try:
+            # 停止轮询线程
+            if self.poll_worker:
+                self.poll_worker.stop()
+            if self.poll_thread and self.poll_thread.isRunning():
+                self.poll_thread.quit()
+                self.poll_thread.wait()
+        except Exception as e:
+            logging.error(f"清理资源时出错: {e}")
+
 

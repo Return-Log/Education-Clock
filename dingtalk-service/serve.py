@@ -13,11 +13,27 @@ from alibabacloud_dingtalk.robot_1_0 import models as dingtalkrobot__1__0_models
 from alibabacloud_dingtalk.oauth2_1_0 import models as dingtalkoauth2__1__0_models
 from alibabacloud_tea_util import models as util_models
 from alibabacloud_tea_util.client import Client as UtilClient
+import json
+import threading
+import uuid
+from datetime import datetime, timedelta
+import secrets
 
 # 配置日志
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
+# 生成一个安全的随机密钥
+app.config['SECRET_KEY'] = secrets.token_hex(16)
+
+# 解决跨域问题
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
 
 # 数据库配置
 db_config = {
@@ -39,6 +55,9 @@ robots = {
 # 缓存 access_token 的字典，格式: {robot_code: {"token": token, "expire_time": expire_time}}
 access_token_cache: Dict[str, dict] = {}
 
+
+# ==================== 工具函数 ====================
+
 # 创建钉钉客户端
 def create_dingtalk_client() -> dingtalkrobot_1_0Client:
     """使用默认配置初始化钉钉机器人客户端"""
@@ -47,12 +66,33 @@ def create_dingtalk_client() -> dingtalkrobot_1_0Client:
     config.region_id = 'central'
     return dingtalkrobot_1_0Client(config)
 
+
 def create_oauth_client() -> dingtalkoauth2_1_0Client:
     """使用默认配置初始化钉钉 OAuth 客户端"""
     config = open_api_models.Config()
     config.protocol = 'https'
     config.region_id = 'central'
     return dingtalkoauth2_1_0Client(config)
+
+
+# 获取数据库连接
+def get_db_connection():
+    """连接到数据库并返回连接对象"""
+    try:
+        connection = pymysql.connect(
+            host=db_config["host"],
+            user=db_config["user"],
+            password=db_config["password"],
+            database=db_config["database"],
+            cursorclass=pymysql.cursors.DictCursor,
+            autocommit=True
+        )
+        logging.info("数据库连接成功")
+        return connection
+    except Exception as e:
+        logging.error(f"数据库连接错误: {e}")
+        return None
+
 
 # 获取 access_token
 def get_access_token(robot_code: str) -> str:
@@ -94,22 +134,6 @@ def get_access_token(robot_code: str) -> str:
         logging.error(f"获取 access_token 失败 for {robot_code}: {e}")
         return ""
 
-# 获取数据库连接
-def get_db_connection():
-    """连接到数据库并返回连接对象"""
-    try:
-        connection = pymysql.connect(
-            host=db_config["host"],
-            user=db_config["user"],
-            password=db_config["password"],
-            database=db_config["database"],
-            cursorclass=pymysql.cursors.DictCursor
-        )
-        logging.info("数据库连接成功")
-        return connection
-    except Exception as e:
-        logging.error(f"数据库连接错误: {e}")
-        return None
 
 # 验证签名
 def verify_signature(app_secret, timestamp, sign):
@@ -119,6 +143,7 @@ def verify_signature(app_secret, timestamp, sign):
     expected_sign = base64.b64encode(hmac_code).decode('utf-8')
     logging.debug(f"预期签名: {expected_sign}, 收到签名: {sign}")
     return expected_sign == sign
+
 
 # 将 downloadCode 转换为下载链接
 def get_download_url(download_code: str, robot_code: str, access_token: str) -> str:
@@ -136,6 +161,7 @@ def get_download_url(download_code: str, robot_code: str, access_token: str) -> 
     except Exception as err:
         logging.error(f"获取下载链接失败: {err}")
         return f"获取下载链接失败: {err}"
+
 
 # 处理消息内容
 def process_message_content(data: dict, robot_code: str, access_token: str) -> str:
@@ -180,6 +206,82 @@ def process_message_content(data: dict, robot_code: str, access_token: str) -> s
             download_url = get_download_url(download_code, robot_code, access_token)
             return f"&[{download_url}]& 文件名: {file_name}"
     return "未知消息类型"
+
+
+# 获取近7天的消息
+def get_recent_messages():
+    """获取近7天的消息"""
+    logging.info("开始查询近7天的消息")
+    connection = get_db_connection()
+    if connection is None:
+        logging.error("数据库连接失败")
+        return []
+
+    try:
+        with connection.cursor() as cursor:
+            # 查询近7天的消息（使用 timestamp 字段）
+            sql = """
+                SELECT id, robot_name, conversationTitle, sender_name, message_content, timestamp
+                FROM messages 
+                WHERE timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                ORDER BY timestamp DESC
+            """
+            logging.debug(f"执行SQL查询: {sql}")
+            cursor.execute(sql)
+            rows = cursor.fetchall()
+            logging.info(f"查询完成，找到 {len(rows)} 条消息")
+
+            # 记录前几条消息作为示例
+            for i, row in enumerate(rows[:3]):
+                logging.debug(f"示例消息 {i + 1}: {row}")
+
+            return rows
+    except Exception as e:
+        logging.error(f"查询消息错误: {e}", exc_info=True)
+        return []
+    finally:
+        connection.close()
+
+
+# 过滤消息数据
+def filter_messages(rows, filter_conditions):
+    """根据过滤条件过滤消息数据"""
+    logging.info(f"开始过滤 {len(rows)} 条消息，过滤条件: {filter_conditions}")
+
+    sender_names = filter_conditions.get("sender_names", [])
+    conversation_titles = filter_conditions.get("conversation_titles", [])
+
+    logging.info(f"发送者过滤条件: {sender_names}")
+    logging.info(f"群聊标题过滤条件: {conversation_titles}")
+
+    # 如果没有过滤条件，返回所有消息
+    if not sender_names and not conversation_titles:
+        logging.info("无过滤条件，返回所有消息")
+        return rows
+
+    filtered_rows = []
+    for i, row in enumerate(rows):
+        try:
+            # 检查是否满足过滤条件（使用正确的字段名）
+            sender_match = not sender_names or row.get('sender_name', '') in sender_names
+            title_match = not conversation_titles or row.get('conversationTitle', '') in conversation_titles
+
+            logging.debug(
+                f"消息 {i + 1}: sender='{row.get('sender_name', '')}', title='{row.get('conversationTitle', '')}' "
+                f"-> sender_match={sender_match}, title_match={title_match}")
+
+            if sender_match and title_match:
+                filtered_rows.append(row)
+        except Exception as e:
+            logging.error(f"过滤消息时出错: {e}")
+            # 出错时跳过该消息
+            continue
+
+    logging.info(f"过滤完成，{len(filtered_rows)}/{len(rows)} 条消息通过过滤")
+    return filtered_rows
+
+
+# ==================== 路由处理函数 ====================
 
 @app.route('/', methods=['POST'])
 def root_webhook():
@@ -248,5 +350,120 @@ def root_webhook():
 
     return jsonify({"status": "消息已接收并存储"}), 200
 
+
+# API端点：获取消息
+@app.route('/api/messages', methods=['GET'])
+def get_messages():
+    """获取符合过滤条件的消息"""
+    try:
+        # 获取过滤参数
+        agent_id = request.args.get('agent_id')
+        sender_names = request.args.get('sender_names')
+        conversation_titles = request.args.get('conversation_titles')
+
+        logging.info(f"收到消息请求 - Agent ID: {agent_id}")
+
+        # 构建过滤条件
+        filter_conditions = {}
+        if sender_names:
+            filter_conditions["sender_names"] = sender_names.split(',')
+            logging.info(f"发送者过滤: {filter_conditions['sender_names']}")
+        if conversation_titles:
+            filter_conditions["conversation_titles"] = conversation_titles.split(',')
+            logging.info(f"群聊标题过滤: {filter_conditions['conversation_titles']}")
+
+        # 获取消息
+        recent_messages = get_recent_messages()
+        logging.info(f"从数据库获取到 {len(recent_messages)} 条消息（近7天）")
+
+        # 如果有过滤条件，记录一些示例数据
+        if recent_messages:
+            logging.info(f"示例消息（前3条）:")
+            for i, msg in enumerate(recent_messages[:3]):
+                logging.info(
+                    f"  消息 {i + 1}: sender='{msg.get('sender_name')}', title='{msg.get('conversationTitle')}', time='{msg.get('timestamp')}'")
+
+        filtered_messages = filter_messages(recent_messages, filter_conditions)
+        logging.info(f"过滤后剩余 {len(filtered_messages)} 条消息")
+
+        # 如果过滤后没有消息，但原始有消息，记录过滤详情
+        if len(filtered_messages) == 0 and len(recent_messages) > 0:
+            logging.info("过滤条件导致所有消息被排除，检查过滤条件是否正确")
+            logging.info(f"过滤条件: {filter_conditions}")
+
+            # 显示一些实际数据供参考
+            logging.info("实际数据示例:")
+            for i, msg in enumerate(recent_messages[:5]):
+                logging.info(
+                    f"  实际消息 {i + 1}: sender='{msg.get('sender_name')}', title='{msg.get('conversationTitle')}'")
+
+        response_data = {
+            "type": "messages",
+            "data": filtered_messages
+        }
+
+        logging.info(f"返回 {len(filtered_messages)} 条消息给客户端")
+        return jsonify(response_data), 200
+    except Exception as e:
+        logging.error(f"获取消息失败: {e}", exc_info=True)
+        return jsonify({"error": "获取消息失败", "details": str(e)}), 500
+
+
+# 数据库诊断端点
+@app.route('/diagnose', methods=['GET'])
+def diagnose():
+    """诊断数据库连接和数据状态"""
+    try:
+        connection = get_db_connection()
+        if connection is None:
+            return jsonify({"error": "数据库连接失败"}), 500
+
+        with connection.cursor() as cursor:
+            # 检查表结构
+            cursor.execute("DESCRIBE messages")
+            columns = cursor.fetchall()
+
+            # 检查数据量
+            cursor.execute("SELECT COUNT(*) as total FROM messages")
+            total_count = cursor.fetchone()['total']
+
+            # 检查最近7天的数据量
+            cursor.execute("""
+                SELECT COUNT(*) as recent_count 
+                FROM messages 
+                WHERE timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            """)
+            recent_count = cursor.fetchone()['recent_count']
+
+            # 获取一些示例数据
+            cursor.execute("""
+                SELECT id, robot_name, conversationTitle, sender_name, timestamp
+                FROM messages 
+                ORDER BY timestamp DESC 
+                LIMIT 3
+            """)
+            sample_data = cursor.fetchall()
+
+        connection.close()
+
+        return jsonify({
+            "table_structure": columns,
+            "total_messages": total_count,
+            "recent_messages": recent_count,
+            "sample_data": sample_data
+        }), 200
+
+    except Exception as e:
+        logging.error(f"诊断错误: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+# 健康检查端点
+@app.route('/health')
+def health_check():
+    """健康检查端点"""
+    return jsonify({"status": "healthy", "timestamp": time.time()}), 200
+
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10240, debug=True)
+    app.run(host='0.0.0.0', port=20000, debug=True, threaded=True)
