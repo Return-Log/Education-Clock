@@ -526,89 +526,63 @@ class SettingsWindow(QDialog):
         return None
 
 #####################################通知栏设置################################################################
-    """此部分加密解密下方排行榜复用"""
-    def xor_encrypt_decrypt(self, data, key):
-        """XOR 加密/解密函数"""
-        return bytes([b ^ key for b in data])
-
-    def encrypt_data(self, data, key):
-        """加密数据"""
-        json_data = json.dumps(data, ensure_ascii=False, indent=4).encode('utf-8')
-        encrypted_data = self.xor_encrypt_decrypt(json_data, key)
-        return base64.b64encode(encrypted_data).decode('utf-8')
-
-    def decrypt_data(self, encrypted_data, key):
-        """解密数据"""
-        try:
-            decoded_data = base64.b64decode(encrypted_data.encode('utf-8'))
-            decrypted_data = self.xor_encrypt_decrypt(decoded_data, key)
-            return json.loads(decrypted_data.decode('utf-8'))
-        except Exception as e:
-            logging.error(f"解密失败: {str(e)}")
-            return None
 
     def load_db_config(self):
         try:
             with open(self.db_config_file, 'r', encoding='utf-8') as f:
-                encrypted_data = f.read()
-                config = self.decrypt_data(encrypted_data, self.encryption_key)
-                db_config = config['db_config']
-                filter_conditions = config['filter_conditions']
+                config_data = json.load(f)
 
-                self.lineEdit_3.setText(db_config['host'])
-                self.lineEdit_4.setText(str(db_config['port']))
-                self.lineEdit_5.setText(db_config['user'])
-                self.lineEdit_6.setText(db_config['password'])
-                self.lineEdit_7.setText(db_config['database'])
+            # 安全地获取配置值
+            filter_conditions = config_data.get('filter_conditions', {})
+            agent_id = config_data.get('agent_id', '')
+            server_url = config_data.get('server_url', '')
 
-                self.lineEdit_8.setText(','.join(filter_conditions['robot_names']))
-                self.lineEdit_9.setText(','.join(filter_conditions['sender_names']))
-                self.lineEdit_10.setText(','.join(filter_conditions['conversation_titles']))
+            # 设置控件文本
+            self.lineEdit_4.setText(agent_id)
+            self.lineEdit_3.setText(server_url)
 
-                logging.debug("Database configuration loaded.")
+            # 处理过滤条件
+            sender_names = filter_conditions.get('sender_names', [])
+            conversation_titles = filter_conditions.get('conversation_titles', [])
+
+            self.lineEdit_9.setText(','.join(sender_names) if sender_names else '')
+            self.lineEdit_10.setText(','.join(conversation_titles) if conversation_titles else '')
+
+            logging.debug("Database configuration loaded.")
+        except FileNotFoundError:
+            logging.warning(f"Database config file not found: {self.db_config_file}")
+            # 可以选择创建默认配置
+        except json.JSONDecodeError as e:
+            logging.error(f"Invalid JSON in database config file: {e}")
         except Exception as e:
             logging.error(f"Failed to load database configuration: {e}")
 
     def connect_line_edit_signals(self):
-        line_edits = [self.lineEdit_3, self.lineEdit_4, self.lineEdit_5, self.lineEdit_6, self.lineEdit_7,
-                      self.lineEdit_8, self.lineEdit_9, self.lineEdit_10]
+        line_edits = [self.lineEdit_3, self.lineEdit_4, self.lineEdit_9, self.lineEdit_10]
         for line_edit in line_edits:
             line_edit.textChanged.connect(self.on_line_edit_text_changed)
 
     def on_line_edit_text_changed(self):
         # 替换中文逗号为英文逗号
-        for line_edit in [self.lineEdit_8, self.lineEdit_9, self.lineEdit_10]:
+        for line_edit in [self.lineEdit_9, self.lineEdit_10]:
             line_edit.setText(line_edit.text().replace('，', ','))
 
         self.save_db_config()
 
     def save_db_config(self):
         config = {
-            "db_config": {
-                "host": self.lineEdit_3.text(),
-                "port": self.lineEdit_4.text(),  # 不再强制转换为整数
-                "user": self.lineEdit_5.text(),
-                "password": self.lineEdit_6.text(),
-                "database": self.lineEdit_7.text()
-            },
+            "agent_id": self.lineEdit_4.text(),  # 修正：lineEdit_4 对应 agent_id
+            "server_url": self.lineEdit_3.text(),  # 修正：lineEdit_3 对应 server_url
             "filter_conditions": {
-                "robot_names": self.lineEdit_8.text().split(','),
-                "sender_names": self.lineEdit_9.text().split(','),
-                "conversation_titles": self.lineEdit_10.text().split(',')
+                "sender_names": [name.strip() for name in self.lineEdit_9.text().split(',') if name.strip()],
+                "conversation_titles": [title.strip() for title in self.lineEdit_10.text().split(',') if title.strip()]
             }
         }
 
         try:
-            # 生成 JSON 字符串
-            json_data = json.dumps(config, ensure_ascii=False, indent=4)
-            logging.debug(f"Generated JSON data: {json_data}")
-
-            # 加密数据
-            encrypted_data = self.encrypt_data(config, self.encryption_key)
-
             # 保存到文件
             with open(self.db_config_file, 'w', encoding='utf-8') as f:
-                f.write(encrypted_data)
+                json.dump(config, f, ensure_ascii=False, indent=4)
                 logging.info("Database configuration saved.")
 
             self.modules_to_refresh.add("bulletin")
@@ -616,7 +590,7 @@ class SettingsWindow(QDialog):
         except Exception as e:
             logging.error(f"Failed to save database configuration: {e}")
 
-#############################倒计时设置########################################################################
+    #############################倒计时设置########################################################################
     def load_countdown(self):
         try:
             logging.debug("Loading countdown from file.")

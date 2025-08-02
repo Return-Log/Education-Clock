@@ -254,23 +254,35 @@ def filter_messages(rows, filter_conditions):
     logging.info(f"发送者过滤条件: {sender_names}")
     logging.info(f"群聊标题过滤条件: {conversation_titles}")
 
-    # 如果没有过滤条件，返回所有消息
+    # 如果两个过滤条件都为空，则返回空列表
     if not sender_names and not conversation_titles:
-        logging.info("无过滤条件，返回所有消息")
-        return rows
+        logging.info("两个过滤条件都为空，返回空列表")
+        return []
 
     filtered_rows = []
     for i, row in enumerate(rows):
         try:
-            # 检查是否满足过滤条件（使用正确的字段名）
-            sender_match = not sender_names or row.get('sender_name', '') in sender_names
-            title_match = not conversation_titles or row.get('conversationTitle', '') in conversation_titles
+            sender_match = False
+            title_match = False
+
+            # 检查发送者匹配（如果发送者过滤条件为空，则视为匹配）
+            if not sender_names:
+                sender_match = True
+            else:
+                sender_match = row.get('sender_name', '') in sender_names
+
+            # 检查群聊标题匹配（如果群聊标题过滤条件为空，则视为匹配）
+            if not conversation_titles:
+                title_match = True
+            else:
+                title_match = row.get('conversationTitle', '') in conversation_titles
 
             logging.debug(
                 f"消息 {i + 1}: sender='{row.get('sender_name', '')}', title='{row.get('conversationTitle', '')}' "
                 f"-> sender_match={sender_match}, title_match={title_match}")
 
-            if sender_match and title_match:
+            # 只要其中一个条件匹配就包含该消息（OR逻辑）
+            if sender_match or title_match:
                 filtered_rows.append(row)
         except Exception as e:
             logging.error(f"过滤消息时出错: {e}")
@@ -363,6 +375,15 @@ def get_messages():
 
         logging.info(f"收到消息请求 - Agent ID: {agent_id}")
 
+        # 获取消息
+        recent_messages = get_recent_messages()
+        logging.info(f"从数据库获取到 {len(recent_messages)} 条消息（近7天）")
+
+        # 如果指定了agent_id，则先根据robot_name过滤消息
+        if agent_id:
+            recent_messages = [msg for msg in recent_messages if msg.get('robot_name') == agent_id]
+            logging.info(f"根据Agent ID ({agent_id}) 过滤后剩余 {len(recent_messages)} 条消息")
+
         # 构建过滤条件
         filter_conditions = {}
         if sender_names:
@@ -371,10 +392,6 @@ def get_messages():
         if conversation_titles:
             filter_conditions["conversation_titles"] = conversation_titles.split(',')
             logging.info(f"群聊标题过滤: {filter_conditions['conversation_titles']}")
-
-        # 获取消息
-        recent_messages = get_recent_messages()
-        logging.info(f"从数据库获取到 {len(recent_messages)} 条消息（近7天）")
 
         # 如果有过滤条件，记录一些示例数据
         if recent_messages:

@@ -160,11 +160,39 @@ class MainWindow(QMainWindow):
 
     def refresh_bulletin(self):
         """刷新公告板模块"""
-        text_edit = self.findChild(QTextBrowser, "textBrowser")
-        if text_edit is not None:
-            self.bulletin_board_module = BulletinBoardModule(self, text_edit)
-        else:
-            self.show_message("找不到 textEdit，请检查 UI 文件")
+        try:
+            # 清理旧的公告板模块（如果存在）
+            if hasattr(self, 'bulletin_board_module') and self.bulletin_board_module is not None:
+                try:
+                    logging.info("清理旧的公告板模块")
+                    self.bulletin_board_module.cleanup()
+                except Exception as e:
+                    logging.error(f"清理旧公告板模块时出错: {e}")
+                finally:
+                    # 确保引用被清除
+                    self.bulletin_board_module = None
+
+            text_edit = self.findChild(QTextBrowser, "textBrowser")
+            if text_edit is not None:
+                try:
+                    logging.info("初始化新的公告板模块")
+                    self.bulletin_board_module = BulletinBoardModule(self, text_edit)
+                    logging.info("公告板模块初始化完成")
+                except Exception as e:
+                    logging.error(f"初始化公告板模块时出错: {e}", exc_info=True)
+                    # 在文本浏览器中显示错误信息
+                    try:
+                        text_edit.setHtml("<p style='color: red; text-align: center;'>公告板模块初始化失败</p>")
+                    except:
+                        pass
+                    self.show_message(f"公告板模块初始化失败: {str(e)}")
+            else:
+                error_msg = "找不到 textBrowser，请检查 UI 文件"
+                self.show_message(error_msg)
+                logging.error(error_msg)
+        except Exception as e:
+            logging.error(f"刷新公告板模块时发生未预期的错误: {e}", exc_info=True)
+            self.show_message(f"刷新公告板模块失败: {str(e)}")
 
     def refresh_api_display(self):
         if hasattr(self, 'api_display_module') and self.api_display_module is not None:
@@ -375,23 +403,48 @@ class MainWindow(QMainWindow):
         elif module_name == "time":
             self.refresh_time_signal.emit()
 
-
     def init_bulletin_board_module(self):
-        text_edit = self.findChild(QTextBrowser, "textBrowser")
-        if text_edit is not None:
-            self.bulletin_board_module = BulletinBoardModule(self, text_edit)
-        else:
-            self.show_message("找不到 textEdit，请检查 UI 文件")
+        try:
+            # 清理旧的公告板模块（如果存在）
+            if hasattr(self, 'bulletin_board_module') and self.bulletin_board_module is not None:
+                try:
+                    logging.info("清理旧的公告板模块（初始化时）")
+                    self.bulletin_board_module.cleanup()
+                except Exception as e:
+                    logging.error(f"清理旧公告板模块时出错: {e}")
+                finally:
+                    self.bulletin_board_module = None
+
+            text_edit = self.findChild(QTextBrowser, "textBrowser")
+            if text_edit is not None:
+                try:
+                    logging.info("初始化公告板模块")
+                    self.bulletin_board_module = BulletinBoardModule(self, text_edit)
+                    logging.info("公告板模块初始化完成")
+                except Exception as e:
+                    logging.error(f"初始化公告板模块时出错: {e}", exc_info=True)
+                    # 在文本浏览器中显示错误信息
+                    try:
+                        text_edit.setHtml("<p style='color: red; text-align: center;'>公告板模块初始化失败</p>")
+                    except:
+                        pass
+                    self.show_message(f"公告板模块初始化失败: {str(e)}")
+            else:
+                error_msg = "找不到 textBrowser，请检查 UI 文件"
+                self.show_message(error_msg)
+                logging.error(error_msg)
+        except Exception as e:
+            logging.error(f"初始化公告板模块时发生未预期的错误: {e}", exc_info=True)
+            self.show_message(f"初始化公告板模块失败: {str(e)}")
 
     def check_for_updates(self):
         """检测最新版本并更新状态"""
         self.links = [
             '<a href="https://github.com/Return-Log/Education-Clock/releases/latest" style="color: red;">检测到新版本 {latest_tag}, 当前版本 {current_version}</a>',
-            '<a href="https://s2.loli.net/2025/06/15/bBKPC7ATZ5UFpRf.png" style="color: green;">捐赠入口</a>',
         ]
         self.current_link_index = 0
         self.github_tags = None
-        self.current_version = "v4.4"
+        self.current_version = "v5.0"
 
         try:
             response = requests.get('https://api.github.com/repos/Return-Log/Education-Clock/tags', timeout=5)
