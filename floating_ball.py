@@ -5,7 +5,6 @@ from PyQt6.QtWidgets import QWidget, QMenu, QApplication
 from PyQt6.QtCore import Qt, QPoint, QSettings
 from PyQt6.QtGui import QPainter, QBrush, QColor, QPixmap
 from roll_call_module import RollCallDialog
-from db_manager import MainWindow
 from timer_module import TimerApp
 
 # 配置日志
@@ -79,7 +78,6 @@ class FloatingBall(QWidget):
         menu = QMenu(self)
         menu.addAction("随机点名", self.roll_call_module)
         menu.addAction("计时器", self.timer_module)
-        menu.addAction("通知发送器", self.db_manager)
         menu.exec(position)
 
     def roll_call_module(self):
@@ -103,17 +101,6 @@ class FloatingBall(QWidget):
             logging.info("TimerApp opened")
         except Exception as e:
             logging.error(f"Error running TimerApp: {e}")
-
-    def db_manager(self):
-        """运行 MainWindow"""
-        logging.info("Running db_manager")
-        try:
-            window = MainWindow()
-            window.show()
-            self.active_windows.append(window)  # 防止垃圾回收
-            logging.info("db_manager opened")
-        except Exception as e:
-            logging.error(f"Error running db_manager: {e}")
 
     def snap_to_edge(self):
         screen = QApplication.primaryScreen().availableGeometry()
