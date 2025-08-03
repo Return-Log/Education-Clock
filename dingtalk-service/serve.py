@@ -425,56 +425,6 @@ def get_messages():
         logging.error(f"获取消息失败: {e}", exc_info=True)
         return jsonify({"error": "获取消息失败", "details": str(e)}), 500
 
-
-# 数据库诊断端点
-@app.route('/diagnose', methods=['GET'])
-def diagnose():
-    """诊断数据库连接和数据状态"""
-    try:
-        connection = get_db_connection()
-        if connection is None:
-            return jsonify({"error": "数据库连接失败"}), 500
-
-        with connection.cursor() as cursor:
-            # 检查表结构
-            cursor.execute("DESCRIBE messages")
-            columns = cursor.fetchall()
-
-            # 检查数据量
-            cursor.execute("SELECT COUNT(*) as total FROM messages")
-            total_count = cursor.fetchone()['total']
-
-            # 检查最近7天的数据量
-            cursor.execute("""
-                SELECT COUNT(*) as recent_count 
-                FROM messages 
-                WHERE timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-            """)
-            recent_count = cursor.fetchone()['recent_count']
-
-            # 获取一些示例数据
-            cursor.execute("""
-                SELECT id, robot_name, conversationTitle, sender_name, timestamp
-                FROM messages 
-                ORDER BY timestamp DESC 
-                LIMIT 3
-            """)
-            sample_data = cursor.fetchall()
-
-        connection.close()
-
-        return jsonify({
-            "table_structure": columns,
-            "total_messages": total_count,
-            "recent_messages": recent_count,
-            "sample_data": sample_data
-        }), 200
-
-    except Exception as e:
-        logging.error(f"诊断错误: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-
 # 健康检查端点
 @app.route('/health')
 def health_check():

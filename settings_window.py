@@ -571,8 +571,8 @@ class SettingsWindow(QDialog):
 
     def save_db_config(self):
         config = {
-            "agent_id": self.lineEdit_4.text(),  # 修正：lineEdit_4 对应 agent_id
-            "server_url": self.lineEdit_3.text(),  # 修正：lineEdit_3 对应 server_url
+            "agent_id": self.lineEdit_4.text().strip(),  # 自动去除首尾空格
+            "server_url": self.lineEdit_3.text().strip(),  # 自动去除首尾空格
             "filter_conditions": {
                 "sender_names": [name.strip() for name in self.lineEdit_9.text().split(',') if name.strip()],
                 "conversation_titles": [title.strip() for title in self.lineEdit_10.text().split(',') if title.strip()]
