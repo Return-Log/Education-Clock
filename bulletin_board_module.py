@@ -15,8 +15,6 @@ from markdown import markdown
 from PyQt6.QtWidgets import QLabel, QWidget, QVBoxLayout, QApplication, QTextBrowser
 from PyQt6.QtCore import QTimer, Qt, QPropertyAnimation, QRect
 from PyQt6.QtGui import QFont, QFontMetrics, QDesktopServices
-import uuid
-import threading
 import time
 import urllib3
 

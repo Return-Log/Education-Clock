@@ -994,20 +994,27 @@ class SettingsWindow(QDialog):
         if self.comboBox_themes is None:
             raise ValueError("找不到 comboBox，请检查 UI 文件")
 
-        # 动态加载 QSS 文件
-        qss_dir = './ui/qss'
-        if os.path.exists(qss_dir):
-            qss_files = [f for f in os.listdir(qss_dir) if f.endswith('.qss')]
-            self.comboBox_themes.clear()
-            self.comboBox_themes.addItems(qss_files)
-        else:
-            logging.warning(f"QSS 目录不存在: {qss_dir}")
-            self.comboBox_themes.clear()
+        # 只有在下拉框为空时才加载QSS文件列表
+        if self.comboBox_themes.count() == 0:
+            # 动态加载 QSS 文件
+            qss_dir = './ui/qss'
+            if os.path.exists(qss_dir):
+                qss_files = [f for f in os.listdir(qss_dir) if f.endswith('.qss')]
+                self.comboBox_themes.clear()
+                self.comboBox_themes.addItems(qss_files)
+            else:
+                logging.warning(f"QSS 目录不存在: {qss_dir}")
+                self.comboBox_themes.clear()
 
         self.load_current_theme()
 
-        # 连接信号
-        self.comboBox_themes.currentIndexChanged.connect(self.save_selected_theme)
+        # 只有在没有连接信号时才连接信号
+        if not self.comboBox_themes.signalsBlocked():
+            try:
+                self.comboBox_themes.currentIndexChanged.disconnect()
+            except TypeError:
+                pass
+            self.comboBox_themes.currentIndexChanged.connect(self.save_selected_theme)
 
     def load_current_theme(self):
         """根据 qss.txt 文件设置当前主题"""
@@ -1021,12 +1028,29 @@ class SettingsWindow(QDialog):
                     index = self.comboBox_themes.findText(current_theme)
                     if index >= 0:
                         self.comboBox_themes.setCurrentIndex(index)
+                    else:
+                        # 如果在comboBox中找不到该主题，则设置为默认主题
+                        default_index = self.comboBox_themes.findText(default_qss)
+                        if default_index >= 0:
+                            self.comboBox_themes.setCurrentIndex(default_index)
+                        else:
+                            self.comboBox_themes.setCurrentText(default_qss)
                 else:
-                    QMessageBox.warning(f"QSS file {current_theme} does not exist, using default.")
-                    self.comboBox_themes.setCurrentText(default_qss)
+                    # 文件不存在或主题文件不存在
+                    QMessageBox.warning(self, "警告", f"QSS文件 {current_theme} 不存在，使用默认主题。")
+                    default_index = self.comboBox_themes.findText(default_qss)
+                    if default_index >= 0:
+                        self.comboBox_themes.setCurrentIndex(default_index)
+                    else:
+                        self.comboBox_themes.setCurrentText(default_qss)
         except Exception as e:
-            QMessageBox.warning(f"Error reading qss.txt: {e}, using default.")
-            self.comboBox_themes.setCurrentText(default_qss)
+            # 读取文件出错时的处理
+            QMessageBox.warning(self, "警告", f"读取qss.txt出错: {e}，使用默认主题。")
+            default_index = self.comboBox_themes.findText(default_qss)
+            if default_index >= 0:
+                self.comboBox_themes.setCurrentIndex(default_index)
+            else:
+                self.comboBox_themes.setCurrentText(default_qss)
 
     def save_selected_theme(self, index):
         """保存选中的主题到 qss.txt 文件"""

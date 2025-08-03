@@ -3,8 +3,6 @@
     "server_url": "",
     "filter_conditions": {
         "sender_names": [],
-        "conversation_titles": [
-            "测试"
-        ]
+        "conversation_titles": []
     }
 }
