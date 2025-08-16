@@ -126,10 +126,16 @@ class MainWindow(QMainWindow):
         # 启动检查更新
         self.check_for_updates()
 
-
-
     def refresh_timetable(self):
         """刷新课表模块"""
+        # 清理旧的课表模块
+        if hasattr(self, 'timetable_module') and self.timetable_module is not None:
+            # 确保清理旧模块的UI组件
+            if self.timetable_module.scroll_area:
+                self.timetable_module.scroll_area.setParent(None)
+                self.timetable_module.scroll_area.deleteLater()
+
+        # 创建新的课表模块
         self.timetable_module = TimetableModule(self)
         self.update_timetable()
 
