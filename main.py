@@ -450,7 +450,7 @@ class MainWindow(QMainWindow):
         ]
         self.current_link_index = 0
         self.github_tags = None
-        self.current_version = "v5.0"
+        self.current_version = "v5.1"
 
         try:
             response = requests.get('https://api.github.com/repos/Return-Log/Education-Clock/tags', timeout=5)

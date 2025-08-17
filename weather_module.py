@@ -10,6 +10,7 @@ from PyQt6.QtWidgets import QLabel
 from PyQt6.QtCore import Qt, QEvent
 from PyQt6.QtGui import QMouseEvent
 
+
 class ClickableLabel(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -23,8 +24,8 @@ class ClickableLabel(QLabel):
 
 class RealTimeWorker(QObject):
     """实时天气数据获取工作线程"""
-    data_ready = pyqtSignal(dict)       # 数据就绪信号
-    error_occurred = pyqtSignal(str)    # 错误发生信号
+    data_ready = pyqtSignal(dict)  # 数据就绪信号
+    error_occurred = pyqtSignal(str)  # 错误发生信号
 
     def __init__(self, api_key, location):
         super().__init__()
@@ -47,10 +48,11 @@ class RealTimeWorker(QObject):
         except Exception as e:
             self.error_occurred.emit(f"请求异常: {str(e)}")
 
+
 class ForecastWorker(QObject):
     """天气预报数据获取工作线程"""
-    data_ready = pyqtSignal(dict)       # 数据就绪信号
-    error_occurred = pyqtSignal(str)    # 错误发生信号
+    data_ready = pyqtSignal(dict)  # 数据就绪信号
+    error_occurred = pyqtSignal(str)  # 错误发生信号
 
     def __init__(self, api_key, location):
         super().__init__()
@@ -73,10 +75,11 @@ class ForecastWorker(QObject):
         except Exception as e:
             self.error_occurred.emit(f"请求异常: {str(e)}")
 
+
 class WeatherModule(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.api_key = self.load_api_key()    # 加载API密钥
+        self.api_key = self.load_api_key()  # 加载API密钥
         self.location = self.load_location()  # 加载地理位置
         self.init_ui()
         self.init_workers()  # 初始化工作线程
@@ -127,12 +130,15 @@ class WeatherModule(QWidget):
         # 实时天气定时器（16分钟）
         self.real_time_timer = QTimer(self)
         self.real_time_timer.timeout.connect(self.real_time_worker.fetch)
-        self.real_time_timer.start(960000)
 
         # 天气预报定时器（2小时）
         self.forecast_timer = QTimer(self)
         self.forecast_timer.timeout.connect(self.forecast_worker.fetch)
-        self.forecast_timer.start(7200000)
+
+        # 错误重试定时器（10秒）
+        self.retry_timer = QTimer(self)
+        self.retry_timer.timeout.connect(self.retry_fetch)
+        self.retry_targets = []  # 记录需要重试的任务
 
     def trigger_initial_update(self):
         """触发初始数据更新"""
@@ -211,6 +217,15 @@ class WeatherModule(QWidget):
                 f"风速: {wind_speed_mps} m/s ({wind_desc})"
             )
             self.real_time_weather_label.setText(real_time_text)
+
+            # 数据获取成功，移除重试标记并停止重试定时器（如果正在运行）
+            if "real_time" in self.retry_targets:
+                self.retry_targets.remove("real_time")
+            if not self.retry_targets:
+                self.retry_timer.stop()
+                # 重启正常的定时器
+                if not self.real_time_timer.isActive():
+                    self.real_time_timer.start(960000)
         except KeyError as e:
             self.handle_real_time_error(f"数据解析失败")
 
@@ -224,9 +239,17 @@ class WeatherModule(QWidget):
                 f"明: {tomorrow['textDay']}, {tomorrow['tempMax']}至{tomorrow['tempMin']}°C"
             )
             self.forecast_weather_label.setText(forecast_text)
+
+            # 数据获取成功，移除重试标记并停止重试定时器（如果正在运行）
+            if "forecast" in self.retry_targets:
+                self.retry_targets.remove("forecast")
+            if not self.retry_targets:
+                self.retry_timer.stop()
+                # 重启正常的定时器
+                if not self.forecast_timer.isActive():
+                    self.forecast_timer.start(7200000)
         except (KeyError, IndexError) as e:
             self.handle_forecast_error(f"数据解析失败: {str(e)}")
-
 
     def handle_real_time_error(self, error_msg):
         """处理实时天气错误"""
@@ -234,11 +257,43 @@ class WeatherModule(QWidget):
         self.real_time_weather_label.setToolTip(full_msg)
         self.real_time_weather_label.setText("实时天气错误")
 
+        # 添加重试逻辑
+        if "real_time" not in self.retry_targets:
+            self.retry_targets.append("real_time")
+
+        self.start_retry_timer()
+
+        # 停止正常的定时器
+        if self.real_time_timer.isActive():
+            self.real_time_timer.stop()
+
     def handle_forecast_error(self, error_msg):
         """处理天气预报错误"""
         full_msg = f"天气预报错误: {error_msg}"
         self.forecast_weather_label.setToolTip(full_msg)
         self.forecast_weather_label.setText("天气预报错误")
+
+        # 添加重试逻辑
+        if "forecast" not in self.retry_targets:
+            self.retry_targets.append("forecast")
+
+        self.start_retry_timer()
+
+        # 停止正常的定时器
+        if self.forecast_timer.isActive():
+            self.forecast_timer.stop()
+
+    def start_retry_timer(self):
+        """启动重试定时器"""
+        if not self.retry_timer.isActive():
+            self.retry_timer.start(10000)  # 每10秒重试一次
+
+    def retry_fetch(self):
+        """重试获取失败的数据"""
+        if "real_time" in self.retry_targets:
+            self.real_time_worker.fetch()
+        if "forecast" in self.retry_targets:
+            self.forecast_worker.fetch()
 
     def display_error(self, error_msg):
         """显示通用错误信息"""
@@ -255,6 +310,7 @@ class WeatherModule(QWidget):
         self.forecast_thread.quit()
         self.forecast_thread.wait()
         super().closeEvent(event)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

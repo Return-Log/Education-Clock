@@ -4,6 +4,7 @@ from datetime import time, datetime, timedelta
 from PyQt6.QtCore import Qt, QTimer, QEvent
 from PyQt6.QtGui import QTextDocument, QPainter, QFontMetrics
 
+
 class ScrollingLabel(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -108,6 +109,7 @@ class ScrollingLabel(QLabel):
             painter.translate(time_x_offset, time_y_offset)
             self.time_doc.drawContents(painter)
 
+
 class TimetableModule:
     def __init__(self, main_window: QMainWindow):
         self.timetable = None
@@ -130,6 +132,11 @@ class TimetableModule:
         self.timer = QTimer(self.main_window)
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.on_timer_timeout)
+
+        # 保存上一次的状态信息
+        self.last_current_time = None
+        self.last_selected_day_index = None
+        self.last_active_periods = set()
 
         self.update_timetable(datetime.now().time())
 
@@ -209,7 +216,7 @@ class TimetableModule:
 
     def add_label(self, subject, start_str, end_str, is_intime):
         combined_label = ScrollingLabel()
-        subject_text = f"<b><span style='font-size: 24px;'>{subject}</span></b>"
+        subject_text = f"<span style='font-size: 24px;'>{subject}</span>"
         time_text = f"{start_str} - {end_str}"
         combined_label.setText(subject_text, time_text)
         combined_label.setProperty("timetable", "intime" if is_intime else "untimely")
@@ -251,12 +258,71 @@ class TimetableModule:
         ms = int(delta.total_seconds() * 1000)
         self.timer.start(max(ms, 1))
 
-    def update_timetable(self, current_time: time, selected_day_index: int = None):
-        self.clear_layout()
+    def get_active_periods(self, current_time: time, selected_day_name: str):
+        """
+        获取当前时间正在上课的时段索引集合
+        """
+        active_periods = set()
+        if selected_day_name in self.timetable:
+            for i, entry in enumerate(self.timetable[selected_day_name]):
+                start = time.fromisoformat(entry[1])
+                end = time.fromisoformat(entry[2])
+                if start <= current_time < end:
+                    active_periods.add(i)
+        return active_periods
+
+    def should_update_display(self, current_time: time, selected_day_index: int):
+        """
+        判断是否需要更新显示
+        """
         days = ["无调休", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
+        if selected_day_index >= 0 and selected_day_index < len(days):
+            selected_day_name = days[selected_day_index]
+        else:
+            selected_day_name = days[0]
+
+        if selected_day_name == "无调休":
+            selected_day_name = days[datetime.now().weekday() + 1]
+
+        # 获取当前活跃时段
+        current_active_periods = self.get_active_periods(current_time, selected_day_name)
+
+        # 如果日期改变、活跃时段改变或时间为空则需要更新
+        if (self.last_current_time is None or
+                self.last_selected_day_index != selected_day_index or
+                self.last_active_periods != current_active_periods):
+            # 更新记录的状态
+            self.last_current_time = current_time
+            self.last_selected_day_index = selected_day_index
+            self.last_active_periods = current_active_periods
+            return True
+
+        return False
+
+    def update_timetable(self, current_time: time, selected_day_index: int = None):
+        # 只有在确实需要更新时才更新界面
         if selected_day_index is None:
             selected_day_index = self.comboBox.currentIndex()
+
+        # 检查是否需要更新显示
+        if not self.should_update_display(current_time, selected_day_index):
+            # 即使不需要更新显示，也要重新安排下次更新时间
+            days = ["无调休", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            if selected_day_index >= 0 and selected_day_index < len(days):
+                selected_day_name = days[selected_day_index]
+            else:
+                selected_day_name = days[0]
+
+            if selected_day_name == "无调休":
+                selected_day_name = days[datetime.now().weekday() + 1]
+
+            self.schedule_next_update(current_time, selected_day_name)
+            return
+
+        # 下面是原来的更新逻辑
+        self.clear_layout()
+        days = ["无调休", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
         if selected_day_index >= 0 and selected_day_index < len(days):
             selected_day_name = days[selected_day_index]
