@@ -26,14 +26,24 @@ class ScrollingLabel(QLabel):
         self.subject_text = subject_text
         self.time_text = time_text
 
-        # Set up subject document
-        self.subject_doc.setHtml(self.subject_text)
+        # 应用调色板文本颜色
+        palette = self.palette()
+        text_color = palette.color(self.foregroundRole()).name()
+
+        # Set up subject document with color
+        if '<span' in subject_text or '<div' in subject_text:
+            # 如果已经有HTML标签，添加颜色样式
+            self.subject_doc.setHtml(subject_text.replace("style='", f"style='color: {text_color}; "))
+        else:
+            # 简单文本，包装成带颜色的HTML
+            self.subject_doc.setHtml(f"<span style='color: {text_color}; font-size: 24px;'>{subject_text}</span>")
+
         self.subject_doc.setUseDesignMetrics(True)
         self.subject_doc.setTextWidth(-1)
         self.subject_width = self.subject_doc.idealWidth()
 
-        # Set up time document
-        self.time_doc.setHtml(f"<span style='font-size: 12px;'>{self.time_text}</span>")
+        # Set up time document with color
+        self.time_doc.setHtml(f"<span style='color: {text_color}; font-size: 12px;'>{self.time_text}</span>")
         self.time_doc.setUseDesignMetrics(True)
         self.time_doc.setTextWidth(-1)
 
@@ -86,6 +96,21 @@ class ScrollingLabel(QLabel):
             self.time_doc.size().height() if self.time_text else 0)
         y_offset = (content_rect.height() - total_height_with_spacing) / 2 + padding
 
+        # 应用标签的调色板颜色到文档
+        palette = self.palette()
+        text_color = palette.color(self.foregroundRole()).name()
+
+        # 更新文档中的HTML以包含颜色信息
+        if self.subject_text:
+            # 提取原始文本内容并添加颜色样式
+            if 'style=' in self.subject_text:
+                # 如果已经有样式，添加颜色属性
+                styled_text = self.subject_text.replace("style='", f"style='color: {text_color}; ")
+            else:
+                # 如果没有样式，添加颜色样式
+                styled_text = f"<span style='color: {text_color};'>{self.subject_text}</span>"
+            self.subject_doc.setHtml(styled_text)
+
         # 绘制课程文本
         if self.subject_width <= content_rect.width():
             # 课程文本居中显示（考虑内边距）
@@ -102,10 +127,12 @@ class ScrollingLabel(QLabel):
             self.subject_doc.drawContents(painter)
             painter.translate(-self._x - x_offset - (self.subject_width + self.gap), -y_offset)
 
-        # 绘制时间文本（始终居中且静态）
+        # 更新时间文本的样式，使其颜色与主体文本一致
         if self.time_text:
             time_y_offset = y_offset + self.subject_doc.size().height() + spacing
             time_x_offset = (content_rect.width() - self.time_doc.idealWidth()) / 2 + padding
+            # 应用与主体文本相同的颜色到时间文本
+            self.time_doc.setHtml(f"<span style='color: {text_color}; font-size: 12px;'>{self.time_text}</span>")
             painter.translate(time_x_offset, time_y_offset)
             self.time_doc.drawContents(painter)
 

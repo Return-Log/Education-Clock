@@ -77,6 +77,10 @@ class ForecastWorker(QObject):
 
 
 class WeatherModule(QWidget):
+    # 添加重试信号
+    retry_real_time_signal = pyqtSignal()
+    retry_forecast_signal = pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.api_key = self.load_api_key()  # 加载API密钥
@@ -115,6 +119,8 @@ class WeatherModule(QWidget):
         self.real_time_worker.moveToThread(self.real_time_thread)
         self.real_time_worker.data_ready.connect(self.handle_real_time_data)
         self.real_time_worker.error_occurred.connect(self.handle_real_time_error)
+        # 连接重试信号
+        self.retry_real_time_signal.connect(self.real_time_worker.fetch)
         self.real_time_thread.start()
 
         # 天气预报工作线程
@@ -123,17 +129,26 @@ class WeatherModule(QWidget):
         self.forecast_worker.moveToThread(self.forecast_thread)
         self.forecast_worker.data_ready.connect(self.handle_forecast_data)
         self.forecast_worker.error_occurred.connect(self.handle_forecast_error)
+        # 连接重试信号
+        self.retry_forecast_signal.connect(self.forecast_worker.fetch)
         self.forecast_thread.start()
+
+    def retry_fetch(self):
+        """重试获取失败的数据 - 修改为使用信号触发"""
+        if "real_time" in self.retry_targets:
+            self.retry_real_time_signal.emit()
+        if "forecast" in self.retry_targets:
+            self.retry_forecast_signal.emit()
 
     def setup_timers(self):
         """设置定时触发器"""
         # 实时天气定时器（16分钟）
         self.real_time_timer = QTimer(self)
-        self.real_time_timer.timeout.connect(self.real_time_worker.fetch)
+        self.real_time_timer.timeout.connect(lambda: self.retry_real_time_signal.emit())
 
         # 天气预报定时器（2小时）
         self.forecast_timer = QTimer(self)
-        self.forecast_timer.timeout.connect(self.forecast_worker.fetch)
+        self.forecast_timer.timeout.connect(lambda: self.retry_forecast_signal.emit())
 
         # 错误重试定时器（10秒）
         self.retry_timer = QTimer(self)
@@ -225,7 +240,7 @@ class WeatherModule(QWidget):
                 self.retry_timer.stop()
                 # 重启正常的定时器
                 if not self.real_time_timer.isActive():
-                    self.real_time_timer.start(960000)
+                    self.real_time_timer.start(960000)  # 16分钟
         except KeyError as e:
             self.handle_real_time_error(f"数据解析失败")
 
@@ -247,7 +262,7 @@ class WeatherModule(QWidget):
                 self.retry_timer.stop()
                 # 重启正常的定时器
                 if not self.forecast_timer.isActive():
-                    self.forecast_timer.start(7200000)
+                    self.forecast_timer.start(7200000)  # 2小时
         except (KeyError, IndexError) as e:
             self.handle_forecast_error(f"数据解析失败: {str(e)}")
 
@@ -289,11 +304,11 @@ class WeatherModule(QWidget):
             self.retry_timer.start(10000)  # 每10秒重试一次
 
     def retry_fetch(self):
-        """重试获取失败的数据"""
+        """重试获取失败的数据 - 使用信号触发避免阻塞UI"""
         if "real_time" in self.retry_targets:
-            self.real_time_worker.fetch()
+            self.retry_real_time_signal.emit()
         if "forecast" in self.retry_targets:
-            self.forecast_worker.fetch()
+            self.retry_forecast_signal.emit()
 
     def display_error(self, error_msg):
         """显示通用错误信息"""
