@@ -26,6 +26,7 @@ app = Flask(__name__)
 # 生成一个安全的随机密钥
 app.config['SECRET_KEY'] = secrets.token_hex(16)
 
+
 # 解决跨域问题
 @app.after_request
 def after_request(response):
@@ -208,91 +209,6 @@ def process_message_content(data: dict, robot_code: str, access_token: str) -> s
     return "未知消息类型"
 
 
-# 获取近7天的消息
-def get_recent_messages():
-    """获取近7天的消息"""
-    logging.info("开始查询近7天的消息")
-    connection = get_db_connection()
-    if connection is None:
-        logging.error("数据库连接失败")
-        return []
-
-    try:
-        with connection.cursor() as cursor:
-            # 查询近7天的消息（使用 timestamp 字段）
-            sql = """
-                SELECT id, robot_name, conversationTitle, sender_name, message_content, timestamp
-                FROM messages 
-                WHERE timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-                ORDER BY timestamp DESC
-            """
-            logging.debug(f"执行SQL查询: {sql}")
-            cursor.execute(sql)
-            rows = cursor.fetchall()
-            logging.info(f"查询完成，找到 {len(rows)} 条消息")
-
-            # 记录前几条消息作为示例
-            for i, row in enumerate(rows[:3]):
-                logging.debug(f"示例消息 {i + 1}: {row}")
-
-            return rows
-    except Exception as e:
-        logging.error(f"查询消息错误: {e}", exc_info=True)
-        return []
-    finally:
-        connection.close()
-
-
-# 过滤消息数据
-def filter_messages(rows, filter_conditions):
-    """根据过滤条件过滤消息数据"""
-    logging.info(f"开始过滤 {len(rows)} 条消息，过滤条件: {filter_conditions}")
-
-    sender_names = filter_conditions.get("sender_names", [])
-    conversation_titles = filter_conditions.get("conversation_titles", [])
-
-    logging.info(f"发送者过滤条件: {sender_names}")
-    logging.info(f"群聊标题过滤条件: {conversation_titles}")
-
-    # 如果两个过滤条件都为空，则返回空列表
-    if not sender_names and not conversation_titles:
-        logging.info("两个过滤条件都为空，返回空列表")
-        return []
-
-    filtered_rows = []
-    for i, row in enumerate(rows):
-        try:
-            sender_match = False
-            title_match = False
-
-            # 检查发送者匹配（如果发送者过滤条件为空，则视为匹配）
-            if not sender_names:
-                sender_match = True
-            else:
-                sender_match = row.get('sender_name', '') in sender_names
-
-            # 检查群聊标题匹配（如果群聊标题过滤条件为空，则视为匹配）
-            if not conversation_titles:
-                title_match = True
-            else:
-                title_match = row.get('conversationTitle', '') in conversation_titles
-
-            logging.debug(
-                f"消息 {i + 1}: sender='{row.get('sender_name', '')}', title='{row.get('conversationTitle', '')}' "
-                f"-> sender_match={sender_match}, title_match={title_match}")
-
-            # 只要其中一个条件匹配就包含该消息（OR逻辑）
-            if sender_match or title_match:
-                filtered_rows.append(row)
-        except Exception as e:
-            logging.error(f"过滤消息时出错: {e}")
-            # 出错时跳过该消息
-            continue
-
-    logging.info(f"过滤完成，{len(filtered_rows)}/{len(rows)} 条消息通过过滤")
-    return filtered_rows
-
-
 # ==================== 路由处理函数 ====================
 
 @app.route('/', methods=['POST'])
@@ -375,44 +291,70 @@ def get_messages():
 
         logging.info(f"收到消息请求 - Agent ID: {agent_id}")
 
-        # 获取消息
-        recent_messages = get_recent_messages()
-        logging.info(f"从数据库获取到 {len(recent_messages)} 条消息（近7天）")
+        # 构建SQL查询条件
+        conditions = []
+        params = []
 
-        # 如果指定了agent_id，则先根据robot_name过滤消息
+        # 基础条件：近7天的消息
+        base_condition = "timestamp >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
+        conditions.append(base_condition)
+
+        # 如果指定了agent_id，则添加robot_name过滤条件
         if agent_id:
-            recent_messages = [msg for msg in recent_messages if msg.get('robot_name') == agent_id]
-            logging.info(f"根据Agent ID ({agent_id}) 过滤后剩余 {len(recent_messages)} 条消息")
+            conditions.append("robot_name = %s")
+            params.append(agent_id)
+            logging.info(f"添加Agent ID过滤条件: {agent_id}")
 
-        # 构建过滤条件
-        filter_conditions = {}
+        # 处理发送者过滤条件
         if sender_names:
-            filter_conditions["sender_names"] = sender_names.split(',')
-            logging.info(f"发送者过滤: {filter_conditions['sender_names']}")
+            sender_list = sender_names.split(',')
+            # 使用IN子句进行多值匹配
+            placeholders = ','.join(['%s'] * len(sender_list))
+            conditions.append(f"sender_name IN ({placeholders})")
+            params.extend(sender_list)
+            logging.info(f"添加发送者过滤条件: {sender_list}")
+
+        # 处理群聊标题过滤条件
         if conversation_titles:
-            filter_conditions["conversation_titles"] = conversation_titles.split(',')
-            logging.info(f"群聊标题过滤: {filter_conditions['conversation_titles']}")
+            title_list = conversation_titles.split(',')
+            # 使用IN子句进行多值匹配
+            placeholders = ','.join(['%s'] * len(title_list))
+            conditions.append(f"conversationTitle IN ({placeholders})")
+            params.extend(title_list)
+            logging.info(f"添加群聊标题过滤条件: {title_list}")
 
-        # 如果有过滤条件，记录一些示例数据
-        if recent_messages:
-            logging.info(f"示例消息（前3条）:")
-            for i, msg in enumerate(recent_messages[:3]):
-                logging.info(
-                    f"  消息 {i + 1}: sender='{msg.get('sender_name')}', title='{msg.get('conversationTitle')}', time='{msg.get('timestamp')}'")
+        # 构建完整的SQL查询
+        where_clause = " AND ".join(conditions) if conditions else "1=1"
+        sql = f"""
+            SELECT id, robot_name, conversationTitle, sender_name, message_content, timestamp
+            FROM messages 
+            WHERE {where_clause}
+            ORDER BY timestamp DESC
+        """
 
-        filtered_messages = filter_messages(recent_messages, filter_conditions)
-        logging.info(f"过滤后剩余 {len(filtered_messages)} 条消息")
+        logging.debug(f"执行SQL查询: {sql}")
+        logging.debug(f"查询参数: {params}")
 
-        # 如果过滤后没有消息，但原始有消息，记录过滤详情
-        if len(filtered_messages) == 0 and len(recent_messages) > 0:
-            logging.info("过滤条件导致所有消息被排除，检查过滤条件是否正确")
-            logging.info(f"过滤条件: {filter_conditions}")
+        # 执行数据库查询
+        connection = get_db_connection()
+        if connection is None:
+            logging.error("数据库连接失败")
+            return jsonify({"error": "数据库连接失败"}), 500
 
-            # 显示一些实际数据供参考
-            logging.info("实际数据示例:")
-            for i, msg in enumerate(recent_messages[:5]):
-                logging.info(
-                    f"  实际消息 {i + 1}: sender='{msg.get('sender_name')}', title='{msg.get('conversationTitle')}'")
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(sql, params)
+                filtered_messages = cursor.fetchall()
+                logging.info(f"查询完成，找到 {len(filtered_messages)} 条符合条件的消息")
+
+                # 记录前几条消息作为示例
+                for i, row in enumerate(filtered_messages[:3]):
+                    logging.debug(f"示例消息 {i + 1}: {row}")
+        except Exception as e:
+            logging.error(f"查询消息错误: {e}", exc_info=True)
+            return jsonify({"error": "查询消息错误", "details": str(e)}), 500
+        finally:
+            connection.close()
 
         response_data = {
             "type": "messages",
@@ -424,6 +366,7 @@ def get_messages():
     except Exception as e:
         logging.error(f"获取消息失败: {e}", exc_info=True)
         return jsonify({"error": "获取消息失败", "details": str(e)}), 500
+
 
 # 健康检查端点
 @app.route('/health')
