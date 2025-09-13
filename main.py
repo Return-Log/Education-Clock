@@ -284,9 +284,11 @@ class MainWindow(QMainWindow):
         self.timetable_module = TimetableModule(self)
         self.shutdown_module = None
         self.cctv_controller = None
+        self.plan_tasks_module = None
         self.load_settings()  # 确保设置已加载
         self.init_shutdown_module()  # 在设置加载后初始化关机模块
         self.init_news_module()
+        self.init_plan_tasks_module()
 
     def update_timetable(self):
         current_time = datetime.now().time()
@@ -306,6 +308,25 @@ class MainWindow(QMainWindow):
     def check_settings(self):
         """检查设置并更新状态"""
         self.load_settings()
+
+    def init_plan_tasks_module(self):
+        """初始化计划任务模块"""
+        try:
+            from plan_tasks_module import PlanTasksModule
+            tab_widget = self.findChild(QWidget, "tabWidget")  # 根据实际UI结构调整
+            if tab_widget:
+                self.plan_tasks_module = PlanTasksModule(self)
+                tab_widget.addTab(self.plan_tasks_module, "计划任务")
+
+            else:
+                logging.warning("未找到tabWidget")
+        except Exception as e:
+            logging.error(f"初始化计划任务模块出错: {e}")
+
+    def refresh_plan_tasks(self):
+        """刷新计划任务模块"""
+        if self.plan_tasks_module:
+            self.plan_tasks_module.refresh()
 
     def init_news_module(self):
         """根据设置初始化新闻联播模块"""
@@ -408,6 +429,9 @@ class MainWindow(QMainWindow):
             self.refresh_api_display_signal.emit()
         elif module_name == "time":
             self.refresh_time_signal.emit()
+        elif module_name == "plan_tasks":
+            self.refresh_plan_tasks()
+
 
     def init_bulletin_board_module(self):
         try:
