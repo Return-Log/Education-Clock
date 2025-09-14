@@ -9,10 +9,10 @@ import os
 from PyQt6.QtWidgets import (
     QDialog, QPushButton, QLabel, QFileDialog, QTextBrowser, QTabWidget,
     QTableWidgetItem, QMessageBox, QApplication, QDialogButtonBox, QPlainTextEdit, QComboBox, QGroupBox, QWidget,
-    QVBoxLayout, QScrollArea, QHBoxLayout, QGridLayout, QLineEdit, QSizePolicy, QTextEdit
+    QVBoxLayout, QScrollArea, QHBoxLayout, QGridLayout, QLineEdit, QSizePolicy, QTextEdit, QTimeEdit, QDateEdit
 )
 from PyQt6.uic import loadUi
-from PyQt6.QtCore import QTimer, QDateTime, QDate, QThread, pyqtSignal
+from PyQt6.QtCore import QTimer, QDateTime, QDate, QThread, pyqtSignal, QTime, Qt
 
 
 class GroupBoxWidget(QGroupBox):
@@ -270,6 +270,8 @@ class SettingsWindow(QDialog):
             self.init_theme_settings()
         elif index == 8:
             self.load_api_configs()
+        elif index == 9:  # 计划任务设置标签页
+            self.setup_plan_tasks_tab()
 
 
     def on_tab_changed_2(self, index):
@@ -1062,6 +1064,715 @@ class SettingsWindow(QDialog):
                 f.write(selected_theme)
         except Exception as e:
             QMessageBox.critical(self, "错误", f"无法保存主题设置: {e}")
+
+################################计划消息###############################################################################
+
+    def setup_plan_tasks_tab(self):
+        """
+        设置计划任务配置标签页
+        """
+        # 获取scrollArea_2用于预约消息，scrollArea_3用于循环消息
+        self.scrollArea_2 = self.findChild(QScrollArea, "scrollArea_2")
+        self.scrollArea_3 = self.findChild(QScrollArea, "scrollArea_3")
+
+        if not self.scrollArea_2 or not self.scrollArea_3:
+            logging.error("找不到 scrollArea_2 或 scrollArea_3")
+            return
+
+        # 初始化预约消息界面
+        self.setup_appointment_messages_ui()
+
+        # 初始化循环消息界面
+        self.setup_loop_messages_ui()
+
+        # 加载现有配置
+        self.load_plan_tasks_config()
+
+    def setup_appointment_messages_ui(self):
+        """
+        设置预约消息UI
+        """
+        # 创建预约消息的容器widget
+        self.appointment_widget = QWidget()
+        self.appointment_layout = QVBoxLayout(self.appointment_widget)
+
+        # 添加标题
+        title_label = QLabel("预约消息设置")
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; margin: 10px 0;")
+        self.appointment_layout.addWidget(title_label)
+
+        # 添加按钮布局
+        button_layout = QHBoxLayout()
+        self.add_appointment_btn = QPushButton("添加预约消息")
+        self.add_appointment_btn.clicked.connect(self.add_appointment_message)
+        button_layout.addWidget(self.add_appointment_btn)
+        button_layout.addStretch()
+        self.appointment_layout.addLayout(button_layout)
+
+        # 创建预约消息列表容器
+        self.appointment_list_widget = QWidget()
+        self.appointment_list_layout = QVBoxLayout(self.appointment_list_widget)
+        self.appointment_list_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.appointment_layout.addWidget(self.appointment_list_widget)
+
+        # 设置滚动区域
+        self.scrollArea_2.setWidgetResizable(True)
+        self.scrollArea_2.setWidget(self.appointment_widget)
+
+    def setup_loop_messages_ui(self):
+        """
+        设置循环消息UI
+        """
+        # 创建循环消息的容器widget
+        self.loop_widget = QWidget()
+        self.loop_layout = QVBoxLayout(self.loop_widget)
+
+        # 添加标题
+        title_label = QLabel("循环消息设置")
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; margin: 10px 0;")
+        self.loop_layout.addWidget(title_label)
+
+        # 添加按钮布局
+        button_layout = QHBoxLayout()
+        self.add_loop_btn = QPushButton("添加循环消息列表")
+        self.add_loop_btn.clicked.connect(self.add_loop_message_list)
+        button_layout.addWidget(self.add_loop_btn)
+        button_layout.addStretch()
+        self.loop_layout.addLayout(button_layout)
+
+        # 创建循环消息列表容器
+        self.loop_list_widget = QWidget()
+        self.loop_list_layout = QVBoxLayout(self.loop_list_widget)
+        self.loop_list_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.loop_layout.addWidget(self.loop_list_widget)
+
+        # 设置滚动区域
+        self.scrollArea_3.setWidgetResizable(True)
+        self.scrollArea_3.setWidget(self.loop_widget)
+
+    def load_plan_tasks_config(self):
+        """
+        加载计划任务配置
+        """
+        config_file = 'data/message_config.json'
+        try:
+            if os.path.exists(config_file):
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    self.plan_tasks_config = json.load(f)
+            else:
+                self.plan_tasks_config = {"appointment_message": {}, "loop_message": {}}
+                logging.warning(f"配置文件 {config_file} 不存在")
+        except Exception as e:
+            logging.error(f"加载计划任务配置文件出错: {e}")
+            self.plan_tasks_config = {"appointment_message": {}, "loop_message": {}}
+
+        # 清除现有UI组件
+        self.clear_appointment_messages_ui()
+        self.clear_loop_messages_ui()
+
+        # 加载预约消息
+        appointment_messages = self.plan_tasks_config.get("appointment_message", {})
+        # 按照消息键的顺序加载，确保界面显示顺序一致
+        for message_key, message_data in appointment_messages.items():
+            self.add_appointment_message(message_key, message_data)
+
+        # 加载循环消息
+        loop_messages = self.plan_tasks_config.get("loop_message", {})
+        for list_name, list_data in loop_messages.items():
+            self.add_loop_message_list(list_name, list_data)
+
+    def clear_appointment_messages_ui(self):
+        """
+        清除预约消息UI组件
+        """
+        # 删除所有预约消息项（除了标题和按钮）
+        while self.appointment_list_layout.count() > 0:
+            item = self.appointment_list_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+    def clear_loop_messages_ui(self):
+        """
+        清除循环消息UI组件
+        """
+        # 删除所有循环消息项（除了标题和按钮）
+        while self.loop_list_layout.count() > 0:
+            item = self.loop_list_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+    def add_appointment_message(self, message_key="", message_data=None):
+        """
+        添加预约消息UI项
+        """
+        # 如果没有提供消息键，则生成一个新的唯一键
+        if not message_key:
+            message_key = self._generate_unique_appointment_key()
+
+        if message_data is None:
+            message_data = {"time": "", "text": "", "message": "", "remind_time": ""}
+
+        # 创建预约消息组框
+        group_box = QGroupBox()
+        group_box.setProperty("message_key", message_key)  # 存储消息键
+        group_layout = QVBoxLayout(group_box)
+
+        # 时间输入（可以是日期或星期）
+        time_layout = QHBoxLayout()
+        time_label = QLabel("时间:")
+        time_edit = QLineEdit()
+        time_edit.setPlaceholderText("输入日期(yyyy-MM-dd)或星期(Monday-Sunday)")
+        time_value = message_data.get("time", "")
+        time_edit.setText(time_value)
+
+        # 连接时间变化信号，使用 QTimer.singleShot 延迟执行保存
+        time_edit.textChanged.connect(self._delayed_save_plan_tasks_config)
+
+        time_layout.addWidget(time_label)
+        time_layout.addWidget(time_edit)
+        time_layout.addStretch()
+
+        # 删除按钮
+        delete_btn = QPushButton("删除")
+        # 使用自定义属性存储引用
+        delete_btn.setProperty("group_box", group_box)
+        delete_btn.clicked.connect(self._on_delete_appointment_clicked)
+        time_layout.addWidget(delete_btn)
+        group_layout.addLayout(time_layout)
+
+        # 文本内容
+        text_label = QLabel("显示文本:")
+        text_edit = QTextEdit()
+        text_edit.setMaximumHeight(60)
+        text_edit.setPlaceholderText("在此输入要显示的文本内容")
+        text_edit.setText(message_data.get("text", ""))
+        # 连接文本变化信号，使用 QTimer.singleShot 延迟执行保存
+        text_edit.textChanged.connect(self._delayed_save_plan_tasks_config)
+        group_layout.addWidget(text_label)
+        group_layout.addWidget(text_edit)
+
+        # 提醒消息
+        message_label = QLabel("提醒消息:")
+        message_edit = QTextEdit()
+        message_edit.setMaximumHeight(60)
+        message_edit.setPlaceholderText("在此输入提醒时弹出的消息（可选）")
+        message_edit.setText(message_data.get("message", ""))
+        # 连接文本变化信号，使用 QTimer.singleShot 延迟执行保存
+        message_edit.textChanged.connect(self._delayed_save_plan_tasks_config)
+        group_layout.addWidget(message_label)
+        group_layout.addWidget(message_edit)
+
+        # 提醒时间
+        remind_layout = QHBoxLayout()
+        remind_label = QLabel("提醒时间:")
+        remind_time_edit = QTimeEdit()
+        remind_time_edit.setDisplayFormat("HH:mm")
+        if message_data.get("remind_time"):
+            try:
+                time = QTime.fromString(message_data["remind_time"], "HH:mm")
+                remind_time_edit.setTime(time)
+            except:
+                remind_time_edit.setTime(QTime.currentTime())
+        else:
+            remind_time_edit.setTime(QTime.currentTime())
+
+        # 连接时间变化信号，使用 QTimer.singleShot 延迟执行保存
+        remind_time_edit.timeChanged.connect(self._delayed_save_plan_tasks_config)
+
+        remind_layout.addWidget(remind_label)
+        remind_layout.addWidget(remind_time_edit)
+        remind_layout.addStretch()
+        group_layout.addLayout(remind_layout)
+
+        # 添加到列表布局的最前面
+        self.appointment_list_layout.insertWidget(0, group_box)
+
+    def _generate_unique_text_item_id(self, group_box):
+        """
+        为指定的循环消息列表生成唯一的文本项ID
+        """
+        # 获取当前组框中的所有文本项ID
+        existing_ids = set()
+
+        # 查找文本项容器
+        texts_widgets = group_box.findChildren(QWidget)
+        texts_widget = None
+        for widget in texts_widgets:
+            if widget.layout() and widget.layout().count() > 0:
+                texts_widget = widget
+                break
+
+        if texts_widget:
+            texts_layout = texts_widget.layout()
+            if texts_layout:
+                for j in range(texts_layout.count()):
+                    item_widget = texts_layout.itemAt(j)
+                    if not item_widget:
+                        continue
+
+                    item_group_box = item_widget.widget()
+                    if isinstance(item_group_box, QGroupBox):
+                        # 获取标识符
+                        id_edits = item_group_box.findChildren(QLineEdit)
+                        if id_edits:
+                            item_id = id_edits[0].text().strip()
+                            if item_id:
+                                existing_ids.add(item_id)
+
+        # 从配置文件中获取当前列表的文本项ID
+        list_name = group_box.property("list_name")
+        if list_name:
+            config_file = 'data/message_config.json'
+            if os.path.exists(config_file):
+                try:
+                    with open(config_file, 'r', encoding='utf-8') as f:
+                        config = json.load(f)
+                        loop_messages = config.get("loop_message", {})
+                        if list_name in loop_messages:
+                            text_data = loop_messages[list_name].get("text", {})
+                            # 过滤掉特殊字段
+                            text_items = {k: v for k, v in text_data.items()
+                                          if isinstance(v, dict) and k not in ["id_now", "date_now"]}
+                            existing_ids.update(text_items.keys())
+                except Exception:
+                    pass
+
+        # 生成新的唯一ID
+        counter = 1
+        while f"text_{counter}" in existing_ids:
+            counter += 1
+        return f"text_{counter}"
+
+    def _generate_unique_loop_list_name(self):
+        """
+        生成唯一的循环消息列表名称
+        """
+        # 获取当前已有的所有列表名称
+        existing_names = set()
+        for i in range(self.loop_list_layout.count()):
+            widget_item = self.loop_list_layout.itemAt(i)
+            if widget_item and widget_item.widget():
+                group_box = widget_item.widget()
+                if isinstance(group_box, QGroupBox):
+                    name = group_box.property("list_name")
+                    if name:
+                        existing_names.add(name)
+
+        # 从配置文件中获取已有的列表名称
+        config_file = 'data/message_config.json'
+        if os.path.exists(config_file):
+            try:
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    existing_names.update(config.get("loop_message", {}).keys())
+            except Exception:
+                pass
+
+        # 生成新的唯一名称
+        counter = 1
+        while f"新列表_{counter}" in existing_names:
+            counter += 1
+        return f"新列表_{counter}"
+
+    def _on_delete_appointment_clicked(self):
+        """
+        删除预约消息项的槽函数
+        """
+        sender = self.sender()
+        group_box = sender.property("group_box")
+        if group_box:
+            self.delete_appointment_message(group_box)
+
+    def _delayed_save_plan_tasks_config(self):
+        """
+        延迟保存计划任务配置，避免频繁保存导致卡顿
+        """
+        # 使用 QTimer.singleShot 延迟执行保存操作
+        if not hasattr(self, '_save_timer'):
+            self._save_timer = QTimer()
+            self._save_timer.setSingleShot(True)
+            self._save_timer.timeout.connect(self.save_plan_tasks_config)
+
+        # 重启计时器，延迟1秒执行保存
+        self._save_timer.start(1000)
+
+    def delete_appointment_message(self, group_box):
+        """
+        删除预约消息项
+        """
+        self.appointment_list_layout.removeWidget(group_box)
+        group_box.deleteLater()
+        self.save_plan_tasks_config()
+
+    def add_loop_message_list(self, list_name="", list_data=None):
+        """
+        添加循环消息列表UI项
+        """
+        # 如果没有提供列表名称，则生成一个新的唯一名称
+        if not list_name:
+            list_name = self._generate_unique_loop_list_name()
+
+        if list_data is None:
+            list_data = {
+                "text": {
+                    "text_1": {"text": "", "message": "", "remain_time": ""},
+                    "id_now": "text_1",
+                    "date_now": ""
+                },
+                "suspension_date": []
+            }
+
+        # 创建循环消息组框
+        group_box = QGroupBox()
+        group_box.setProperty("list_name", list_name)  # 存储列表名称
+        group_layout = QVBoxLayout(group_box)
+
+        # 列表名称
+        name_layout = QHBoxLayout()
+        name_label = QLabel("列表名称:")
+        name_edit = QLineEdit()
+        name_edit.setPlaceholderText("输入列表名称")
+        name_edit.setText(list_name)
+
+        # 连接名称变化信号，使用 QTimer.singleShot 延迟执行保存
+        name_edit.textChanged.connect(self._delayed_save_plan_tasks_config)
+
+        name_layout.addWidget(name_label)
+        name_layout.addWidget(name_edit)
+
+        # 删除按钮
+        delete_btn = QPushButton("删除")
+        # 使用自定义属性存储引用
+        delete_btn.setProperty("group_box", group_box)
+        delete_btn.clicked.connect(self._on_delete_loop_list_clicked)
+        name_layout.addWidget(delete_btn)
+        group_layout.addLayout(name_layout)
+
+        # 暂停日期
+        suspension_layout = QHBoxLayout()
+        suspension_label = QLabel("暂停日期:")
+        suspension_edit = QLineEdit()
+        suspension_edit.setPlaceholderText("输入暂停日期，用逗号分隔（如: 2025-9-13, Sunday）")
+        suspension_dates = list_data.get("suspension_date", [])
+        suspension_edit.setText(", ".join(suspension_dates))
+
+        # 连接暂停日期变化信号，使用 QTimer.singleShot 延迟执行保存
+        suspension_edit.textChanged.connect(self._delayed_save_plan_tasks_config)
+
+        suspension_layout.addWidget(suspension_label)
+        suspension_layout.addWidget(suspension_edit)
+        group_layout.addLayout(suspension_layout)
+
+        # 文本项标题
+        texts_label = QLabel("文本项:")
+        texts_label.setStyleSheet("font-weight: bold;")
+        group_layout.addWidget(texts_label)
+
+        # 文本项容器
+        texts_widget = QWidget()
+        texts_layout = QVBoxLayout(texts_widget)
+
+        # 添加现有文本项
+        text_data = list_data.get("text", {})
+        for key, item_data in text_data.items():
+            if isinstance(item_data, dict) and key not in ["id_now", "date_now"]:
+                self.add_loop_text_item(texts_layout, key, item_data)
+
+        group_layout.addWidget(texts_widget)
+
+        # 添加文本项按钮
+        add_text_layout = QHBoxLayout()
+        add_text_btn = QPushButton("添加文本项")
+        # 使用自定义属性存储引用
+        add_text_btn.setProperty("texts_layout", texts_layout)
+        add_text_btn.setProperty("group_box", group_box)  # 存储组框引用
+        add_text_btn.clicked.connect(self._on_add_text_item_clicked)
+        add_text_layout.addStretch()
+        add_text_layout.addWidget(add_text_btn)
+        group_layout.addLayout(add_text_layout)
+
+        # 添加到列表布局
+        self.loop_list_layout.addWidget(group_box)
+
+    def _on_add_text_item_clicked(self):
+        """
+        添加文本项按钮点击处理
+        """
+        sender = self.sender()
+        texts_layout = sender.property("texts_layout")
+        group_box = sender.property("group_box")  # 获取组框引用
+        if texts_layout and group_box:
+            # 生成唯一的文本项ID
+            unique_id = self._generate_unique_text_item_id(group_box)
+            self.add_loop_text_item(texts_layout, unique_id)
+
+    def add_loop_text_item(self, parent_layout, key="", item_data=None):
+        """
+        添加循环消息文本项
+        """
+        if item_data is None:
+            item_data = {"text": "", "message": "", "remain_time": ""}
+
+        # 创建文本项组框
+        item_group_box = QGroupBox()
+        item_group_box.setProperty("item_id", key)  # 存储项ID
+        item_layout = QVBoxLayout(item_group_box)
+
+        # 标识符
+        id_layout = QHBoxLayout()
+        id_label = QLabel("标识符:")
+        id_edit = QLineEdit()
+        id_edit.setPlaceholderText("文本项标识符（如: text_1）")
+        id_edit.setText(key)
+
+        # 连接标识符变化信号，使用 QTimer.singleShot 延迟执行保存
+        id_edit.textChanged.connect(self._delayed_save_plan_tasks_config)
+
+        delete_btn = QPushButton("删除")
+        # 使用自定义属性存储引用
+        delete_btn.setProperty("item_group_box", item_group_box)
+        delete_btn.clicked.connect(self._on_delete_text_item_clicked)
+        id_layout.addWidget(id_label)
+        id_layout.addWidget(id_edit)
+        id_layout.addWidget(delete_btn)
+        item_layout.addLayout(id_layout)
+
+        # 文本内容
+        text_label = QLabel("显示文本:")
+        text_edit = QTextEdit()
+        text_edit.setMaximumHeight(60)
+        text_edit.setPlaceholderText("在此输入要显示的文本内容")
+        text_edit.setText(item_data.get("text", ""))
+
+        # 连接文本变化信号，使用 QTimer.singleShot 延迟执行保存
+        text_edit.textChanged.connect(self._delayed_save_plan_tasks_config)
+
+        item_layout.addWidget(text_label)
+        item_layout.addWidget(text_edit)
+
+        # 提醒消息
+        message_label = QLabel("提醒消息:")
+        message_edit = QTextEdit()
+        message_edit.setMaximumHeight(60)
+        message_edit.setPlaceholderText("在此输入提醒时弹出的消息（可选）")
+        message_edit.setText(item_data.get("message", ""))
+
+        # 连接消息变化信号，使用 QTimer.singleShot 延迟执行保存
+        message_edit.textChanged.connect(self._delayed_save_plan_tasks_config)
+
+        item_layout.addWidget(message_label)
+        item_layout.addWidget(message_edit)
+
+        # 提醒时间
+        remain_layout = QHBoxLayout()
+        remain_label = QLabel("提醒时间:")
+        remain_time_edit = QTimeEdit()
+        remain_time_edit.setDisplayFormat("HH:mm")
+        if item_data.get("remain_time"):
+            try:
+                time = QTime.fromString(item_data["remain_time"], "HH:mm")
+                remain_time_edit.setTime(time)
+            except:
+                remain_time_edit.setTime(QTime.currentTime())
+        else:
+            remain_time_edit.setTime(QTime.currentTime())
+
+        # 连接时间变化信号，使用 QTimer.singleShot 延迟执行保存
+        remain_time_edit.timeChanged.connect(self._delayed_save_plan_tasks_config)
+
+        remain_layout.addWidget(remain_label)
+        remain_layout.addWidget(remain_time_edit)
+        remain_layout.addStretch()
+        item_layout.addLayout(remain_layout)
+
+        parent_layout.addWidget(item_group_box)
+
+    def _on_delete_text_item_clicked(self):
+        """
+        删除循环消息文本项的槽函数
+        """
+        sender = self.sender()
+        item_group_box = sender.property("item_group_box")
+        if item_group_box:
+            self.delete_loop_text_item(item_group_box)
+
+    def _on_delete_loop_list_clicked(self):
+        """
+        删除循环消息列表的槽函数
+        """
+        sender = self.sender()
+        group_box = sender.property("group_box")
+        if group_box:
+            self.delete_loop_message_list(group_box)
+
+    def delete_loop_text_item(self, item_group_box):
+        """
+        删除循环消息文本项
+        """
+        item_group_box.setParent(None)
+        item_group_box.deleteLater()
+        self.save_plan_tasks_config()
+
+    def delete_loop_message_list(self, group_box):
+        """
+        删除循环消息列表
+        """
+        self.loop_list_layout.removeWidget(group_box)
+        group_box.deleteLater()
+        self.save_plan_tasks_config()
+
+    def save_plan_tasks_config(self):
+        """
+        保存计划任务配置
+        """
+        config = {"appointment_message": {}, "loop_message": {}}
+
+        # 保存预约消息
+        appointment_messages = {}
+        for i in range(self.appointment_list_layout.count()):
+            widget_item = self.appointment_list_layout.itemAt(i)
+            if not widget_item:
+                continue
+
+            group_box = widget_item.widget()
+            if isinstance(group_box, QGroupBox):
+                try:
+                    # 获取消息键
+                    message_key = group_box.property("message_key")
+                    if not message_key:
+                        # 如果没有消息键，跳过保存
+                        continue
+
+                    # 获取时间
+                    time_edits = group_box.findChildren(QLineEdit)
+                    time_value = time_edits[0].text().strip() if len(time_edits) > 0 else ""
+
+                    # 获取文本内容
+                    text_edits = group_box.findChildren(QTextEdit)
+                    text_content = text_edits[0].toPlainText() if len(text_edits) > 0 else ""
+
+                    # 获取提醒消息
+                    message_content = text_edits[1].toPlainText() if len(text_edits) > 1 else ""
+
+                    # 获取提醒时间
+                    time_widgets = group_box.findChildren(QTimeEdit)
+                    remind_time = time_widgets[0].time().toString("HH:mm") if len(time_widgets) > 0 else ""
+
+                    appointment_messages[message_key] = {
+                        "time": time_value,
+                        "text": text_content,
+                        "message": message_content,
+                        "remind_time": remind_time
+                    }
+                except Exception as e:
+                    logging.error(f"保存预约消息时出错: {e}")
+                    continue
+
+        config["appointment_message"] = appointment_messages
+
+        # 保存循环消息
+        for i in range(self.loop_list_layout.count()):
+            widget_item = self.loop_list_layout.itemAt(i)
+            if not widget_item:
+                continue
+
+            group_box = widget_item.widget()
+            if isinstance(group_box, QGroupBox):
+                try:
+                    # 获取列表名称
+                    name_edit = group_box.findChild(QLineEdit)
+                    if not name_edit:
+                        continue
+                    list_name = name_edit.text()
+
+                    if list_name:
+                        # 获取暂停日期
+                        suspension_edits = group_box.findChildren(QLineEdit)
+                        suspension_text = suspension_edits[1].text() if len(suspension_edits) > 1 else ""
+                        suspension_dates = [d.strip() for d in suspension_text.split(",") if d.strip()]
+
+                        # 获取文本项
+                        text_items = {}
+
+                        # 查找文本项容器
+                        texts_widgets = group_box.findChildren(QWidget)
+                        texts_widget = None
+                        for widget in texts_widgets:
+                            if widget.layout() and widget.layout().count() > 0:
+                                texts_widget = widget
+                                break
+
+                        if texts_widget:
+                            texts_layout = texts_widget.layout()
+                            if texts_layout:
+                                used_ids = set()  # 跟踪已使用的ID
+
+                                for j in range(texts_layout.count()):
+                                    item_widget = texts_layout.itemAt(j)
+                                    if not item_widget:
+                                        continue
+
+                                    item_group_box = item_widget.widget()
+                                    if isinstance(item_group_box, QGroupBox):
+                                        # 获取标识符
+                                        id_edits = item_group_box.findChildren(QLineEdit)
+                                        if not id_edits:
+                                            continue
+
+                                        item_id = id_edits[0].text().strip()
+
+                                        # 处理重复ID
+                                        original_id = item_id
+                                        counter = 1
+                                        while item_id in used_ids:
+                                            item_id = f"{original_id}_{counter}"
+                                            counter += 1
+                                        used_ids.add(item_id)
+
+                                        # 获取文本内容
+                                        text_edits = item_group_box.findChildren(QTextEdit)
+                                        text_content = text_edits[0].toPlainText() if len(text_edits) > 0 else ""
+
+                                        # 获取提醒消息
+                                        message_content = text_edits[1].toPlainText() if len(text_edits) > 1 else ""
+
+                                        # 获取提醒时间
+                                        time_edits = item_group_box.findChildren(QTimeEdit)
+                                        remain_time = time_edits[0].time().toString("HH:mm") if len(
+                                            time_edits) > 0 else ""
+
+                                        text_items[item_id] = {
+                                            "text": text_content,
+                                            "message": message_content,
+                                            "remain_time": remain_time
+                                        }
+
+                        # 添加默认字段
+                        if text_items:  # 只有当有文本项时才设置id_now
+                            text_items["id_now"] = list(text_items.keys())[0] if text_items.keys() else "text_1"
+                        else:
+                            text_items["id_now"] = ""
+                        text_items["date_now"] = ""
+
+                        config["loop_message"][list_name] = {
+                            "text": text_items,
+                            "suspension_date": suspension_dates
+                        }
+                except Exception as e:
+                    logging.error(f"保存循环消息时出错: {e}")
+                    continue
+
+        # 保存到文件
+        config_file = 'data/message_config.json'
+        try:
+            os.makedirs(os.path.dirname(config_file), exist_ok=True)
+            with open(config_file, 'w', encoding='utf-8') as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
+            self.modules_to_refresh.add("plan_tasks")
+            logging.info("计划任务配置已保存")
+        except Exception as e:
+            logging.error(f"保存计划任务配置文件出错: {e}")
+
 
 
 

@@ -61,26 +61,55 @@ class PlanTasksModule(QWidget):
         self.load_config()
         current_date = datetime.now().date()
         current_time = datetime.now().time()
+        current_weekday = current_date.strftime("%A")  # 获取当前星期几的英文名
         display_messages = []
 
         # 处理预约消息
         appointment_messages = self.config.get("appointment_message", {})
-        for date_str, message_data in appointment_messages.items():
+        for message_key, message_data in appointment_messages.items():
             try:
-                message_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-                if message_date == current_date:
-                    remind_time_str = message_data.get("remind_time", "")
-                    if remind_time_str:
-                        remind_time = datetime.strptime(remind_time_str, "%H:%M").time()
-                        # 检查是否到达提醒时间
-                        if self.is_time_just_passed(remind_time, current_time):
-                            # 播放提示音并显示弹幕
-                            self.play_sound_and_danmaku(message_data.get("message", ""))
+                time_value = message_data.get("time", "")
+                if not time_value:
+                    continue
 
-                    # 添加到显示列表
-                    text = message_data.get("text", "")
-                    if text:
-                        display_messages.append(f"*预约通知 {date_str}*\n{text}\n---")
+                # 检查是否是星期几
+                weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                if time_value in weekdays:
+                    # 如果是星期几，检查是否匹配今天
+                    if time_value == current_weekday:
+                        remind_time_str = message_data.get("remind_time", "")
+                        if remind_time_str:
+                            remind_time = datetime.strptime(remind_time_str, "%H:%M").time()
+                            # 检查是否到达提醒时间
+                            if self.is_time_just_passed(remind_time, current_time):
+                                # 播放提示音并显示弹幕
+                                self.play_sound_and_danmaku(message_data.get("message", ""))
+
+                        # 添加到显示列表
+                        text = message_data.get("text", "")
+                        if text:
+                            display_messages.append(f"*预约通知 {time_value}*\n{text}\n---")
+                else:
+                    # 否则认为是日期格式
+                    try:
+                        message_date = datetime.strptime(time_value, "%Y-%m-%d").date()
+                        if message_date == current_date:
+                            remind_time_str = message_data.get("remind_time", "")
+                            if remind_time_str:
+                                remind_time = datetime.strptime(remind_time_str, "%H:%M").time()
+                                # 检查是否到达提醒时间
+                                if self.is_time_just_passed(remind_time, current_time):
+                                    # 播放提示音并显示弹幕
+                                    self.play_sound_and_danmaku(message_data.get("message", ""))
+
+                            # 添加到显示列表
+                            text = message_data.get("text", "")
+                            if text:
+                                display_messages.append(f"*预约通知 {time_value}*\n{text}\n---")
+                    except ValueError:
+                        logging.warning(f"无效的日期格式: {time_value}")
+                        continue
+
             except Exception as e:
                 logging.error(f"处理预约消息出错: {e}")
 
@@ -121,11 +150,11 @@ class PlanTasksModule(QWidget):
                 # 显示当前key的消息
                 if id_now and id_now in text_data:
                     current_message_data = text_data[id_now]
-                    remind_time_str = current_message_data.get("remain_time", "")
-                    if remind_time_str:
-                        remind_time = datetime.strptime(remind_time_str, "%H:%M").time()
+                    remain_time_str = current_message_data.get("remain_time", "")
+                    if remain_time_str:
+                        remain_time = datetime.strptime(remain_time_str, "%H:%M").time()
                         # 检查是否到达提醒时间
-                        if self.is_time_just_passed(remind_time, current_time):
+                        if self.is_time_just_passed(remain_time, current_time):
                             # 播放提示音并显示弹幕
                             self.play_sound_and_danmaku(current_message_data.get("message", ""))
 
