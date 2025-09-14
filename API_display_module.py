@@ -338,8 +338,8 @@ class APIDisplayModule:
                 del info["image_worker"]
 
         tab_count = self.tab_widget.count()
-        print(f"当前共有 {tab_count} 个标签页，将删除除第一个外的所有标签页。")
-        for i in range(tab_count - 1, 0, -1):  # 倒序删除
+        print(f"当前共有 {tab_count} 个标签页，将删除除第一、二个外的所有标签页。")
+        for i in range(tab_count - 1, 1, -1):  # 倒序删除
             tab = self.tab_widget.widget(i)
             tab_name = self.tab_widget.tabText(i)
             print(f"正在删除标签页: {tab_name}")

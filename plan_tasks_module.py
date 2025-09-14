@@ -80,7 +80,7 @@ class PlanTasksModule(QWidget):
                     # 添加到显示列表
                     text = message_data.get("text", "")
                     if text:
-                        display_messages.append(f"**预约通知 {date_str}**\n{text}\n---")
+                        display_messages.append(f"*预约通知 {date_str}*\n{text}\n---")
             except Exception as e:
                 logging.error(f"处理预约消息出错: {e}")
 
@@ -132,7 +132,7 @@ class PlanTasksModule(QWidget):
                     # 添加到显示列表
                     text = current_message_data.get("text", "")
                     if text:
-                        display_messages.append(f"**循环通知 {list_key}**\n{text}\n---")
+                        display_messages.append(f"*循环通知 {list_key}*\n{text}\n---")
 
             except Exception as e:
                 logging.error(f"处理循环消息出错: {e}")
