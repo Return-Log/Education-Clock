@@ -1621,6 +1621,37 @@ class SettingsWindow(QDialog):
         group_box.deleteLater()
         self.save_plan_tasks_config()
 
+    def _generate_unique_appointment_key(self):
+        """
+        生成唯一的预约消息键
+        """
+        # 获取当前已有的所有消息键
+        existing_keys = set()
+        for i in range(self.appointment_list_layout.count()):
+            widget_item = self.appointment_list_layout.itemAt(i)
+            if widget_item and widget_item.widget():
+                group_box = widget_item.widget()
+                if isinstance(group_box, QGroupBox):
+                    key = group_box.property("message_key")
+                    if key:
+                        existing_keys.add(key)
+
+        # 从配置文件中获取已有的键
+        config_file = 'data/message_config.json'
+        if os.path.exists(config_file):
+            try:
+                with open(config_file, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    existing_keys.update(config.get("appointment_message", {}).keys())
+            except Exception:
+                pass
+
+        # 生成新的唯一键
+        counter = 1
+        while f"message_{counter}" in existing_keys:
+            counter += 1
+        return f"message_{counter}"
+
     def save_plan_tasks_config(self):
         """
         保存计划任务配置
