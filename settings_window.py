@@ -1099,6 +1099,7 @@ class SettingsWindow(QDialog):
         # 添加标题
         title_label = QLabel("预约消息设置")
         title_label.setStyleSheet("font-size: 16px; font-weight: bold; margin: 10px 0;")
+        title_label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
         self.appointment_layout.addWidget(title_label)
 
         # 添加按钮布局
@@ -1129,7 +1130,8 @@ class SettingsWindow(QDialog):
 
         # 添加标题
         title_label = QLabel("循环消息设置")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold; margin: 10px 0;")
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; margin: 10px 0; ")
+        title_label.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Maximum)
         self.loop_layout.addWidget(title_label)
 
         # 添加按钮布局

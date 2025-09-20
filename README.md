@@ -235,6 +235,10 @@ alibabacloud-tea-util  # 钉钉 SDK 依赖的 TEA 工具库
 
 ![PixPin_2025-06-15_12-46-07.png](https://s2.loli.net/2025/06/15/ktYLZg6Q1hNWcl5.png)
 
+## 计划消息
+
+可设置定时消息和循环消息，定时消息中设置为Sunday等可实现每周显示
+
 ---
 
 ![.png](https://s2.loli.net/2025/06/15/bBKPC7ATZ5UFpRf.png)
