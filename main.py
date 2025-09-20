@@ -3,10 +3,10 @@ import os
 import sys
 import requests
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget, QToolButton, QTextEdit, QLabel, \
-    QTextBrowser, QDialog
+    QTextBrowser, QDialog, QSystemTrayIcon, QMenu
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, Qt, QUrl, pyqtSignal, QSharedMemory
-from PyQt6.QtGui import QDesktopServices, QIcon, QPixmap
+from PyQt6.QtGui import QDesktopServices, QIcon, QPixmap, QAction
 from PyQt6.QtWidgets import QMessageBox
 from PyQt6.QtCore import QSettings
 from datetime import datetime
@@ -61,6 +61,8 @@ class MainWindow(QMainWindow):
         # 加载 .ui 文件
         loadUi('./ui/mainwindow.ui', self)  # 替换为实际路径
 
+        self.init_system_tray()
+
         # 连接信号到对应的刷新方法
         self.refresh_timetable_signal.connect(self.refresh_timetable)
         self.refresh_weather_signal.connect(self.refresh_weather)
@@ -108,7 +110,7 @@ class MainWindow(QMainWindow):
         self.init_bulletin_board_module()
 
         # 移除窗口边框
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool)
         # 固定窗口位置和大小
         self.fix_window_position_and_size()
 
@@ -125,6 +127,74 @@ class MainWindow(QMainWindow):
 
         # 启动检查更新
         self.check_for_updates()
+
+    def init_system_tray(self):
+        """初始化系统托盘图标"""
+        # 检查系统是否支持托盘图标
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            logging.warning("系统不支持托盘图标")
+            return
+
+        # 创建托盘图标
+        self.tray_icon = QSystemTrayIcon(self)
+
+
+        self.tray_icon.setIcon(self.windowIcon())
+
+        # 创建托盘菜单
+        tray_menu = QMenu()
+
+        # 添加退出动作
+        exit_action = QAction("退出", self)
+        exit_action.triggered.connect(self.quit_application)
+        tray_menu.addAction(exit_action)
+
+        # 设置托盘菜单
+        self.tray_icon.setContextMenu(tray_menu)
+
+        # 连接托盘图标激活信号
+        self.tray_icon.activated.connect(self.on_tray_icon_activated)
+
+        # 显示托盘图标
+        self.tray_icon.show()
+
+    def on_tray_icon_activated(self, reason):
+        """处理托盘图标点击事件"""
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            # 单击托盘图标时显示/隐藏主窗口
+            if self.isVisible():
+                self.hide()
+            else:
+                self.show()
+                self.activateWindow()
+
+    def quit_application(self):
+        """退出应用程序"""
+        # 隐藏托盘图标
+        if hasattr(self, 'tray_icon'):
+            self.tray_icon.hide()
+        # 退出应用
+        QApplication.instance().quit()
+
+    # 修改 closeEvent 方法
+    def closeEvent(self, event):
+        """重写关闭事件，点击关闭按钮时最小化到托盘"""
+        if hasattr(self, 'tray_icon') and QSystemTrayIcon.isSystemTrayAvailable():
+            # 如果有托盘图标，则最小化到托盘而不是退出
+            event.ignore()
+            self.hide()
+        else:
+            # 没有托盘图标则正常退出
+            settings = QSettings("Log", "EC")
+            settings.setValue("windowGeometry", self.saveGeometry())
+            settings.setValue("windowPosition", self.pos())
+            if hasattr(self, 'floating_ball'):
+                self.floating_ball.close()
+            if hasattr(self, 'roll_call_dialog'):
+                self.roll_call_dialog.close()
+            if hasattr(self, 'ranking_module'):
+                self.ranking_module.stop()
+            event.accept()
 
     def refresh_timetable(self):
         """刷新课表模块"""

@@ -20,7 +20,7 @@ class FloatingBall(QWidget):
         self.active_windows = []  # 用于跟踪打开的窗口，防止垃圾回收
 
     def init_ui(self):
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.ball_size = 32
         self.setFixedSize(self.ball_size, self.ball_size)
