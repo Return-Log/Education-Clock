@@ -2,8 +2,8 @@ import os
 import sys
 import logging
 from PyQt6.QtWidgets import QWidget, QMenu, QApplication
-from PyQt6.QtCore import Qt, QPoint, QSettings
-from PyQt6.QtGui import QPainter, QBrush, QColor, QPixmap
+from PyQt6.QtCore import Qt, QPoint, QSettings, QSize
+from PyQt6.QtGui import QPainter, QBrush, QColor, QPixmap, QMovie
 from roll_call_module import RollCallDialog
 from timer_module import TimerApp
 
@@ -22,12 +22,21 @@ class FloatingBall(QWidget):
     def init_ui(self):
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.ball_size = 32
+        self.ball_size = 36
         self.setFixedSize(self.ball_size, self.ball_size)
 
         self.png_path = "./icon/ball.png"
         self.pixmap = QPixmap(self.png_path).scaled(self.ball_size, self.ball_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation) if os.path.exists(self.png_path) else None
         self.use_png = bool(self.pixmap)
+
+        # 确保动画循环
+        self.movie = QMovie("./icon/animated_ball.gif")
+        self.movie.setScaledSize(QSize(self.ball_size, self.ball_size))
+        self.movie.setCacheMode(QMovie.CacheMode.CacheAll)  # 缓存所有帧以提高性能
+        self.movie.start()
+
+        # 连接帧变化信号以触发重绘
+        self.movie.frameChanged.connect(self.on_frame_changed)
 
         self.dragging = False
         self.offset = QPoint()
@@ -38,15 +47,19 @@ class FloatingBall(QWidget):
         self.show()
         self.raise_()
 
+    def on_frame_changed(self):
+        self.update()  # 强制重绘以显示新帧
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setOpacity(0.6)
+        painter.setOpacity(0.8)
         if self.use_png:
-            painter.drawPixmap(0, 0, self.pixmap)
+            # 绘制当前帧
+            current_pixmap = self.movie.currentPixmap()
+            painter.drawPixmap(0, 0, current_pixmap)
         else:
-            painter.setBrush(QBrush(QColor(0, 0, 255)))
-            painter.drawEllipse(0, 0, self.ball_size, self.ball_size)
+            painter.drawPixmap(0, 0, self.pixmap)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:

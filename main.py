@@ -72,6 +72,8 @@ class MainWindow(QMainWindow):
         self.refresh_api_display_signal.connect(self.refresh_api_display)
         self.refresh_time_signal.connect(self.refresh_time)
 
+
+
         # 初始化各个模块
         self.init_modules()
 

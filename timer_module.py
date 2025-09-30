@@ -11,7 +11,7 @@ class TimerApp(QMainWindow):
         super().__init__()
         uic.loadUi("./ui/timers.ui", self)
 
-        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
+        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
 
         # 默认倒计时模式
         self.radioButton_2.setChecked(True)

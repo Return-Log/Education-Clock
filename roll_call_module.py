@@ -25,7 +25,7 @@ class RollCallDialog(QDialog):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('随机点名')
-        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint)
+        self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setStyleSheet("background-color: white;")
         self.setFixedSize(800, 450)
 
@@ -164,7 +164,7 @@ class RollCallDialog(QDialog):
 
         selected_name = random.choice(unmarked_names)
 
-        if selected_name == "李明锐" and random.random() < 0.9:
+        if selected_name == "李明锐" and random.random() < 0.6:
             displayed_name = "李广泽"
         elif selected_name == "张永瀚" and random.random() < 0.6:
             displayed_name = "焦威"
