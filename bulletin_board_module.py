@@ -588,8 +588,6 @@ class BulletinBoardModule:
         """播放新消息提示音并处理弹幕"""
         try:
             self.sound_effect.play()
-            # 从文本浏览器中提取最后一条消息用于弹幕显示
-            # 这里可以添加弹幕逻辑
         except Exception as e:
             logging.error(f"播放新消息提示音时出错: {e}")
 

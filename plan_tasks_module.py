@@ -227,7 +227,6 @@ class PlanTasksModule(QWidget):
                 # 确保弹幕窗口有正确的父级关系
                 danmaku_window = DanmakuWindow([message], self.main_window)
                 danmaku_window.show()
-                danmaku_window.activateWindow()  # 激活窗口
                 logging.info(f"显示计划任务弹幕: {message}")
         except Exception as e:
             logging.error(f"播放提示音或显示弹幕出错: {e}", exc_info=True)

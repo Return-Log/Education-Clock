@@ -443,13 +443,6 @@ class RollCallDialog(QDialog):
 
         selected_name = random.choice(unmarked_names)
 
-        # if selected_name == "李明锐" and random.random() < 0.6:
-        #     displayed_name = "李广泽"
-        # elif selected_name == "张永瀚" and random.random() < 0.6:
-        #     displayed_name = "焦威"
-        # else:
-        #     displayed_name = selected_name
-
         displayed_name = selected_name
 
         # 标记已显示的名字
