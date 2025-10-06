@@ -68,52 +68,79 @@ class PlanTasksModule(QWidget):
         appointment_messages = self.config.get("appointment_message", {})
         for message_key, message_data in appointment_messages.items():
             try:
-                time_value = message_data.get("time", "")
-                if not time_value:
-                    continue
+                # 检查是否是新的多时间点格式
+                schedules = []
+                if "schedules" in message_data and isinstance(message_data["schedules"], list):
+                    # 新格式：多个时间点
+                    schedules = message_data["schedules"]
+                else:
+                    # 兼容旧格式：单个时间点
+                    schedules = [message_data]
 
-                # 检查是否是星期几
-                weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-                if time_value in weekdays:
-                    # 如果是星期几，检查是否匹配今天
-                    if time_value == current_weekday:
-                        remind_time_str = message_data.get("remind_time", "")
+                # 遍历所有时间点
+                for schedule in schedules:
+                    time_value = schedule.get("time", "")
+                    if not time_value:
+                        continue
+
+                    # 支持多种日期格式，用逗号分隔
+                    time_values = [t.strip().replace("，", ",") for t in time_value.split(",")]
+                    matched = False
+
+                    for time_val in time_values:
+                        time_val = time_val.strip()
+                        # 检查是否是星期几
+                        weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                        weekdays_chinese = {
+                            "Monday": "星期一", "Tuesday": "星期二", "Wednesday": "星期三",
+                            "Thursday": "星期四", "Friday": "星期五", "Saturday": "星期六", "Sunday": "星期日"
+                        }
+
+                        if time_val in weekdays or time_val in weekdays_chinese.values():
+                            # 如果是星期几，检查是否匹配今天
+                            weekday_match = (time_val == current_weekday or
+                                             time_val == weekdays_chinese.get(current_weekday, ""))
+                            if weekday_match:
+                                matched = True
+                                break
+
+                        else:
+                            # 检查是否为日期格式
+                            try:
+                                # 尝试解析 YYYY-MM-DD 格式
+                                message_date = datetime.strptime(time_val, "%Y-%m-%d").date()
+                                if message_date == current_date:
+                                    matched = True
+                                    break
+                            except ValueError:
+                                try:
+                                    # 尝试解析 MM-DD 格式
+                                    message_date = datetime.strptime(time_val, "%m-%d").date()
+                                    if message_date.month == current_date.month and message_date.day == current_date.day:
+                                        matched = True
+                                        break
+                                except ValueError:
+                                    logging.warning(f"无效的日期格式: {time_val}")
+                                    continue
+
+                    if matched:
+                        remind_time_str = schedule.get("remind_time", "")
                         if remind_time_str:
                             remind_time = datetime.strptime(remind_time_str, "%H:%M").time()
                             # 检查是否到达提醒时间
                             if self.is_time_just_passed(remind_time, current_time):
                                 # 播放提示音并显示弹幕
-                                self.play_sound_and_danmaku(message_data.get("message", ""))
+                                self.play_sound_and_danmaku(schedule.get("message", ""))
 
                         # 添加到显示列表
-                        text = message_data.get("text", "")
+                        text = schedule.get("text", "")
                         if text:
                             display_messages.append(f"*预约通知 {time_value}*\n{text}\n---")
-                else:
-                    # 否则认为是日期格式
-                    try:
-                        message_date = datetime.strptime(time_value, "%Y-%m-%d").date()
-                        if message_date == current_date:
-                            remind_time_str = message_data.get("remind_time", "")
-                            if remind_time_str:
-                                remind_time = datetime.strptime(remind_time_str, "%H:%M").time()
-                                # 检查是否到达提醒时间
-                                if self.is_time_just_passed(remind_time, current_time):
-                                    # 播放提示音并显示弹幕
-                                    self.play_sound_and_danmaku(message_data.get("message", ""))
-
-                            # 添加到显示列表
-                            text = message_data.get("text", "")
-                            if text:
-                                display_messages.append(f"*预约通知 {time_value}*\n{text}\n---")
-                    except ValueError:
-                        logging.warning(f"无效的日期格式: {time_value}")
-                        continue
 
             except Exception as e:
                 logging.error(f"处理预约消息出错: {e}")
 
-        # 处理循环消息
+        # 处理循环消息（保持原有逻辑）
         loop_messages = self.config.get("loop_message", {})
         config_changed = False  # 标记配置是否发生变化
 
@@ -193,25 +220,44 @@ class PlanTasksModule(QWidget):
     def is_suspended(self, current_date, suspension_dates):
         """检查当前日期是否在暂停日期中"""
         for suspension_date in suspension_dates:
-            # 检查是否为星期几 (Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday)
-            weekdays = {
-                "Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3,
-                "Friday": 4, "Saturday": 5, "Sunday": 6
-            }
+            # 处理中文逗号
+            suspension_date = suspension_date.strip().replace("，", ",")
+            # 支持逗号分隔的多个日期
+            date_parts = [d.strip() for d in suspension_date.split(",")]
 
-            if suspension_date in weekdays:
-                if current_date.weekday() == weekdays[suspension_date]:
-                    return True
-            else:
-                try:
-                    # 检查是否为特定日期格式 YYYY-MM-DD
-                    suspended_date = datetime.strptime(suspension_date, "%Y-%m-%d").date()
-                    if suspended_date == current_date:
+            for date_part in date_parts:
+                # 检查是否为星期几 (Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday)
+                weekdays = {
+                    "Monday": 0, "Tuesday": 1, "Wednesday": 2, "Thursday": 3,
+                    "Friday": 4, "Saturday": 5, "Sunday": 6
+                }
+                weekdays_chinese = {
+                    "星期一": 0, "星期二": 1, "星期三": 2, "星期四": 3,
+                    "星期五": 4, "星期六": 5, "星期日": 6
+                }
+
+                if date_part in weekdays:
+                    if current_date.weekday() == weekdays[date_part]:
                         return True
-                except ValueError:
-                    # 不是有效的日期格式，跳过
-                    logging.warning(f"无效的暂停日期格式: {suspension_date}")
-                    continue
+                elif date_part in weekdays_chinese:
+                    if current_date.weekday() == weekdays_chinese[date_part]:
+                        return True
+                else:
+                    try:
+                        # 检查是否为特定日期格式 YYYY-MM-DD
+                        suspended_date = datetime.strptime(date_part, "%Y-%m-%d").date()
+                        if suspended_date == current_date:
+                            return True
+                    except ValueError:
+                        try:
+                            # 检查是否为 MM-DD 格式
+                            suspended_date = datetime.strptime(date_part, "%m-%d").date()
+                            if suspended_date.month == current_date.month and suspended_date.day == current_date.day:
+                                return True
+                        except ValueError:
+                            # 不是有效的日期格式，跳过
+                            logging.warning(f"无效的暂停日期格式: {date_part}")
+                            continue
         return False
 
     def play_sound_and_danmaku(self, message):
