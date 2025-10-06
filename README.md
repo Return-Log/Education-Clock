@@ -239,6 +239,22 @@ alibabacloud-tea-util  # 钉钉 SDK 依赖的 TEA 工具库
 
 可设置定时消息和循环消息，定时消息中设置为Sunday等可实现每周显示
 
+#### 支持多种日期格式：
+
+- 英文星期格式（Monday, Tuesday等）
+
+- 中文星期格式（星期一, 星期二等）
+
+- 完整日期格式（YYYY-MM-DD）
+
+- 月日格式（MM-DD）
+
+#### 多个时间点：
+
+- 支持逗号分隔的多个日期
+
+- 同时支持中文逗号和英文逗号
+
 ---
 
 ![.png](https://s2.loli.net/2025/06/15/bBKPC7ATZ5UFpRf.png)
