@@ -18,7 +18,7 @@ class PlanTasksModule(QWidget):
         self.sound_effect = QSoundEffect()
 
         try:
-            self.sound_effect.setSource(QUrl.fromLocalFile("icon/newmessage.wav"))
+            self.sound_effect.setSource(QUrl.fromLocalFile("icon/notice.wav"))
         except Exception as e:
             logging.warning(f"无法加载提示音: {e}")
 
@@ -272,7 +272,15 @@ class PlanTasksModule(QWidget):
                 # 使用与公告板模块相同的弹幕窗口类
                 # 确保弹幕窗口有正确的父级关系
                 danmaku_window = DanmakuWindow([message], self.main_window)
+
                 danmaku_window.show()
+
+                danmaku_window.raise_()  # 确保窗口在最前面
+                danmaku_window.activateWindow()  # 激活窗口
+
+                if hasattr(self.main_window, 'tabWidget'):
+                    self.main_window.tabWidget.setCurrentIndex(1)
+
                 logging.info(f"显示计划任务弹幕: {message}")
         except Exception as e:
             logging.error(f"播放提示音或显示弹幕出错: {e}", exc_info=True)

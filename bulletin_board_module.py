@@ -802,8 +802,15 @@ class BulletinBoardModule:
                     hasattr(self, 'current_danmaku') and
                     self.current_danmaku is None):
                 next_message = self.danmaku_queue.get()
-                self.current_danmaku = DanmakuWindow([next_message])
+                self.current_danmaku = DanmakuWindow([next_message], self.main_window)
                 self.current_danmaku.finished.connect(self.on_danmaku_finished)
+                # 将主窗口置于前台
+                self.main_window.activateWindow()
+                self.main_window.raise_()
+
+                if hasattr(self.main_window, 'tabWidget'):
+                    self.main_window.tabWidget.setCurrentIndex(0)  # 切换到第一个tab
+
                 self.current_danmaku.show()
                 logging.info(f"显示弹幕: {next_message}")
         except Exception as e:
