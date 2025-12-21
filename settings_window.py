@@ -9,7 +9,8 @@ import os
 from PyQt6.QtWidgets import (
     QDialog, QPushButton, QLabel, QFileDialog, QTextBrowser, QTabWidget,
     QTableWidgetItem, QMessageBox, QApplication, QDialogButtonBox, QPlainTextEdit, QComboBox, QGroupBox, QWidget,
-    QVBoxLayout, QScrollArea, QHBoxLayout, QGridLayout, QLineEdit, QSizePolicy, QTextEdit, QTimeEdit, QDateEdit
+    QVBoxLayout, QScrollArea, QHBoxLayout, QGridLayout, QLineEdit, QSizePolicy, QTextEdit, QTimeEdit, QDateEdit,
+    QCheckBox
 )
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, QDateTime, QDate, QThread, pyqtSignal, QTime, Qt
@@ -213,6 +214,7 @@ class SettingsWindow(QDialog):
         self.location_file = './data/location.txt'
         self.names_file = './data/name.txt'
         self.api_config_file = './data/api_config.json'
+        self.wallpaper_file = './data/wallpaper.json'
         self.encryption_key = 0x5A  # 选择一个简单的密钥
         self.is_calibrating = False  # 初始化校准状态
         self.timetable_data = {}  # 初始化一个空字典以保存时间表数据
@@ -251,6 +253,7 @@ class SettingsWindow(QDialog):
         self.plainTextEdit_names = self.findChild(QPlainTextEdit, "plainTextEdit")  # 获取名字编辑器
         self.plainTextEdit_names.textChanged.connect(self.save_names)  # 连接 textChanged 信号
         self.setup_api_tab()
+        self.setup_wallpaper_tab()
 
     def on_tab_changed(self, index):
         if index == 3:
@@ -272,6 +275,8 @@ class SettingsWindow(QDialog):
             self.load_api_configs()
         elif index == 9:  # 计划任务设置标签页
             self.setup_plan_tasks_tab()
+        elif index == 10:  # 第11个tab（壁纸设置）
+            self.load_wallpaper_checkbox_state()
 
 
     def on_tab_changed_2(self, index):
@@ -1805,6 +1810,133 @@ class SettingsWindow(QDialog):
             logging.info("计划任务配置已保存")
         except Exception as e:
             logging.error(f"保存计划任务配置文件出错: {e}")
+
+    def setup_wallpaper_tab(self):
+        """设置壁纸选项卡"""
+        try:
+            # 查找第11个tab（索引为10）
+            tab_11 = self.tabWidget.widget(10)  # 第11个tab
+            if tab_11:
+                self.checkBox = tab_11.findChild(QCheckBox, "checkBox")
+                self.checkBox_2 = tab_11.findChild(QCheckBox, "checkBox_2")
+
+                # 连接信号
+                if self.checkBox:
+                    self.checkBox.stateChanged.connect(self.on_wallpaper_checkbox_changed)
+
+                if self.checkBox_2:
+                    self.checkBox_2.stateChanged.connect(self.on_wallpaper_checkbox_changed)
+
+                # 加载初始状态
+                self.load_wallpaper_checkbox_state()
+
+        except Exception as e:
+            logging.error(f"设置壁纸选项卡失败: {e}")
+
+    def load_wallpaper_checkbox_state(self):
+        """加载壁纸checkbox初始状态"""
+        try:
+            # 确保文件存在
+            if not os.path.exists(self.wallpaper_file):
+                logging.warning(f"壁纸配置文件不存在: {self.wallpaper_file}")
+                return
+
+            with open(self.wallpaper_file, 'r', encoding='utf-8') as f:
+                wallpaper_data = json.load(f)
+
+            # 设置 checkBox 状态
+            if self.checkBox:
+                get_daily = wallpaper_data.get("获取每日一图", "True") == "True"
+                self.checkBox.setChecked(get_daily)
+                logging.debug(f"设置获取每日一图checkbox状态: {get_daily}")
+
+            # 设置 checkBox_2 状态
+            if self.checkBox_2:
+                set_wallpaper = wallpaper_data.get("设置为壁纸", "True") == "True"
+                self.checkBox_2.setChecked(set_wallpaper)
+                logging.debug(f"设置为壁纸checkbox状态: {set_wallpaper}")
+
+        except FileNotFoundError:
+            logging.warning(f"壁纸配置文件未找到: {self.wallpaper_file}")
+        except json.JSONDecodeError as e:
+            logging.error(f"壁纸配置文件JSON解析错误: {e}")
+        except Exception as e:
+            logging.error(f"加载壁纸checkbox状态失败: {e}")
+
+    def on_wallpaper_checkbox_changed(self):
+        """壁纸checkbox状态改变时保存设置"""
+        self.save_wallpaper_settings()
+
+    def save_wallpaper_settings(self):
+        """保存壁纸设置"""
+        try:
+            # 确保data目录存在
+            os.makedirs(os.path.dirname(self.wallpaper_file), exist_ok=True)
+
+            # 读取现有配置或创建默认配置
+            if os.path.exists(self.wallpaper_file):
+                with open(self.wallpaper_file, 'r', encoding='utf-8') as f:
+                    wallpaper_data = json.load(f)
+            else:
+                wallpaper_data = {
+                    "获取每日一图": "True",
+                    "设置为壁纸": "True",
+                    "最新获取": {
+                        "日期": "",
+                        "图片名": "",
+                        "简短描述": "",
+                        "完整描述": ""
+                    }
+                }
+
+            # 只有当控件存在时才更新对应设置
+            if self.checkBox:
+                wallpaper_data["获取每日一图"] = "True" if self.checkBox.isChecked() else "False"
+
+            if self.checkBox_2:
+                wallpaper_data["设置为壁纸"] = "True" if self.checkBox_2.isChecked() else "False"
+
+            # 保存配置
+            with open(self.wallpaper_file, 'w', encoding='utf-8') as f:
+                json.dump(wallpaper_data, f, ensure_ascii=False, indent=2)
+
+            logging.debug(f"壁纸设置已保存: {wallpaper_data}")
+
+            self.modules_to_refresh.add("wallpaper")
+
+        except Exception as e:
+            logging.error(f"保存壁纸设置失败: {e}")
+
+    def load_wallpaper_checkbox_state(self):
+        """加载壁纸checkbox初始状态"""
+        try:
+            # 确保文件存在
+            if not os.path.exists(self.wallpaper_file):
+                logging.warning(f"壁纸配置文件不存在: {self.wallpaper_file}")
+                return
+
+            with open(self.wallpaper_file, 'r', encoding='utf-8') as f:
+                wallpaper_data = json.load(f)
+
+            # 安全地设置 checkBox 状态
+            if self.checkBox and "获取每日一图" in wallpaper_data:
+                checked = wallpaper_data.get("获取每日一图") == "True"
+                self.checkBox.setChecked(checked)
+                logging.debug(f"设置checkBox状态: {checked}")
+
+            # 安全地设置 checkBox_2 状态
+            if self.checkBox_2 and "设置为壁纸" in wallpaper_data:
+                checked = wallpaper_data.get("设置为壁纸") == "True"
+                self.checkBox_2.setChecked(checked)
+                logging.debug(f"设置checkBox_2状态: {checked}")
+
+        except FileNotFoundError:
+            logging.warning(f"壁纸配置文件未找到: {self.wallpaper_file}")
+        except json.JSONDecodeError as e:
+            logging.error(f"壁纸配置文件JSON解析错误: {e}")
+        except Exception as e:
+            logging.error(f"加载壁纸checkbox状态失败: {e}")
+
 
 
 

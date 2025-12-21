@@ -63,7 +63,7 @@
       <enum>QTabWidget::Rounded</enum>
      </property>
      <property name="currentIndex">
-      <number>10</number>
+      <number>11</number>
      </property>
      <property name="elideMode">
       <enum>Qt::ElideNone</enum>
@@ -792,6 +792,43 @@
        </item>
       </layout>
      </widget>
+     <widget class="QWidget" name="tab_19">
+      <attribute name="title">
+       <string>每日一图</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <widget class="QCheckBox" name="checkBox">
+         <property name="text">
+          <string>每天获取每日一图</string>
+         </property>
+         <property name="tristate">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_2">
+         <property name="text">
+          <string>同时设置为壁纸</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacer_10">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
      <widget class="QWidget" name="tab_6">
       <property name="minimumSize">
        <size>
@@ -806,7 +843,7 @@
        <item row="0" column="1" colspan="3">
         <widget class="QLabel" name="label_32">
          <property name="text">
-          <string>## Education Clock v5.6</string>
+          <string>## Education Clock v5.7</string>
          </property>
          <property name="textFormat">
           <enum>Qt::MarkdownText</enum>
@@ -904,7 +941,7 @@
        <item row="2" column="1" colspan="3">
         <widget class="QLabel" name="label_33">
          <property name="text">
-          <string>2025年10月12日 构建</string>
+          <string>2025年12月21日 构建</string>
          </property>
         </widget>
        </item>

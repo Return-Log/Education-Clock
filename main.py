@@ -3,7 +3,7 @@ import os
 import sys
 import requests
 from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWidget, QToolButton, QTextEdit, QLabel, \
-    QTextBrowser, QDialog, QSystemTrayIcon, QMenu
+    QTextBrowser, QDialog, QSystemTrayIcon, QMenu, QTabWidget
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, Qt, QUrl, pyqtSignal, QSharedMemory
 from PyQt6.QtGui import QDesktopServices, QIcon, QPixmap, QAction
@@ -19,6 +19,7 @@ from weather_module import WeatherModule
 from settings_window import SettingsWindow  # 导入设置窗口类
 from bulletin_board_module import BulletinBoardModule  # 导入公告板模块
 from API_display_module import APIDisplayModule
+from wallpaper_module import WallpaperModule
 
 def main():
     app = QApplication(sys.argv)
@@ -56,6 +57,7 @@ class MainWindow(QMainWindow):
     refresh_bulletin_signal = pyqtSignal()
     refresh_api_display_signal = pyqtSignal()
     refresh_time_signal = pyqtSignal()
+    refresh_wallpaper_signal = pyqtSignal()
     def __init__(self):
         super().__init__()
         # 加载 .ui 文件
@@ -71,6 +73,7 @@ class MainWindow(QMainWindow):
         self.refresh_bulletin_signal.connect(self.refresh_bulletin)
         self.refresh_api_display_signal.connect(self.refresh_api_display)
         self.refresh_time_signal.connect(self.refresh_time)
+        self.refresh_wallpaper_signal.connect(self.refresh_wallpaper)
 
 
 
@@ -120,6 +123,7 @@ class MainWindow(QMainWindow):
         self.lower()
 
         self.github_tags = None
+        self.wallpaper_module = None
 
 
         # 找到 label_update 控件
@@ -198,6 +202,62 @@ class MainWindow(QMainWindow):
                 self.ranking_module.stop()
             event.accept()
 
+    def refresh_wallpaper(self):
+        """刷新壁纸模块"""
+        try:
+            # 查找tabWidget
+            tab_widget = self.findChild(QTabWidget, "tabWidget")
+            if not tab_widget:
+                logging.warning("未找到tabWidget")
+                return
+
+            # 查找是否已存在壁纸tab
+            wallpaper_tab_index = -1
+            for i in range(tab_widget.count()):
+                if tab_widget.tabText(i) == "每日壁纸":
+                    wallpaper_tab_index = i
+                    break
+
+            # 创建新的壁纸模块
+            self.wallpaper_module = WallpaperModule(self)
+
+            if wallpaper_tab_index == -1:
+                # 如果之前没有壁纸tab，则添加一个新的
+                tab_widget.addTab(self.wallpaper_module, "每日壁纸")
+            else:
+                # 替换现有的tab内容
+                current_widget = tab_widget.widget(wallpaper_tab_index)
+
+                # 检查当前widget是否是容器widget
+                if current_widget and current_widget.layout():
+                    # 清理现有布局中的所有子widget
+                    layout = current_widget.layout()
+                    while layout.count():
+                        child = layout.takeAt(0)
+                        if child.widget():
+                            child.widget().deleteLater()
+                    # 添加壁纸模块到现有布局
+                    layout.addWidget(self.wallpaper_module)
+                else:
+                    # 如果不是容器widget或者没有布局，直接替换整个tab
+                    if current_widget:
+                        current_widget.setParent(None)
+                        current_widget.deleteLater()
+                    # 创建新的容器widget
+                    container = QWidget()
+                    layout = QVBoxLayout(container)
+                    layout.setContentsMargins(0, 0, 0, 0)
+                    layout.addWidget(self.wallpaper_module)
+                    tab_widget.removeTab(wallpaper_tab_index)
+                    tab_widget.insertTab(wallpaper_tab_index, container, "每日壁纸")
+
+            # 获取壁纸数据并异步加载
+            self.wallpaper_module.load_wallpaper_data()
+            if self.wallpaper_module.wallpaper_data.get("获取每日一图") == "True":
+                self.wallpaper_module.fetch_wallpaper_async()
+
+        except Exception as e:
+            logging.error(f"刷新壁纸模块失败: {e}")
     def refresh_timetable(self):
         """刷新课表模块"""
         # 清理旧的课表模块
@@ -357,10 +417,12 @@ class MainWindow(QMainWindow):
         self.shutdown_module = None
         self.cctv_controller = None
         self.plan_tasks_module = None
+        self.wallpaper_module = None
         self.load_settings()  # 确保设置已加载
         self.init_shutdown_module()  # 在设置加载后初始化关机模块
         self.init_news_module()
         self.init_plan_tasks_module()
+        self.refresh_wallpaper()
 
     def update_timetable(self):
         current_time = datetime.now().time()
@@ -503,6 +565,8 @@ class MainWindow(QMainWindow):
             self.refresh_time_signal.emit()
         elif module_name == "plan_tasks":
             self.refresh_plan_tasks()
+        if module_name == "wallpaper":
+            self.refresh_wallpaper_signal.emit()
 
 
     def init_bulletin_board_module(self):
@@ -546,7 +610,7 @@ class MainWindow(QMainWindow):
         ]
         self.current_link_index = 0
         self.github_tags = None
-        self.current_version = "v5.6"
+        self.current_version = "v5.7"
 
         try:
             response = requests.get('https://api.github.com/repos/Return-Log/Education-Clock/tags', timeout=5)
