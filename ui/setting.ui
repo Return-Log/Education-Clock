@@ -843,7 +843,7 @@
        <item row="0" column="1" colspan="3">
         <widget class="QLabel" name="label_32">
          <property name="text">
-          <string>## Education Clock v5.7</string>
+          <string>## Education Clock v6.0</string>
          </property>
          <property name="textFormat">
           <enum>Qt::MarkdownText</enum>
@@ -941,14 +941,14 @@
        <item row="2" column="1" colspan="3">
         <widget class="QLabel" name="label_33">
          <property name="text">
-          <string>2025年12月21日 构建</string>
+          <string>2025年12月28日 构建</string>
          </property>
         </widget>
        </item>
        <item row="7" column="1" colspan="3">
         <widget class="QLabel" name="label_43">
          <property name="text">
-          <string>&lt;a href='https://blog.returnsoft.top' style='color:green;'&gt;作者博客&lt;/a&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;a href=&quot;https://blog.returnsoft.top&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#008000;&quot;&gt;博客&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="textFormat">
           <enum>Qt::RichText</enum>
