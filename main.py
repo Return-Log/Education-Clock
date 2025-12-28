@@ -214,7 +214,7 @@ class MainWindow(QMainWindow):
             # 查找是否已存在壁纸tab
             wallpaper_tab_index = -1
             for i in range(tab_widget.count()):
-                if tab_widget.tabText(i) == "每日壁纸":
+                if tab_widget.tabText(i) == "每日一图":
                     wallpaper_tab_index = i
                     break
 
@@ -223,7 +223,7 @@ class MainWindow(QMainWindow):
 
             if wallpaper_tab_index == -1:
                 # 如果之前没有壁纸tab，则添加一个新的
-                tab_widget.addTab(self.wallpaper_module, "每日壁纸")
+                tab_widget.addTab(self.wallpaper_module, "每日一图")
             else:
                 # 替换现有的tab内容
                 current_widget = tab_widget.widget(wallpaper_tab_index)
@@ -249,7 +249,7 @@ class MainWindow(QMainWindow):
                     layout.setContentsMargins(0, 0, 0, 0)
                     layout.addWidget(self.wallpaper_module)
                     tab_widget.removeTab(wallpaper_tab_index)
-                    tab_widget.insertTab(wallpaper_tab_index, container, "每日壁纸")
+                    tab_widget.insertTab(wallpaper_tab_index, container, "每日一图")
 
             # 获取壁纸数据并异步加载
             self.wallpaper_module.load_wallpaper_data()
@@ -449,8 +449,23 @@ class MainWindow(QMainWindow):
             from plan_tasks_module import PlanTasksModule
             tab_widget = self.findChild(QWidget, "tabWidget")  # 根据实际UI结构调整
             if tab_widget:
-                self.plan_tasks_module = PlanTasksModule(self)
-                tab_widget.addTab(self.plan_tasks_module, "计划任务")
+                # 检查是否已存在"计划任务"标签
+                existing_index = -1
+                for i in range(tab_widget.count()):
+                    if tab_widget.tabText(i) == "计划任务":
+                        existing_index = i
+                        break
+
+                if existing_index == -1:
+                    # 如果不存在"计划任务"标签，则添加
+                    self.plan_tasks_module = PlanTasksModule(self)
+                    tab_widget.addTab(self.plan_tasks_module, "计划任务")
+                else:
+                    # 如果已存在，则更新现有的模块
+                    self.plan_tasks_module = PlanTasksModule(self)
+                    # 替换现有标签页的内容
+                    tab_widget.removeTab(existing_index)
+                    tab_widget.insertTab(existing_index, self.plan_tasks_module, "计划任务")
 
             else:
                 logging.warning("未找到tabWidget")
@@ -610,7 +625,7 @@ class MainWindow(QMainWindow):
         ]
         self.current_link_index = 0
         self.github_tags = None
-        self.current_version = "v5.7"
+        self.current_version = "v6.0"
 
         try:
             response = requests.get('https://api.github.com/repos/Return-Log/Education-Clock/tags', timeout=5)

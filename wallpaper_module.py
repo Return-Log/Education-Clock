@@ -1,12 +1,10 @@
-# wallpaper_module.py
 import requests
 from bs4 import BeautifulSoup
 import re
 import json
 import os
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTextBrowser, QSizePolicy
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QSize
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QTextBrowser
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from datetime import datetime
 
 
@@ -103,44 +101,17 @@ class WallpaperModule(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 10, 10, 10)
 
-        # 图片显示控件
-        self.image_label = QLabel()
-        self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.image_label.setMinimumHeight(180)
-        self.image_label.setMaximumHeight(250)
-        self.image_label.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.Expanding  # 改为 Expanding 以充分利用空间
-        )
-        self.image_label.setWordWrap(True)
-        # 设置样式以确保背景显示
-        self.image_label.setStyleSheet("background-color: transparent;")
-        layout.addWidget(self.image_label)
-
-        # 标题
-        self.title_label = QLabel()
-        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.title_label.setStyleSheet("font-size: 16px; font-weight: bold; margin: 10px 0;")
-        self.title_label.setWordWrap(True)
-        layout.addWidget(self.title_label)
-
-        # 简短描述
-        self.copyright_label = QLabel()
-        self.copyright_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.copyright_label.setStyleSheet("margin: 5px 0;")
-        self.copyright_label.setWordWrap(True)
-        layout.addWidget(self.copyright_label)
-
-        # 故事描述
-        self.story_browser = QTextBrowser()
-        self.story_browser.setSizePolicy(
-            QSizePolicy.Policy.Expanding,
-            QSizePolicy.Policy.MinimumExpanding
-        )
-        self.story_browser.setMinimumHeight(150)
-        # 设置较小的字体大小
-        self.story_browser.setStyleSheet("font-size: 14px;")
-        layout.addWidget(self.story_browser)
+        # 使用单个文本浏览器显示所有内容
+        self.content_browser = QTextBrowser()
+        self.content_browser.setOpenExternalLinks(False)  # 禁用外部链接
+        self.content_browser.setStyleSheet("""
+            QTextBrowser {
+                border: none;
+                font-size: 14px;
+                line-height: 1.5;
+            }
+        """)
+        layout.addWidget(self.content_browser)
 
     def load_wallpaper_data(self):
         try:
@@ -231,33 +202,33 @@ class WallpaperModule(QWidget):
             if os.path.exists(image_filename):
                 self.display_wallpaper(image_filename, "今日壁纸", short_desc, full_desc)
             else:
-                self.display_wallpaper("")
+                self.display_wallpaper("", "今日壁纸", "暂无壁纸", "")
 
-    def display_wallpaper(self, image_path, title="", short_description="", full_story=""):
-        if os.path.exists(image_path):
-            pixmap = QPixmap(image_path)
-            if not pixmap.isNull():
-                # 获取 image_label 当前可用大小（减去边距）
-                label_size = self.image_label.size()
-                # 减去一些内边距，避免贴边太紧
-                available_size = label_size - QSize(60, 60)
+    def display_wallpaper(self, image_path="", title="今日壁纸", short_description="", full_story=""):
+        html_content = ""
 
-                # 使用 scaled() 保持纵横比，自适应到 label 内部
-                scaled_pixmap = pixmap.scaled(
-                    available_size,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
-                )
-                self.image_label.setPixmap(scaled_pixmap)
-            else:
-                self.image_label.setText("图片加载失败")
+        if os.path.exists(image_path) and image_path:
+            # 构建HTML内容，包含图片和描述
+            html_content = f"""
+            <div style="text-align: center;">
+                <img src="{os.path.abspath(image_path)}" style="max-width: 100%; height: auto; border-radius: 8px;" />
+            </div>
+            <div style="margin-top: 15px;">
+                <p style="margin: 15px 0;"><strong>{short_description}</strong></p>
+                <div style="margin-top: 15px;">
+                    <p style="margin: 10px 0; line-height: 1;">{full_story.replace(chr(10), '<br>')}</p>
+                </div>
+            </div>
+            """
         else:
-            self.image_label.setText("暂无壁纸")
-            self.image_label.clear()
+            # 显示无壁纸信息
+            html_content = """
+            <div style="text-align: center; padding: 40px 0;">
+                <p style="font-size: 16px;">暂无壁纸</p>
+            </div>
+            """
 
-        self.title_label.setText(title or "今日壁纸")
-        self.copyright_label.setText(short_description or "")
-        self.story_browser.setPlainText(full_story or "")
+        self.content_browser.setHtml(html_content)
 
     def set_as_wallpaper(self, image_path):
         try:

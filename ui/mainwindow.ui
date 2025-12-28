@@ -195,6 +195,16 @@
             </item>
            </layout>
           </widget>
+          <widget class="QWidget" name="tab">
+           <attribute name="title">
+            <string>计划任务</string>
+           </attribute>
+          </widget>
+          <widget class="QWidget" name="tab_2">
+           <attribute name="title">
+            <string>每日一图</string>
+           </attribute>
+          </widget>
          </widget>
         </item>
         <item>
