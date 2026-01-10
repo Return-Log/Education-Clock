@@ -1,10 +1,10 @@
-# shutdown_module.py
 import json
-from PyQt6.QtCore import QTimer, QTime, QDate, Qt, QRect, QPoint
+from PyQt6.QtCore import QTimer, QTime, QDate, Qt, QRect, QPoint, QUrl
 import os
 from PyQt6.QtWidgets import QApplication, QMessageBox
 from PyQt6.uic import loadUi
 from PyQt6.QtWidgets import QDialog
+from PyQt6.QtMultimedia import QSoundEffect
 
 class CountdownDialog(QDialog):
     def __init__(self, parent=None):
@@ -15,6 +15,20 @@ class CountdownDialog(QDialog):
         loadUi('./ui/shutdown.ui', self)  # 加载UI文件
         self.setWindowTitle('关机倒计时')
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.FramelessWindowHint)
+
+        # 初始化音频播放器
+        self.sound_effect = QSoundEffect(self)
+        try:
+            # 使用正确的相对路径并检查文件是否存在
+            audio_path = os.path.abspath('./icon/closedown.wav')
+            if os.path.exists(audio_path):
+                self.sound_effect.setSource(QUrl.fromLocalFile(audio_path))
+            else:
+                print(f"音频文件不存在: {audio_path}")
+                self.sound_effect = None  # 如果文件不存在，将音频对象设为None
+        except Exception as e:
+            print(f"音频初始化失败: {e}")
+            self.sound_effect = None
 
         # 获取主屏幕的尺寸
         screen = QApplication.primaryScreen()
@@ -46,6 +60,31 @@ class CountdownDialog(QDialog):
             self.countdown_seconds -= 1
             self.raise_()  # 确保窗口在最上层
             self.activateWindow()  # 激活窗口
+
+    def showEvent(self, event):
+        """
+        窗口显示时播放音频
+        """
+        super().showEvent(event)
+        # 窗口显示时播放音频并设置循环
+        if self.sound_effect and self.sound_effect.source().isValid():
+            try:
+                self.sound_effect.setLoopCount(-1)  # -1 表示无限循环，而不是 QSoundEffect.Infinite
+                self.sound_effect.play()
+            except Exception as e:
+                print(f"音频播放失败: {e}")
+
+    def hideEvent(self, event):
+        """
+        窗口隐藏时停止音频
+        """
+        super().hideEvent(event)
+        # 停止音频播放
+        if self.sound_effect and self.sound_effect.isPlaying():
+            try:
+                self.sound_effect.stop()
+            except Exception as e:
+                print(f"音频停止失败: {e}")
 
     def cancel_shutdown(self):
         """

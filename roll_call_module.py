@@ -2,9 +2,10 @@ import random
 import sys
 import math
 import logging
-from PyQt6.QtWidgets import QDialog, QLabel, QApplication, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QDialog, QLabel, QApplication, QVBoxLayout, QWidget, QHBoxLayout
 from PyQt6.QtCore import Qt, QTimer, QPointF, pyqtSignal, QObject
 from PyQt6.QtGui import QFont, QFontDatabase, QPainter, QColor, QPen
+
 
 # # 配置日志
 # logging.basicConfig(
@@ -342,6 +343,77 @@ class AnimationWidget(QWidget):
                 )
 
 
+class NameScrollWidget(QWidget):
+    """底部滚动显示名单的控件"""
+
+    def __init__(self, names, parent=None):
+        super().__init__(parent)
+        self.names = names
+        self.scroll_offset = 0
+        self.font = QFont("Microsoft YaHei", 12)
+
+        # 定时器控制滚动
+        self.scroll_timer = QTimer(self)
+        self.scroll_timer.timeout.connect(self.update_scroll)
+        self.scroll_timer.start(30)  # 每30ms更新一次
+
+        self.setMinimumHeight(30)
+
+    def update_scroll(self):
+        """更新滚动位置"""
+        if not self.names or all(not name.strip() for name in self.names):
+            return  # 如果没有名字则不滚动
+
+        # 只有当文本宽度大于控件宽度时才滚动
+        fm = self.fontMetrics()
+        full_text = "   ".join([name for name in self.names if name.strip()]) + "   "
+        text_width = fm.horizontalAdvance(full_text)
+
+        if text_width <= self.width():
+            return  # 文本宽度小于控件宽度时不滚动
+
+        # 递减偏移量，实现向左滚动效果
+        self.scroll_offset -= 1
+
+        # 当偏移量小于负的文本宽度时，重置为0，实现循环滚动
+        if self.scroll_offset <= -text_width:
+            self.scroll_offset = 0
+
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setFont(self.font)
+        painter.fillRect(self.rect(), QColor(240, 240, 240))
+        painter.setPen(QColor(50, 50, 50))
+
+        content = "   ".join(name for name in self.names if name.strip())
+        if not content:
+            # ... 暂无名单 ...
+            return
+
+        text = content + "          "  # 文字本身的间隔（可调）
+        gap = " " * 30  # 轮与轮之间的空白（重点！）
+        full_text = text + gap + text  # 准备两份 + 中间大空隙
+
+        fm = self.fontMetrics()
+        text_width = fm.horizontalAdvance(text)
+        gap_width = fm.horizontalAdvance(gap)
+        full_cycle = text_width * 2 + gap_width
+
+        y_pos = self.height() - (self.height() - fm.height()) // 2 - 2
+
+        # 绘制两段 + 中间间隔
+        x = self.scroll_offset % full_cycle
+        if x > 0:
+            x -= full_cycle
+
+        painter.drawText(x, y_pos, full_text)
+
+        self.update()  # 如果你想更平滑，可以在这里控制是否继续update
+
+
 class RollCallDialog(QDialog):
     class RollCallSignals(QObject):
         closed = pyqtSignal()
@@ -351,19 +423,24 @@ class RollCallDialog(QDialog):
         self.setWindowTitle('随机点名')
         self.setWindowFlags(Qt.WindowType.Window | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool)
         self.setStyleSheet("background-color: white;")
-        self.setFixedSize(800, 450)
+        self.setFixedSize(800, 480)  # 增加高度以容纳底部滚动条
 
         # 读取名字列表
         self.names = self.load_names()
         if not self.names:
             logging.error("No names loaded, dialog may not function correctly")
 
-        # 初始化布局和控件
-        self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)
+        # 主布局
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 中间内容区域
+        self.content_widget = QWidget()
+        content_layout = QVBoxLayout(self.content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
 
         # 名字标签(初始显示)
-        self.name_label = QLabel("点击开始", self)
+        self.name_label = QLabel("点击开始", self.content_widget)
         preferred_font = "华文行楷"
         fallback_font = "微软雅黑"
         font = QFont(preferred_font, 140) if preferred_font in QFontDatabase.families() else QFont(fallback_font, 140,
@@ -377,10 +454,31 @@ class RollCallDialog(QDialog):
                 font-family: {font.family()};
             }}
         """)
-        self.layout.addWidget(self.name_label)
+        content_layout.addWidget(self.name_label)
 
         # 动画控件(初始隐藏)
         self.animation_widget = None
+
+        main_layout.addWidget(self.content_widget)
+
+        # 底部滚动显示区域
+        self.bottom_widget = QWidget()
+        self.bottom_widget.setFixedHeight(35)  # 固定高度为35像素
+        bottom_layout = QHBoxLayout(self.bottom_widget)
+        bottom_layout.setContentsMargins(10, 5, 10, 5)
+
+        # 人数标签 - 固定宽度
+        self.count_label = QLabel(f"名单人数: {len(self.names)}", self.bottom_widget)
+        self.count_label.setFont(QFont("Microsoft YaHei", 10))
+        self.count_label.setStyleSheet("color: #333; padding: 5px;")
+        self.count_label.setFixedWidth(100)  # 固定宽度
+        bottom_layout.addWidget(self.count_label)
+
+        # 滚动显示名单 - 占据中间部分
+        self.name_scroll_widget = NameScrollWidget(self.names, self.bottom_widget)
+        bottom_layout.addWidget(self.name_scroll_widget, 1)  # 拉伸因子为1
+
+        main_layout.addWidget(self.bottom_widget)
 
         # 居中窗口
         screen = QApplication.primaryScreen().availableGeometry()
@@ -396,15 +494,17 @@ class RollCallDialog(QDialog):
     def load_names(self):
         try:
             with open('./data/name.txt', 'r', encoding='utf-8') as file:
-                names = [line.strip() for line in file.readlines() if line.strip()]
+                lines = [line.strip() for line in file.readlines() if line.strip()]
+                # 移除星号但仍保留名字
+                names = [line.rstrip('*') for line in lines]
             logging.info(f"Loaded {len(names)} names from name.txt")
-            return names
+            return names if names else ['请从设置添加名单']
         except FileNotFoundError:
             logging.error("name.txt not found")
-            return []
+            return ['请从设置添加名单']
         except Exception as e:
             logging.error(f"Error loading names: {e}")
-            return []
+            return ['请从设置添加名单']
 
     def save_names(self):
         try:
@@ -424,7 +524,7 @@ class RollCallDialog(QDialog):
             self.start_roll_call()
 
     def start_roll_call(self):
-        if not self.names:
+        if not self.names or all(not name.strip() for name in self.names):
             self.name_label.setText("没有可用的名字")
             logging.warning("No names available for roll call")
             return
@@ -457,10 +557,10 @@ class RollCallDialog(QDialog):
         logging.info(f"Selected and marked name: {selected_name}, displaying: {displayed_name}")
 
         # 创建并显示动画
-        self.animation_widget = AnimationWidget(self.names, displayed_name, self)
-        self.animation_widget.setGeometry(0, 0, self.width(), self.height())
+        self.animation_widget = AnimationWidget(self.names, displayed_name, self.content_widget)
+        self.animation_widget.setGeometry(0, 0, self.content_widget.width(), self.content_widget.height())
         self.animation_widget.animation_finished.connect(self.on_animation_finished)
-        self.layout.addWidget(self.animation_widget)
+        self.content_widget.layout().addWidget(self.animation_widget)
         self.animation_widget.show()
 
     def on_animation_finished(self):
@@ -480,10 +580,10 @@ class RollCallDialog(QDialog):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         new_width = self.width()
-        new_height = int(new_width * 9 / 16)
+        new_height = int(new_width * 9 / 16) + 30  # 增加高度以容纳底部滚动条
         self.setFixedSize(new_width, new_height)
         if self.animation_widget:
-            self.animation_widget.setGeometry(0, 0, new_width, new_height)
+            self.animation_widget.setGeometry(0, 0, self.content_widget.width(), self.content_widget.height())
 
     def closeEvent(self, event):
         self.save_names()
