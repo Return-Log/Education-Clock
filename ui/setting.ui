@@ -843,7 +843,7 @@
        <item row="0" column="1" colspan="3">
         <widget class="QLabel" name="label_32">
          <property name="text">
-          <string>## Education Clock v6.0</string>
+          <string>## Education Clock v6.1</string>
          </property>
          <property name="textFormat">
           <enum>Qt::MarkdownText</enum>
@@ -853,7 +853,7 @@
        <item row="11" column="1">
         <widget class="QLabel" name="label_34">
          <property name="text">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;版权所有 © 2024-2025 &lt;a href=&quot;https://github.com/Return-Log&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#008000;&quot;&gt;Log&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;版权所有 © 2024-2026 &lt;a href=&quot;https://github.com/Return-Log&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#008000;&quot;&gt;Log&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="openExternalLinks">
           <bool>true</bool>
@@ -941,7 +941,7 @@
        <item row="2" column="1" colspan="3">
         <widget class="QLabel" name="label_33">
          <property name="text">
-          <string>2025年12月28日 构建</string>
+          <string>2026年1月11日 构建</string>
          </property>
         </widget>
        </item>

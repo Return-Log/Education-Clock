@@ -390,9 +390,20 @@ class NameScrollWidget(QWidget):
 
         content = "   ".join(name for name in self.names if name.strip())
         if not content:
-            # ... 暂无名单 ...
             return
 
+        fm = self.fontMetrics()
+        text_width = fm.horizontalAdvance(content)
+
+        # 如果文本宽度小于控件宽度，则居中显示单行，不需要滚动
+        if text_width <= self.width():
+            # 居中显示静态文本
+            y_pos = self.height() - (self.height() - fm.height()) // 2 - 2
+            x_pos = (self.width() - text_width) // 2  # 水平居中
+            painter.drawText(x_pos, y_pos, content)
+            return
+
+        # 只有当需要滚动时才执行原来的滚动逻辑
         text = content + "          "  # 文字本身的间隔（可调）
         gap = " " * 30  # 轮与轮之间的空白（重点！）
         full_text = text + gap + text  # 准备两份 + 中间大空隙
@@ -410,8 +421,6 @@ class NameScrollWidget(QWidget):
             x -= full_cycle
 
         painter.drawText(x, y_pos, full_text)
-
-        self.update()  # 如果你想更平滑，可以在这里控制是否继续update
 
 
 class RollCallDialog(QDialog):
