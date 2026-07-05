@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QLabel, QWid
     QTextBrowser, QDialog, QSystemTrayIcon, QMenu, QTabWidget
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer, Qt, QUrl, pyqtSignal, QSharedMemory
-from PyQt6.QtGui import QDesktopServices, QIcon, QPixmap, QAction
+from PyQt6.QtGui import QDesktopServices, QIcon, QPixmap, QAction, QFont
 from PyQt6.QtWidgets import QMessageBox
 from PyQt6.QtCore import QSettings
 from datetime import datetime
@@ -22,18 +22,27 @@ from API_display_module import APIDisplayModule
 from wallpaper_module import WallpaperModule
 
 def main():
+
     app = QApplication(sys.argv)
+
+    # 1. 获取 DPI 缩放比例
+    screen = app.primaryScreen()
+    dpi = screen.logicalDotsPerInch()
+    scale = dpi / 96.0  # 96 是标准 DPI
+
+    # 2. 动态计算基础字号 (因为我们 QSS 里写的是 11pt，所以这里基数设为 11)
+    # 如果是 200% 缩放 (scale=2.0)，这里就会变成 22pt
+    base_font_size = int(11 * scale)
+
+    # 3. 设置全局字体 (这一步会驱动 QSS 里的 pt 变大)
+    font = QFont("Microsoft YaHei", base_font_size)
+    app.setFont(font)
 
     # 使用 QSharedMemory 来确保只有一个实例运行
     shared_memory = QSharedMemory("Education-Clock-Unique-ID")
     if not shared_memory.create(1):
         # 如果已经存在
-        msg_box = QMessageBox()
-        msg_box.setWindowTitle("提示")
-        msg_box.setText("该程序已经在运行中。")
-        msg_box.setIcon(QMessageBox.Icon.Information)
-        msg_box.exec()
-        sys.exit(0)
+        return
 
     window = MainWindow()
     qss_path = window.get_qss_path()
@@ -625,7 +634,7 @@ class MainWindow(QMainWindow):
         ]
         self.current_link_index = 0
         self.github_tags = None
-        self.current_version = "v6.1"
+        self.current_version = "v7.0"
 
         try:
             response = requests.get('https://api.github.com/repos/Return-Log/Education-Clock/tags', timeout=5)
