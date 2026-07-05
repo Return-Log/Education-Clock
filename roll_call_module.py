@@ -142,7 +142,7 @@ class SlotMachineWidget(QWidget):
         painter.drawRect(0, h - 100, w, 100)
 
 
-class Y2KRollCallDialog(QDialog):
+class RollCallDialog(QDialog):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('随机点名')
@@ -229,6 +229,6 @@ class Y2KRollCallDialog(QDialog):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    dialog = Y2KRollCallDialog()
+    dialog = RollCallDialog()
     dialog.show()
     sys.exit(app.exec())

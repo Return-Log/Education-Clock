@@ -24,6 +24,7 @@ from wallpaper_module import WallpaperModule
 def main():
 
     app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)
 
     # 1. 获取 DPI 缩放比例
     screen = app.primaryScreen()
