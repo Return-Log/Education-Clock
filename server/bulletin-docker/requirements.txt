@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+python-jose[cryptography]
+sqlalchemy
+aiosqlite
+jinja2
+python-multipart
+bcrypt>=4.0.0
