@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>校园公告系统</title>
+    <style>
+        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; }
+        .hidden { display: none; }
+        input, select, button, textarea { margin: 5px 0; padding: 8px; width: 100%; box-sizing: border-box; }
+        .panel { border: 1px solid #ccc; padding: 20px; border-radius: 8px; margin-bottom:20px; }
+        ul { list-style: none; padding: 0; }
+        li { margin: 5px 0; }
+        label { margin-left: 5px; }
+    </style>
+</head>
+<body>
+    <h1>📢 校园公告系统</h1>
+
+    <div id="login-panel" class="panel">
+        <h2>教师登录</h2>
+        <input type="text" id="username" placeholder="用户名" autocomplete="off"><br>
+        <input type="password" id="password" placeholder="密码"><br>
+        <button onclick="login()">登录</button>
+        <p id="login-error" style="color:red;"></p>
+    </div>
+
+    <div id="send-panel" class="panel hidden">
+        <h2>发送公告</h2>
+        <p>当前用户: <span id="user-name"></span> (<span id="user-school"></span>) <a href="#" onclick="logout()">退出</a></p>
+
+        <label>发送范围类型:</label>
+        <select id="target-type" onchange="updateTargets()">
+            <option value="classes">指定班级</option>
+            <option value="grade">按年级</option>
+            <option value="school">全校</option>
+        </select>
+
+        <div id="target-classes" style="margin:10px 0;">
+            <label>选择班级:</label>
+            <ul id="class-checkboxes"></ul>
+        </div>
+        <div id="target-grades" style="margin:10px 0;" class="hidden">
+            <label>选择年级:</label>
+            <ul id="grade-checkboxes"></ul>
+        </div>
+        <div id="target-school" style="margin:10px 0;" class="hidden">
+            <p id="school-name-text"></p>
+        </div>
+
+        <textarea id="content" rows="4" placeholder="请输入公告内容"></textarea><br>
+        <button onclick="sendAnnouncement()">立即发送</button>
+        <p id="send-status"></p>
+    </div>
+
+    <script>
+        let token = localStorage.getItem('token');
+        let availableTargets = null;
+
+        window.onload = () => {
+            if (token) {
+                document.getElementById('login-panel').classList.add('hidden');
+                loadUserInfo();
+            }
+        };
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorP = document.getElementById('login-error');
+            try {
+                const formData = new URLSearchParams();
+                formData.append('username', username);
+                formData.append('password', password);
+                const resp = await fetch('/token', { method: 'POST', body: formData });
+                if (!resp.ok) throw new Error('登录失败');
+                const data = await resp.json();
+                token = data.access_token;
+                localStorage.setItem('token', token);
+                document.getElementById('login-panel').classList.add('hidden');
+                errorP.textContent = '';
+                await loadUserInfo();
+            } catch (e) {
+                errorP.textContent = '用户名或密码错误';
+            }
+        }
+
+        async function loadUserInfo() {
+            try {
+                const resp = await fetch('/me', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!resp.ok) throw new Error('获取用户信息失败');
+                const user = await resp.json();
+                document.getElementById('user-name').textContent = user.display_name;
+                document.getElementById('user-school').textContent = user.school_name || '未分配学校';
+
+                const targetsResp = await fetch('/targets', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!targetsResp.ok) throw new Error('获取目标失败');
+                availableTargets = await targetsResp.json();
+                updateTargets();
+                document.getElementById('send-panel').classList.remove('hidden');
+            } catch (e) {
+                alert('会话已过期，请重新登录');
+                logout();
+            }
+        }
+
+        function updateTargets() {
+            if (!availableTargets) return;
+            const type = document.getElementById('target-type').value;
+            document.getElementById('target-classes').classList.add('hidden');
+            document.getElementById('target-grades').classList.add('hidden');
+            document.getElementById('target-school').classList.add('hidden');
+
+            if (type === 'classes') {
+                document.getElementById('target-classes').classList.remove('hidden');
+                renderCheckboxes('class-checkboxes', availableTargets.classes, 'id', 'name', 'school');
+            } else if (type === 'grade') {
+                document.getElementById('target-grades').classList.remove('hidden');
+                renderCheckboxes('grade-checkboxes', availableTargets.grades, 'id', 'name', 'school');
+            } else if (type === 'school') {
+                if (!availableTargets.school) {
+                    alert('您没有全校发送权限');
+                    document.getElementById('target-type').value = 'classes';
+                    updateTargets();
+                    return;
+                }
+                document.getElementById('target-school').classList.remove('hidden');
+                document.getElementById('school-name-text').textContent = '发送至: ' + availableTargets.school_name;
+            }
+        }
+
+        function renderCheckboxes(ulId, items, valueKey, textKey, extraKey) {
+            const ul = document.getElementById(ulId);
+            ul.innerHTML = '';
+            if (items.length === 0) {
+                ul.innerHTML = '<li>无可选目标</li>';
+                return;
+            }
+            items.forEach(item => {
+                const li = document.createElement('li');
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.value = item[valueKey];
+                const label = document.createElement('label');
+                label.textContent = item[textKey] + (item[extraKey] ? ' (' + item[extraKey] + ')' : '');
+                li.appendChild(cb);
+                li.appendChild(label);
+                ul.appendChild(li);
+            });
+        }
+
+        async function sendAnnouncement() {
+            const type = document.getElementById('target-type').value;
+            const content = document.getElementById('content').value.trim();
+            if (!content) return alert('请输入内容');
+
+            let targetIds = null;
+            if (type === 'classes') {
+                const checks = document.querySelectorAll('#class-checkboxes input:checked');
+                if (checks.length === 0) return alert('请至少选择一个班级');
+                targetIds = Array.from(checks).map(c => parseInt(c.value));
+            } else if (type === 'grade') {
+                const checks = document.querySelectorAll('#grade-checkboxes input:checked');
+                if (checks.length === 0) return alert('请至少选择一个年级');
+                targetIds = Array.from(checks).map(c => parseInt(c.value));
+            }
+
+            const body = { target_type: type, target_ids: targetIds, content: content };
+            try {
+                const resp = await fetch('/announcements', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                if (!resp.ok) {
+                    const err = await resp.json();
+                    throw new Error(err.detail || '发送失败');
+                }
+                document.getElementById('send-status').textContent = '✅ 发送成功！';
+                document.getElementById('content').value = '';
+                setTimeout(() => document.getElementById('send-status').textContent = '', 3000);
+            } catch (e) {
+                alert('发送失败: ' + e.message);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            token = null;
+            document.getElementById('send-panel').classList.add('hidden');
+            document.getElementById('login-panel').classList.remove('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+    </script>
+</body>
+</html>
