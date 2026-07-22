@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  bulletin:
+    build: .
+    image: school-bulletin:latest   # 镜像名称，方便导出
+    container_name: school-bulletin
+    ports:
+      - "8000:8000"
+    volumes:
+      - bulletin_data:/app/data     # 持久化数据库
+    restart: unless-stopped
+
+volumes:
+  bulletin_data:
