@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 from datetime import datetime, timedelta
 from typing import Optional, List
 from pathlib import Path
@@ -15,8 +16,11 @@ from sqlalchemy import create_engine, Column, Integer, String, ForeignKey, DateT
 from sqlalchemy.orm import declarative_base, relationship, Session, sessionmaker
 from starlette.websockets import WebSocketState
 
+logger = logging.getLogger("school-bulletin")
+
 # -------------------- 数据库配置 --------------------
 DB_DIR = os.environ.get("DB_DIR", "/app/data")
+DATA_FILE = os.environ.get("DATA_FILE", "/app/data/init_data.json")
 os.makedirs(DB_DIR, exist_ok=True)
 SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_DIR}/school_bulletin.db"
 
@@ -29,7 +33,7 @@ class School(Base):
     __tablename__ = "schools"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False)
-    grades = relationship("Grade", back_populates="school")
+    grades = relationship("Grade", back_populates="school", cascade="all, delete-orphan")
 
 class Grade(Base):
     __tablename__ = "grades"
@@ -37,7 +41,7 @@ class Grade(Base):
     name = Column(String, nullable=False)
     school_id = Column(Integer, ForeignKey("schools.id"))
     school = relationship("School", back_populates="grades")
-    classes = relationship("Class", back_populates="grade")
+    classes = relationship("Class", back_populates="grade", cascade="all, delete-orphan")
 
 class Class(Base):
     __tablename__ = "classes"
@@ -53,7 +57,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     display_name = Column(String, nullable=False)
     school_id = Column(Integer, ForeignKey("schools.id"), nullable=True)
-    scopes = relationship("UserScope", back_populates="user")
+    scopes = relationship("UserScope", back_populates="user", cascade="all, delete-orphan")
 
 class UserScope(Base):
     __tablename__ = "user_scopes"
@@ -82,7 +86,6 @@ Base.metadata.create_all(bind=engine)
 
 # -------------------- 数据库 Session 依赖 --------------------
 def get_db():
-    """每个请求获取一个独立的 Session，请求结束后自动关闭"""
     db = SessionLocal()
     try:
         yield db
@@ -103,93 +106,200 @@ def check_password(plain_password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(pwd_bytes, hashed_password.encode("utf-8"))
 
 # -------------------- JWT 配置 --------------------
-SECRET_KEY = "log"
+SECRET_KEY = os.environ.get("SECRET_KEY", "log")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("TOKEN_EXPIRE_MINUTES", "60"))
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-# -------------------- 初始数据 --------------------
-def init_db():
+# -------------------- 从 JSON 文件加载初始数据 --------------------
+def resolve_class_id(db: Session, school_name: str, grade_name: str, class_name: str) -> Optional[int]:
+    """根据 学校/年级/班级 名称查找 class_id"""
+    cls = (
+        db.query(Class)
+        .join(Grade, Class.grade_id == Grade.id)
+        .join(School, Grade.school_id == School.id)
+        .filter(School.name == school_name, Grade.name == grade_name, Class.name == class_name)
+        .first()
+    )
+    return cls.id if cls else None
+
+def resolve_grade_id(db: Session, school_name: str, grade_name: str) -> Optional[int]:
+    grade = (
+        db.query(Grade)
+        .join(School, Grade.school_id == School.id)
+        .filter(School.name == school_name, Grade.name == grade_name)
+        .first()
+    )
+    return grade.id if grade else None
+
+def resolve_school_id(db: Session, school_name: str) -> Optional[int]:
+    school = db.query(School).filter(School.name == school_name).first()
+    return school.id if school else None
+
+# -------------------- 默认初始数据（JSON 不存在时自动写入） --------------------
+DEFAULT_INIT_DATA = {
+    "schools": [
+        {
+            "name": "实验第一小学",
+            "grades": [
+                {"name": "一年级", "classes": ["1班", "2班"]},
+                {"name": "二年级", "classes": ["1班", "2班"]}
+            ]
+        },
+        {
+            "name": "希望中学",
+            "grades": [
+                {"name": "一年级", "classes": ["1班", "2班"]},
+                {"name": "二年级", "classes": ["1班", "2班"]}
+            ]
+        }
+    ],
+    "users": [
+        {
+            "username": "principal_a",
+            "password": "123456",
+            "display_name": "学校A王校长",
+            "school": "实验第一小学",
+            "scopes": [{"type": "school", "target": "实验第一小学"}]
+        },
+        {
+            "username": "grade2_a",
+            "password": "123456",
+            "display_name": "学校A二年级主任",
+            "school": "实验第一小学",
+            "scopes": [{"type": "grade", "target": "实验第一小学/二年级"}]
+        },
+        {
+            "username": "teacher_a1",
+            "password": "123456",
+            "display_name": "学校A一年1班班主任",
+            "school": "实验第一小学",
+            "scopes": [
+                {"type": "class", "target": "实验第一小学/一年级/1班"},
+                {"type": "class", "target": "实验第一小学/一年级/2班"}
+            ]
+        },
+        {
+            "username": "principal_b",
+            "password": "123456",
+            "display_name": "学校B李校长",
+            "school": "希望中学",
+            "scopes": [{"type": "school", "target": "希望中学"}]
+        },
+        {
+            "username": "teacher_b1",
+            "password": "123456",
+            "display_name": "学校B一年1班班主任",
+            "school": "希望中学",
+            "scopes": [{"type": "class", "target": "希望中学/一年级/1班"}]
+        }
+    ],
+    "devices": [
+        {"school": "实验第一小学", "grade": "一年级", "class": "1班", "secret_key": "schoolA_class1_1_key"},
+        {"school": "实验第一小学", "grade": "一年级", "class": "2班", "secret_key": "schoolA_class1_2_key"},
+        {"school": "实验第一小学", "grade": "二年级", "class": "1班", "secret_key": "schoolA_class2_1_key"},
+        {"school": "实验第一小学", "grade": "二年级", "class": "2班", "secret_key": "schoolA_class2_2_key"},
+        {"school": "希望中学", "grade": "一年级", "class": "1班", "secret_key": "schoolB_class1_1_key"},
+        {"school": "希望中学", "grade": "一年级", "class": "2班", "secret_key": "schoolB_class1_2_key"},
+        {"school": "希望中学", "grade": "二年级", "class": "1班", "secret_key": "schoolB_class2_1_key"},
+        {"school": "希望中学", "grade": "二年级", "class": "2班", "secret_key": "schoolB_class2_2_key"}
+    ]
+}
+
+
+def ensure_init_data_file():
+    """如果 init_data.json 不存在，自动生成默认文件"""
+    data_file = Path(DATA_FILE)
+    if not data_file.exists():
+        logger.info(f"未检测到 {DATA_FILE}，自动生成默认配置...")
+        data_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(data_file, "w", encoding="utf-8") as f:
+            json.dump(DEFAULT_INIT_DATA, f, ensure_ascii=False, indent=2)
+        logger.info(f"已生成默认配置: {DATA_FILE}")
+
+
+def load_init_data():
+    """从外部 JSON 文件加载初始数据（仅当数据库为空时）"""
+    # 先确保文件存在
+    ensure_init_data_file()
+
     db = SessionLocal()
     try:
-        if db.query(School).count() == 0:
-            school_a = School(name="实验第一小学")
-            school_b = School(name="希望中学")
-            db.add_all([school_a, school_b])
+        if db.query(School).count() > 0:
+            logger.info("数据库已有数据，跳过初始化")
+            return
+
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        logger.info(f"从 {DATA_FILE} 加载初始数据...")
+
+        # 1. 创建学校 / 年级 / 班级
+        for school_data in data.get("schools", []):
+            school = School(name=school_data["name"])
+            db.add(school)
+            db.flush()
+            for grade_data in school_data.get("grades", []):
+                grade = Grade(name=grade_data["name"], school_id=school.id)
+                db.add(grade)
+                db.flush()
+                for class_name in grade_data.get("classes", []):
+                    db.add(Class(name=class_name, grade_id=grade.id))
+        db.flush()
+
+        # 2. 创建设备
+        for dev in data.get("devices", []):
+            cid = resolve_class_id(db, dev["school"], dev["grade"], dev["class"])
+            if cid:
+                db.add(Device(class_id=cid, secret_key=dev["secret_key"]))
+            else:
+                logger.warning(f"设备找不到班级: {dev}")
+
+        # 3. 创建用户 + 权限
+        for user_data in data.get("users", []):
+            school_id = resolve_school_id(db, user_data.get("school", ""))
+            user = User(
+                username=user_data["username"],
+                hashed_password=make_hash(user_data["password"]),
+                display_name=user_data["display_name"],
+                school_id=school_id,
+            )
+            db.add(user)
             db.flush()
 
-            g_a1 = Grade(name="一年级", school_id=school_a.id)
-            g_a2 = Grade(name="二年级", school_id=school_a.id)
-            db.add_all([g_a1, g_a2])
-            db.flush()
+            for scope in user_data.get("scopes", []):
+                scope_type = scope["type"]
+                parts = scope["target"].split("/")
+                if scope_type == "school" and len(parts) >= 1:
+                    sid = resolve_school_id(db, parts[0])
+                    db.add(UserScope(user_id=user.id, scope_type="school", target_school_id=sid))
+                elif scope_type == "grade" and len(parts) >= 2:
+                    gid = resolve_grade_id(db, parts[0], parts[1])
+                    db.add(UserScope(user_id=user.id, scope_type="grade", target_grade_id=gid))
+                elif scope_type == "class" and len(parts) >= 3:
+                    cid = resolve_class_id(db, parts[0], parts[1], parts[2])
+                    db.add(UserScope(user_id=user.id, scope_type="class", target_class_id=cid))
 
-            c_a1_1 = Class(name="1班", grade_id=g_a1.id)
-            c_a1_2 = Class(name="2班", grade_id=g_a1.id)
-            c_a2_1 = Class(name="1班", grade_id=g_a2.id)
-            c_a2_2 = Class(name="2班", grade_id=g_a2.id)
-            db.add_all([c_a1_1, c_a1_2, c_a2_1, c_a2_2])
+        db.commit()
+        logger.info("初始数据加载完成")
 
-            g_b1 = Grade(name="一年级", school_id=school_b.id)
-            g_b2 = Grade(name="二年级", school_id=school_b.id)
-            db.add_all([g_b1, g_b2])
-            db.flush()
-
-            c_b1_1 = Class(name="1班", grade_id=g_b1.id)
-            c_b1_2 = Class(name="2班", grade_id=g_b1.id)
-            c_b2_1 = Class(name="1班", grade_id=g_b2.id)
-            c_b2_2 = Class(name="2班", grade_id=g_b2.id)
-            db.add_all([c_b1_1, c_b1_2, c_b2_1, c_b2_2])
-
-            devices = [
-                Device(class_id=c_a1_1.id, secret_key="schoolA_class1_1_key"),
-                Device(class_id=c_a1_2.id, secret_key="schoolA_class1_2_key"),
-                Device(class_id=c_a2_1.id, secret_key="schoolA_class2_1_key"),
-                Device(class_id=c_a2_2.id, secret_key="schoolA_class2_2_key"),
-                Device(class_id=c_b1_1.id, secret_key="schoolB_class1_1_key"),
-                Device(class_id=c_b1_2.id, secret_key="schoolB_class1_2_key"),
-                Device(class_id=c_b2_1.id, secret_key="schoolB_class2_1_key"),
-                Device(class_id=c_b2_2.id, secret_key="schoolB_class2_2_key"),
-            ]
-            db.add_all(devices)
-
-            u_a1 = User(username="principal_a", hashed_password=make_hash("123456"),
-                        display_name="学校A王校长", school_id=school_a.id)
-            u_a2 = User(username="grade2_a", hashed_password=make_hash("123456"),
-                        display_name="学校A二年级主任", school_id=school_a.id)
-            u_a3 = User(username="teacher_a1", hashed_password=make_hash("123456"),
-                        display_name="学校A一年1班班主任", school_id=school_a.id)
-            u_b1 = User(username="principal_b", hashed_password=make_hash("123456"),
-                        display_name="学校B李校长", school_id=school_b.id)
-            u_b2 = User(username="teacher_b1", hashed_password=make_hash("123456"),
-                        display_name="学校B一年1班班主任", school_id=school_b.id)
-
-            db.add_all([u_a1, u_a2, u_a3, u_b1, u_b2])
-            db.flush()
-
-            db.add(UserScope(user_id=u_a1.id, scope_type="school", target_school_id=school_a.id))
-            db.add(UserScope(user_id=u_a2.id, scope_type="grade", target_grade_id=g_a2.id))
-            db.add(UserScope(user_id=u_a3.id, scope_type="class", target_class_id=c_a1_1.id))
-            db.add(UserScope(user_id=u_a3.id, scope_type="class", target_class_id=c_a1_2.id))
-            db.add(UserScope(user_id=u_b1.id, scope_type="school", target_school_id=school_b.id))
-            db.add(UserScope(user_id=u_b2.id, scope_type="class", target_class_id=c_b1_1.id))
-
-            db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"加载初始数据失败: {e}")
+        raise
     finally:
         db.close()
 
-init_db()
+load_init_data()
 
 # -------------------- 认证函数 --------------------
-def verify_password(plain_password, hashed_password):
-    return check_password(plain_password, hashed_password)
-
 def get_user(db: Session, username: str):
     return db.query(User).filter(User.username == username).first()
 
 def authenticate_user(db: Session, username: str, password: str):
     user = get_user(db, username)
-    if not user or not verify_password(password, user.hashed_password):
+    if not user or not check_password(password, user.hashed_password):
         return False
     return user
 
@@ -199,7 +309,6 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-# ✅ 修复：通过 Depends(get_db) 注入 Session，请求期间 Session 保持存活
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
@@ -244,6 +353,33 @@ class AnnouncementIn(BaseModel):
     target_type: str
     target_ids: Optional[List[int]] = None
     content: str
+
+# ---- 管理 API 模型 ----
+class UserCreate(BaseModel):
+    username: str
+    password: str
+    display_name: str
+    school: Optional[str] = None
+    scopes: Optional[List[dict]] = None
+
+class UserUpdate(BaseModel):
+    password: Optional[str] = None
+    display_name: Optional[str] = None
+    school: Optional[str] = None
+    scopes: Optional[List[dict]] = None
+
+class DeviceCreate(BaseModel):
+    school: str
+    grade: str
+    class_name: str
+    secret_key: str
+
+class DeviceUpdate(BaseModel):
+    secret_key: Optional[str] = None
+
+class ReloadResponse(BaseModel):
+    status: str
+    message: str
 
 # -------------------- FastAPI 应用 --------------------
 app = FastAPI()
@@ -303,7 +439,7 @@ def get_user_scope_details(db: Session, user: User):
                 class_ids.add(scope.target_class_id)
     return class_ids, grade_ids, is_school_admin, user_school_id
 
-# -------------------- 路由 --------------------
+# -------------------- 公共路由 --------------------
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
@@ -312,7 +448,6 @@ async def read_root(request: Request):
         return HTMLResponse(content="<h1>校园公告系统</h1><p>服务运行正常。</p>")
     return templates.TemplateResponse(request=request, name="index.html")
 
-# ✅ 修复：使用 Depends(get_db)
 @app.post("/token", response_model=Token)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -327,7 +462,6 @@ async def login_for_access_token(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-# ✅ 修复：使用 Depends(get_db)，current_user.scopes 可正常懒加载
 @app.get("/me", response_model=UserOut)
 async def get_me(
     current_user: User = Depends(get_current_user),
@@ -369,7 +503,6 @@ async def get_me(
         scopes=scopes_out,
     )
 
-# ✅ 修复：使用 Depends(get_db)
 @app.get("/targets", response_model=TargetInfo)
 async def get_available_targets(
     current_user: User = Depends(get_current_user),
@@ -405,7 +538,6 @@ async def get_available_targets(
 
     return TargetInfo(classes=classes_out, grades=grades_out, school=is_school, school_name=school_name)
 
-# ✅ 修复：使用 Depends(get_db)
 @app.post("/announcements")
 async def send_announcement(
     ann: AnnouncementIn,
@@ -454,7 +586,290 @@ async def send_announcement(
 
     return {"status": "ok", "sent_to_class_ids": target_class_ids}
 
-# WebSocket 端点（不能使用 Depends，手动管理 Session）
+# -------------------- 管理 API（动态增删改） --------------------
+
+@app.get("/admin/users", summary="列出所有用户")
+async def admin_list_users(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    users = db.query(User).all()
+    result = []
+    for u in users:
+        school_name = ""
+        if u.school_id:
+            s = db.query(School).filter(School.id == u.school_id).first()
+            school_name = s.name if s else ""
+        scopes_out = []
+        for sc in u.scopes:
+            scopes_out.append({
+                "type": sc.scope_type,
+                "school_id": sc.target_school_id,
+                "grade_id": sc.target_grade_id,
+                "class_id": sc.target_class_id,
+            })
+        result.append({
+            "id": u.id,
+            "username": u.username,
+            "display_name": u.display_name,
+            "school": school_name,
+            "scopes": scopes_out,
+        })
+    return result
+
+@app.post("/admin/users", summary="创建用户")
+async def admin_create_user(
+    body: UserCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if db.query(User).filter(User.username == body.username).first():
+        raise HTTPException(status_code=400, detail=f"用户名 {body.username} 已存在")
+
+    school_id = None
+    if body.school:
+        school_id = resolve_school_id(db, body.school)
+        if not school_id:
+            raise HTTPException(status_code=404, detail=f"学校 {body.school} 不存在")
+
+    user = User(
+        username=body.username,
+        hashed_password=make_hash(body.password),
+        display_name=body.display_name,
+        school_id=school_id,
+    )
+    db.add(user)
+    db.flush()
+
+    if body.scopes:
+        for scope in body.scopes:
+            scope_type = scope.get("type")
+            target = scope.get("target", "")
+            parts = target.split("/")
+            if scope_type == "school" and len(parts) >= 1:
+                sid = resolve_school_id(db, parts[0])
+                db.add(UserScope(user_id=user.id, scope_type="school", target_school_id=sid))
+            elif scope_type == "grade" and len(parts) >= 2:
+                gid = resolve_grade_id(db, parts[0], parts[1])
+                db.add(UserScope(user_id=user.id, scope_type="grade", target_grade_id=gid))
+            elif scope_type == "class" and len(parts) >= 3:
+                cid = resolve_class_id(db, parts[0], parts[1], parts[2])
+                db.add(UserScope(user_id=user.id, scope_type="class", target_class_id=cid))
+
+    db.commit()
+    return {"status": "ok", "user_id": user.id, "username": user.username}
+
+@app.put("/admin/users/{user_id}", summary="更新用户")
+async def admin_update_user(
+    user_id: int,
+    body: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    if body.password:
+        user.hashed_password = make_hash(body.password)
+    if body.display_name:
+        user.display_name = body.display_name
+    if body.school:
+        sid = resolve_school_id(db, body.school)
+        if not sid:
+            raise HTTPException(status_code=404, detail=f"学校 {body.school} 不存在")
+        user.school_id = sid
+
+    if body.scopes is not None:
+        # 清除旧权限，写入新权限
+        db.query(UserScope).filter(UserScope.user_id == user_id).delete()
+        for scope in body.scopes:
+            scope_type = scope.get("type")
+            target = scope.get("target", "")
+            parts = target.split("/")
+            if scope_type == "school" and len(parts) >= 1:
+                sid = resolve_school_id(db, parts[0])
+                db.add(UserScope(user_id=user.id, scope_type="school", target_school_id=sid))
+            elif scope_type == "grade" and len(parts) >= 2:
+                gid = resolve_grade_id(db, parts[0], parts[1])
+                db.add(UserScope(user_id=user.id, scope_type="grade", target_grade_id=gid))
+            elif scope_type == "class" and len(parts) >= 3:
+                cid = resolve_class_id(db, parts[0], parts[1], parts[2])
+                db.add(UserScope(user_id=user.id, scope_type="class", target_class_id=cid))
+
+    db.commit()
+    return {"status": "ok", "user_id": user.id}
+
+@app.delete("/admin/users/{user_id}", summary="删除用户")
+async def admin_delete_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    db.delete(user)
+    db.commit()
+    return {"status": "ok", "deleted": user.username}
+
+@app.get("/admin/devices", summary="列出所有设备")
+async def admin_list_devices(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    devices = db.query(Device).all()
+    result = []
+    for d in devices:
+        cls = db.query(Class).filter(Class.id == d.class_id).first()
+        info = {"id": d.id, "class_id": d.class_id, "secret_key": d.secret_key}
+        if cls and cls.grade and cls.grade.school:
+            info["school"] = cls.grade.school.name
+            info["grade"] = cls.grade.name
+            info["class"] = cls.name
+        result.append(info)
+    return result
+
+@app.post("/admin/devices", summary="创建设备")
+async def admin_create_device(
+    body: DeviceCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    cid = resolve_class_id(db, body.school, body.grade, body.class_name)
+    if not cid:
+        raise HTTPException(status_code=404, detail="找不到对应班级")
+    existing = db.query(Device).filter(Device.class_id == cid).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="该班级已有设备")
+    device = Device(class_id=cid, secret_key=body.secret_key)
+    db.add(device)
+    db.commit()
+    return {"status": "ok", "device_id": device.id}
+
+@app.put("/admin/devices/{device_id}", summary="更新设备密钥")
+async def admin_update_device(
+    device_id: int,
+    body: DeviceUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="设备不存在")
+    if body.secret_key:
+        device.secret_key = body.secret_key
+    db.commit()
+    return {"status": "ok", "device_id": device.id}
+
+@app.delete("/admin/devices/{device_id}", summary="删除设备")
+async def admin_delete_device(
+    device_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    device = db.query(Device).filter(Device.id == device_id).first()
+    if not device:
+        raise HTTPException(status_code=404, detail="设备不存在")
+    db.delete(device)
+    db.commit()
+    return {"status": "ok", "deleted_device_id": device_id}
+
+@app.post("/admin/reload", response_model=ReloadResponse, summary="重新加载 init_data.json（增量同步）")
+async def admin_reload_data(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    重新读取 init_data.json，增量同步：
+    - 新的学校/年级/班级/设备/用户会被创建
+    - 已存在的不会重复创建
+    - 不会删除已有数据
+    """
+    data_file = Path(DATA_FILE)
+    if not data_file.exists():
+        raise HTTPException(status_code=404, detail=f"文件不存在: {DATA_FILE}")
+
+    with open(data_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    created = {"schools": 0, "grades": 0, "classes": 0, "devices": 0, "users": 0}
+
+    # 同步学校/年级/班级
+    for school_data in data.get("schools", []):
+        school = db.query(School).filter(School.name == school_data["name"]).first()
+        if not school:
+            school = School(name=school_data["name"])
+            db.add(school)
+            db.flush()
+            created["schools"] += 1
+
+        for grade_data in school_data.get("grades", []):
+            grade = db.query(Grade).filter(
+                Grade.name == grade_data["name"], Grade.school_id == school.id
+            ).first()
+            if not grade:
+                grade = Grade(name=grade_data["name"], school_id=school.id)
+                db.add(grade)
+                db.flush()
+                created["grades"] += 1
+
+            for class_name in grade_data.get("classes", []):
+                cls = db.query(Class).filter(
+                    Class.name == class_name, Class.grade_id == grade.id
+                ).first()
+                if not cls:
+                    db.add(Class(name=class_name, grade_id=grade.id))
+                    created["classes"] += 1
+
+    db.flush()
+
+    # 同步设备
+    for dev in data.get("devices", []):
+        cid = resolve_class_id(db, dev["school"], dev["grade"], dev["class"])
+        if cid:
+            existing = db.query(Device).filter(Device.class_id == cid).first()
+            if not existing:
+                db.add(Device(class_id=cid, secret_key=dev["secret_key"]))
+                created["devices"] += 1
+
+    # 同步用户
+    for user_data in data.get("users", []):
+        existing = db.query(User).filter(User.username == user_data["username"]).first()
+        if existing:
+            continue
+        school_id = resolve_school_id(db, user_data.get("school", ""))
+        user = User(
+            username=user_data["username"],
+            hashed_password=make_hash(user_data["password"]),
+            display_name=user_data["display_name"],
+            school_id=school_id,
+        )
+        db.add(user)
+        db.flush()
+        created["users"] += 1
+
+        for scope in user_data.get("scopes", []):
+            scope_type = scope["type"]
+            parts = scope["target"].split("/")
+            if scope_type == "school" and len(parts) >= 1:
+                sid = resolve_school_id(db, parts[0])
+                db.add(UserScope(user_id=user.id, scope_type="school", target_school_id=sid))
+            elif scope_type == "grade" and len(parts) >= 2:
+                gid = resolve_grade_id(db, parts[0], parts[1])
+                db.add(UserScope(user_id=user.id, scope_type="grade", target_grade_id=gid))
+            elif scope_type == "class" and len(parts) >= 3:
+                cid = resolve_class_id(db, parts[0], parts[1], parts[2])
+                db.add(UserScope(user_id=user.id, scope_type="class", target_class_id=cid))
+
+    db.commit()
+    return ReloadResponse(
+        status="ok",
+        message=f"增量同步完成: {json.dumps(created, ensure_ascii=False)}"
+    )
+
+# -------------------- WebSocket --------------------
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket, class_id: int, token: str):
     db = SessionLocal()
