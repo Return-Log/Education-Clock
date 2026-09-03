@@ -326,9 +326,3 @@ class WeatherModule(QWidget):
         self.forecast_thread.wait()
         super().closeEvent(event)
 
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = WeatherModule()
-    window.show()
-    sys.exit(app.exec())

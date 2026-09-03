@@ -121,9 +121,3 @@ class TimerApp(QMainWindow):
                 self.is_running = False
                 self.pushButton.setText("开始")
         self.update_lcd_display()
-
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = TimerApp()
-    window.show()
-    sys.exit(app.exec())

@@ -12,7 +12,7 @@ from PyQt6.QtCore import QSettings
 from datetime import datetime
 import json
 from timetable_module import TimetableModule
-from auto_cctv_controller import AutoCCTVController  # 导入自动新闻联播模块
+# from auto_cctv_controller import AutoCCTVController  # 导入自动新闻联播模块
 from shutdown_module import ShutdownModule  # 导入关机模块
 from time_module import TimeModule  # 导入时间模块
 from weather_module import WeatherModule
@@ -62,7 +62,7 @@ class MainWindow(QMainWindow):
     # 自定义刷新信号
     refresh_timetable_signal = pyqtSignal()
     refresh_weather_signal = pyqtSignal()
-    refresh_news_signal = pyqtSignal()
+    # refresh_news_signal = pyqtSignal()
     refresh_shutdown_signal = pyqtSignal()
     refresh_bulletin_signal = pyqtSignal()
     refresh_api_display_signal = pyqtSignal()
@@ -78,7 +78,7 @@ class MainWindow(QMainWindow):
         # 连接信号到对应的刷新方法
         self.refresh_timetable_signal.connect(self.refresh_timetable)
         self.refresh_weather_signal.connect(self.refresh_weather)
-        self.refresh_news_signal.connect(self.refresh_news)
+        # self.refresh_news_signal.connect(self.refresh_news)
         self.refresh_shutdown_signal.connect(self.refresh_shutdown)
         self.refresh_bulletin_signal.connect(self.refresh_bulletin)
         self.refresh_api_display_signal.connect(self.refresh_api_display)
@@ -430,7 +430,7 @@ class MainWindow(QMainWindow):
         self.wallpaper_module = None
         self.load_settings()  # 确保设置已加载
         self.init_shutdown_module()  # 在设置加载后初始化关机模块
-        self.init_news_module()
+        # self.init_news_module()
         self.init_plan_tasks_module()
         self.refresh_wallpaper()
 
@@ -444,10 +444,10 @@ class MainWindow(QMainWindow):
             with open('data/launch.json', 'r', encoding='utf-8') as file:
                 settings = json.load(file)
                 self.shutdown_status = settings.get('shutdown', '关闭')
-                self.news_status = settings.get('news', '关闭')
+                # self.news_status = settings.get('news', '关闭')
         except (FileNotFoundError, json.JSONDecodeError):
             self.shutdown_status = '关闭'
-            self.news_status = '关闭'
+            # self.news_status = '关闭'
 
     def check_settings(self):
         """检查设置并更新状态"""
@@ -487,15 +487,15 @@ class MainWindow(QMainWindow):
         if self.plan_tasks_module:
             self.plan_tasks_module.refresh()
 
-    def init_news_module(self):
-        """根据设置初始化新闻联播模块"""
-        if self.news_status == '开启':
-            if not hasattr(self, 'cctv_controller') or self.cctv_controller is None:
-                self.cctv_controller = AutoCCTVController()  # 确保初始化时自动启动定时器
-        elif self.news_status == '关闭' and hasattr(self, 'cctv_controller'):
-            if self.cctv_controller is not None:
-                self.cctv_controller.stop_timers()
-            del self.cctv_controller
+    # def init_news_module(self):
+    #     """根据设置初始化新闻联播模块"""
+    #     if self.news_status == '开启':
+    #         if not hasattr(self, 'cctv_controller') or self.cctv_controller is None:
+    #             self.cctv_controller = AutoCCTVController()  # 确保初始化时自动启动定时器
+    #     elif self.news_status == '关闭' and hasattr(self, 'cctv_controller'):
+    #         if self.cctv_controller is not None:
+    #             self.cctv_controller.stop_timers()
+    #         del self.cctv_controller
 
     def init_shutdown_module(self):
         """根据设置初始化关机模块"""
@@ -578,8 +578,8 @@ class MainWindow(QMainWindow):
             self.refresh_timetable_signal.emit()
         elif module_name == "weather":
             self.refresh_weather_signal.emit()
-        elif module_name == "news":
-            self.refresh_news_signal.emit()
+        # elif module_name == "news":
+        #     self.refresh_news_signal.emit()
         elif module_name == "shutdown":
             self.refresh_shutdown_signal.emit()
         elif module_name == "bulletin":

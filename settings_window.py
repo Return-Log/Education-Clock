@@ -224,7 +224,7 @@ class SettingsWindow(QDialog):
         self.load_db_config()  # 加载数据库配置
         self.load_countdown()  # 加载倒计时数据
         self.load_shutdown_settings()  # 加载自动关机设置
-        self.load_news_settings()  # 加载新闻设置
+        # self.load_news_settings()  # 加载新闻设置
         self.load_weather_settings()  # 加载天气设置
         self.load_location_settings()  # 加载位置设置
         self.load_names()  # 加载名字列表
@@ -247,7 +247,7 @@ class SettingsWindow(QDialog):
         self.connect_line_edit_signals()  # 连接通知栏设置文本框的信号
         self.connect_count_line_edit_signals()  # 连接倒计时设置文本框的信号
         self.connect_shutdown_signals()  # 连接自动关机设置文本框的信号
-        self.connect_news_signals()  # 连接新闻设置信号
+        # self.connect_news_signals()  # 连接新闻设置信号
         self.connect_weather_signals()  # 连接天气设置信号
         self.connect_location_signals()  # 连接位置设置信号
         self.plainTextEdit_names = self.findChild(QPlainTextEdit, "plainTextEdit")  # 获取名字编辑器
@@ -262,20 +262,20 @@ class SettingsWindow(QDialog):
             self.load_countdown()
         elif index == 4:
             self.load_shutdown_settings()
-        elif index == 5:
-            self.load_news_settings()
+        # elif index == 5:
+        #     self.load_news_settings()
         elif index == 2:
             self.load_weather_settings()
             self.load_location_settings()
-        elif index == 6:
+        elif index == 5:
             self.load_names()
-        elif index == 7:
+        elif index == 6:
             self.init_theme_settings()
-        elif index == 8:
+        elif index == 7:
             self.load_api_configs()
-        elif index == 9:  # 计划任务设置标签页
+        elif index == 8:  # 计划任务设置标签页
             self.setup_plan_tasks_tab()
-        elif index == 10:  # 第11个tab（壁纸设置）
+        elif index == 9:  # 第11个tab（壁纸设置）
             self.load_wallpaper_checkbox_state()
 
 
@@ -836,51 +836,51 @@ class SettingsWindow(QDialog):
             logging.error(f"Failed to save shutdown settings: {e}")
 
 ###############自动新闻联播设置#########################################################################################
-    def connect_news_signals(self):
-        self.buttonBox_3.clicked.connect(self.toggle_news)
-
-    def load_news_settings(self):
-        try:
-            logging.debug("Loading news settings from files.")
-            if not os.path.exists(self.launch_file):
-                logging.warning("Launch file not found. Creating a default one.")
-                self.create_default_launch_file()
-
-            with open(self.launch_file, 'r', encoding='utf-8') as f:
-                launch_data = json.load(f)
-                news_status = launch_data.get('news', '开启')
-                self.label_2.setText(f"{news_status}")
-
-            logging.debug("News settings loaded successfully.")
-        except json.JSONDecodeError as e:
-            logging.error(f"Failed to decode JSON: {e}")
-        except Exception as e:
-            logging.error(f"Failed to load news settings: {e}")
-
-    def toggle_news(self, button):
-        try:
-            with open(self.launch_file, 'r', encoding='utf-8') as f:
-                launch_data = json.load(f)
-
-            current_status = launch_data.get('news', '关闭')
-            if button == self.buttonBox_3.button(QDialogButtonBox.StandardButton.Open):
-                new_status = "开启"
-            elif button == self.buttonBox_3.button(QDialogButtonBox.StandardButton.Close):
-                new_status = "关闭"
-            else:
-                return
-
-            if current_status != new_status:
-                launch_data['news'] = new_status
-                with open(self.launch_file, 'w', encoding='utf-8') as f:
-                    json.dump(launch_data, f, ensure_ascii=False, indent=4)
-
-                self.modules_to_refresh.add("news")
-
-                self.label_2.setText(f"{new_status}")
-                logging.info(f"News status toggled to: {new_status}")
-        except Exception as e:
-            logging.error(f"Failed to toggle news status: {e}")
+    # def connect_news_signals(self):
+    #     self.buttonBox_3.clicked.connect(self.toggle_news)
+    #
+    # def load_news_settings(self):
+    #     try:
+    #         logging.debug("Loading news settings from files.")
+    #         if not os.path.exists(self.launch_file):
+    #             logging.warning("Launch file not found. Creating a default one.")
+    #             self.create_default_launch_file()
+    #
+    #         with open(self.launch_file, 'r', encoding='utf-8') as f:
+    #             launch_data = json.load(f)
+    #             news_status = launch_data.get('news', '开启')
+    #             self.label_2.setText(f"{news_status}")
+    #
+    #         logging.debug("News settings loaded successfully.")
+    #     except json.JSONDecodeError as e:
+    #         logging.error(f"Failed to decode JSON: {e}")
+    #     except Exception as e:
+    #         logging.error(f"Failed to load news settings: {e}")
+    #
+    # def toggle_news(self, button):
+    #     try:
+    #         with open(self.launch_file, 'r', encoding='utf-8') as f:
+    #             launch_data = json.load(f)
+    #
+    #         current_status = launch_data.get('news', '关闭')
+    #         if button == self.buttonBox_3.button(QDialogButtonBox.StandardButton.Open):
+    #             new_status = "开启"
+    #         elif button == self.buttonBox_3.button(QDialogButtonBox.StandardButton.Close):
+    #             new_status = "关闭"
+    #         else:
+    #             return
+    #
+    #         if current_status != new_status:
+    #             launch_data['news'] = new_status
+    #             with open(self.launch_file, 'w', encoding='utf-8') as f:
+    #                 json.dump(launch_data, f, ensure_ascii=False, indent=4)
+    #
+    #             self.modules_to_refresh.add("news")
+    #
+    #             self.label_2.setText(f"{new_status}")
+    #             logging.info(f"News status toggled to: {new_status}")
+    #     except Exception as e:
+    #         logging.error(f"Failed to toggle news status: {e}")
 
 #####################天气模块设置########################################################################################
     def connect_weather_signals(self):
@@ -1815,7 +1815,7 @@ class SettingsWindow(QDialog):
         """设置壁纸选项卡"""
         try:
             # 查找第11个tab（索引为10）
-            tab_11 = self.tabWidget.widget(10)  # 第11个tab
+            tab_11 = self.tabWidget.widget(9)  # 第11个tab
             if tab_11:
                 self.checkBox = tab_11.findChild(QCheckBox, "checkBox")
                 self.checkBox_2 = tab_11.findChild(QCheckBox, "checkBox_2")
